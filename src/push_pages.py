@@ -57,22 +57,27 @@ def generate_index_html(history: list[dict], domain: str) -> str:
         papers_html = []
         for p in papers:
             title_cn = p.get("title_cn") or p.get("title", "未知标题")
+            title_en = p.get("title", "")
             score = p.get("score", "?")
             subfield = p.get("subfield_label", "")
-            priority = "⭐ " if p.get("priority") else ""
+            priority = ("⭐ " if p.get("priority") else "")
             url = p.get("url", "")
             summary = (p.get("structured_summary", "") or "").replace("\n", "<br>").replace("【", "<strong>【").replace("】", "】</strong>")
             abstract_cn = p.get("abstract_cn", "")
+            mirror_urls = p.get("mirror_urls", {})
+            mirror_html = "".join(f'<a href="{u}" target="_blank">🌐 {n}镜像</a> ' for n, u in mirror_urls.items())
 
             papers_html.append(f"""
-            <div class="paper{' priority' if p.get('priority') else ''}">
+            <div class="paper{(" priority" if p.get("priority") else "")}">
                 <h3>{priority}{title_cn}</h3>
+                <div class="title-en">{title_en}</div>
                 <div class="meta">
                     <span>📂 {subfield}</span>
                     <span>📊 相关性: {score}/10</span>
                     <a href="{url}" target="_blank">arXiv 原文</a>
+                    {mirror_html}
                 </div>
-                {f'<div class="abstract-cn"><strong>中文摘要：</strong>{abstract_cn}</div>' if abstract_cn else ''}
+                {('<div class="abstract-cn"><strong>📝 中文摘要（完整翻译）：</strong><br>' + abstract_cn + '</div>') if abstract_cn else ''}
                 <div class="summary">{summary}</div>
             </div>""")
 
@@ -100,7 +105,8 @@ body {{ font-family: -apple-system, 'Microsoft YaHei', 'PingFang SC', sans-serif
 .count {{ font-size: 14px; color: #888; font-weight: normal; }}
 .paper {{ background: white; border-radius: 10px; padding: 20px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }}
 .paper.priority {{ border-left: 4px solid #ffc107; }}
-.paper h3 {{ font-size: 16px; margin-bottom: 8px; color: #1a1a2e; }}
+.paper h3 {{ font-size: 16px; margin-bottom: 4px; color: #1a1a2e; }}
+.title-en {{ font-size: 12px; color: #999; font-style: italic; margin-bottom: 8px; }}
 .meta {{ font-size: 13px; color: #888; margin-bottom: 10px; }}
 .meta span {{ margin-right: 12px; }}
 .meta a {{ color: #667eea; }}

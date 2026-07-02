@@ -88,7 +88,6 @@ def main():
                 "--repo", repo,
                 "--title", title,
                 "--body", body,
-                "--label", "daily-digest",
             ],
             capture_output=True,
             text=True,

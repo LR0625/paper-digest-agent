@@ -28,7 +28,7 @@ push_channels:
 deepseek:
   api_base: "https://api.deepseek.com"
   model: "deepseek-chat"
-  max_tokens: 4096
+  max_tokens: 8192
   temperature: 0.3
 
 # 飞书配置（仅 push_channels 含 feishu 时需要）

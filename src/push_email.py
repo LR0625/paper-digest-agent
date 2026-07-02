@@ -1,10 +1,12 @@
 """
 邮件推送模块 —— 通过 SMTP 发送 HTML 格式邮件。
+包含完整中文翻译、镜像链接和深度结构化摘要。
 """
 
 import argparse
 import json
 import os
+import re
 import smtplib
 import sys
 import yaml
@@ -23,22 +25,28 @@ def load_config():
 
 
 def build_html(papers: list[dict], domain: str, date: str) -> str:
-    """构建 HTML 邮件正文。"""
+    """构建 HTML 邮件正文，包含完整翻译、镜像链接和结构化摘要。"""
     parts = [
         f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
-body {{ font-family: -apple-system, 'Microsoft YaHei', sans-serif; max-width: 720px; margin: 0 auto; padding: 20px; color: #333; }}
-.header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; }}
+body {{ font-family: -apple-system, 'Microsoft YaHei', 'PingFang SC', sans-serif; max-width: 750px; margin: 0 auto; padding: 20px; color: #333; }}
+.header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 28px; border-radius: 14px; margin-bottom: 24px; }}
 .header h1 {{ margin: 0 0 4px 0; font-size: 22px; }}
 .header p {{ margin: 0; opacity: 0.85; font-size: 14px; }}
-.paper {{ border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; margin-bottom: 16px; }}
-.paper h2 {{ margin: 0 0 8px 0; font-size: 17px; color: #1a1a2e; }}
-.meta {{ font-size: 13px; color: #888; margin-bottom: 12px; }}
-.meta span {{ margin-right: 12px; }}
-.priority {{ background: #fff3cd; border-color: #ffc107; }}
-.summary {{ font-size: 14px; line-height: 1.7; white-space: pre-wrap; }}
-.summary strong {{ color: #333; }}
-.footer {{ text-align: center; color: #aaa; font-size: 12px; margin-top: 32px; }}
+.paper {{ border: 1px solid #e0e0e0; border-radius: 12px; padding: 24px; margin-bottom: 20px; background: #fff; }}
+.paper.priority {{ background: #fffdf5; border-color: #ffc107; border-left: 4px solid #ffc107; }}
+.paper h2 {{ margin: 0 0 4px 0; font-size: 17px; color: #1a1a2e; }}
+.paper .title-en {{ font-size: 13px; color: #999; margin-bottom: 12px; font-style: italic; }}
+.meta {{ font-size: 13px; color: #888; margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 10px; }}
+.meta span {{ margin-right: 8px; }}
+.meta a {{ color: #667eea; text-decoration: none; }}
+.mirror-links {{ font-size: 12px; color: #888; margin-bottom: 14px; }}
+.mirror-links a {{ color: #e67e22; margin-right: 10px; }}
+.section-title {{ font-size: 15px; font-weight: bold; color: #1a1a2e; margin: 18px 0 8px 0; padding-bottom: 4px; border-bottom: 1.5px solid #667eea; }}
+.abstract-cn {{ font-size: 14px; line-height: 1.9; color: #444; padding: 12px; background: #f8f9ff; border-radius: 8px; margin-bottom: 8px; }}
+.summary {{ font-size: 14px; line-height: 1.85; color: #333; }}
+.summary strong {{ color: #1a1a2e; }}
+.footer {{ text-align: center; color: #aaa; font-size: 12px; margin-top: 36px; }}
 a {{ color: #667eea; }}
 </style></head><body>
 <div class="header"><h1>📄 {domain} 论文日报</h1><p>{date}</p></div>"""
@@ -46,26 +54,51 @@ a {{ color: #667eea; }}
 
     for p in papers:
         title_cn = p.get("title_cn") or p.get("title", "未知标题")
+        title_en = p.get("title", "")
         score = p.get("score", "?")
         subfield = p.get("subfield_label", "")
         priority_class = ' class="priority"' if p.get("priority") else ""
-        url = p.get("url", "")
+        priority_star = "⭐ " if p.get("priority") else ""
+        arxiv_url = p.get("url", "")
+        arxiv_id = p.get("arxiv_id", "")
+        abstract_cn = p.get("abstract_cn", "")
         summary = p.get("structured_summary", "")
+        mirror_urls = p.get("mirror_urls", {})
 
-        # 把摘要里的【】转为粗体
-        import re
+        # 镜像链接
+        mirror_links_html = ""
+        for name, url in mirror_urls.items():
+            mirror_links_html += f'<a href="{url}">🌐 {name}镜像</a>\n'
+
+        # 结构化摘要格式化
         summary_html = re.sub(r"【(.+?)】", r"<br><strong>【\1】</strong>", summary)
         summary_html = summary_html.replace("\n", "<br>")
 
         parts.append(f"""<div class="paper"{priority_class}>
-<h2>{'⭐ ' if p.get('priority') else ''}{title_cn}</h2>
-<div class="meta"><span>📂 {subfield}</span><span>📊 相关性: {score}/10</span><span><a href="{url}">原文链接</a></span></div>
-<div class="summary">{summary_html}</div>
+<h2>{priority_star}{title_cn}</h2>
+<div class="title-en">{title_en}</div>
+<div class="meta">
+    <span>📂 {subfield}</span>
+    <span>📊 相关性: {score}/10</span>
+    <span>🔗 <a href="{arxiv_url}">arXiv: {arxiv_id}</a></span>
 </div>""")
+
+        if mirror_links_html:
+            parts.append(f'<div class="mirror-links">国内可访问：{mirror_links_html}</div>')
+
+        if abstract_cn:
+            parts.append(f'<div class="section-title">📝 中文摘要（完整翻译）</div>')
+            parts.append(f'<div class="abstract-cn">{abstract_cn}</div>')
+
+        if summary_html:
+            parts.append(f'<div class="section-title">🔍 深度解读</div>')
+            parts.append(f'<div class="summary">{summary_html}</div>')
+
+        parts.append("</div>")
 
     parts.append(f"""<div class="footer">
 <p>由 paper-digest-agent 自动生成 | {date}</p>
-<p><a href="https://github.com">GitHub 仓库</a></p>
+<p>Powered by arXiv + DeepSeek | <a href="https://github.com/LR0625/paper-digest-agent">GitHub</a></p>
 </div></body></html>""")
 
     return "\n".join(parts)
@@ -124,7 +157,6 @@ def main():
         print(f"[INFO] 邮件推送成功 ({len(papers)} 篇)")
     except Exception as e:
         print(f"[ERROR] 邮件推送失败: {e}")
-        # 不 exit(1)，邮件失败不应阻断整个 pipeline
 
 
 if __name__ == "__main__":
