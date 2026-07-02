@@ -19,14 +19,19 @@ GitHub 上 arXiv 论文推送工具已经有不少了，但大多有这些问题
 
 ## 🚀 快速开始（3 分钟接入）
 
-- [ ] **1. Fork / Use this template** — 点击右上角绿色按钮，选择 "Use this template" → "Create a new repository"
-- [ ] **2. 配置你的领域** — 编辑 `config/settings.yaml`，修改 `active_domain` 指向你的领域文件；如果要自定义领域，复制 `domains/_template.yaml` 修改即可（详见下方说明）
-- [ ] **3. 设置密钥** — 在仓库 Settings → Secrets and variables → Actions 中添加：
-  - `DEEPSEEK_API_KEY`（**必需**，去 [platform.deepseek.com](https://platform.deepseek.com) 注册获取）
-  - `FEISHU_WEBHOOK`（可选，飞书群机器人的 Webhook URL）
-  - `SMTP_HOST` / `SMTP_FROM` / `SMTP_TO` / `SMTP_PASSWORD`（可选，邮件推送配置）
-- [ ] **4. 手动触发测试** — 进入 Actions 标签页 → Daily Digest → "Run workflow"，观察运行日志
-- [ ] **5. 确认 OK 后** — 每天北京时间 9:00 自动推送，周一 10:00 自动发周报
+> ⚠️ **重要**：使用 Template 创建仓库后，你需要修改 **3 样东西**才能让系统为你工作：
+> 1. **API 密钥**——飞书/邮箱是绑定我个人账号的，DeepSeek 花的也是我的钱，你必须换成自己的
+> 2. **研究方向**——默认是"具身智能与机器人学习"，你想关注什么方向需要自己定义
+> 3. **激活配置**——告诉系统加载你刚才写的领域文件
+
+- [ ] **1. Use this template** — 点击右上角绿色 "Use this template" → "Create a new repository"（⚠️ 不是 Fork，这样你的仓库跟我的完全独立）
+- [ ] **2. 定义你的研究方向** — 复制 `domains/_template.yaml` 并按你的领域编辑（详见下方说明）；然后修改 `config/settings.yaml` 中的 `active_domain` 指向它
+- [ ] **3. 填入你自己的 API 密钥** — 仓库 Settings → Secrets and variables → Actions，添加：
+  - `DEEPSEEK_API_KEY`（**必需**，去 [platform.deepseek.com](https://platform.deepseek.com) 注册充值后获取，花你自己的钱😂）
+  - `FEISHU_WEBHOOK`（飞书推送时需要，用**你自己群**的机器人 webhook，别用我的）
+  - `SMTP_HOST` / `SMTP_FROM` / `SMTP_TO` / `SMTP_PASSWORD`（邮件推送时需要，用**你自己邮箱**的授权码）
+- [ ] **4. 手动触发测试** — 进入 Actions → Daily Digest → "Run workflow"，等 4-5 分钟后检查是否收到推送
+- [ ] **5. 完成** — 每天北京时间 9:00 自动推送，周一 10:00 额外发周报趋势地图
 
 > 💡 **零配置尝鲜**：如果你暂时不想配任何密钥，编辑 `config/settings.yaml`，把 `push_channels` 改为 `["issues"]`，然后手动触发一次 workflow。论文日报会自动出现在仓库的 Issues 里——完全不依赖外部服务。
 
