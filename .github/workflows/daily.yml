@@ -2,15 +2,15 @@ name: Daily Digest
 
 on:
   schedule:
-    # UTC 0:55 → 北京时间 8:55 开始跑, ~4分钟处理完, 刚好9:00收到推送
-    - cron: '55 0 * * *'
-  workflow_dispatch: {}   # 支持手动触发测试
+    # UTC 0:50 = 北京时间 8:50 启动，~5分钟处理完，等到9:00准时发送
+    - cron: '50 0 * * *'
+  workflow_dispatch: {}
 
 permissions:
-  contents: write         # 提交 seen_ids.db 到仓库
-  pages: write            # 部署 GitHub Pages
-  id-token: write         # Pages 部署认证
-  issues: write           # 可选：创建 Issue 推送
+  contents: write
+  pages: write
+  id-token: write
+  issues: write
 
 jobs:
   run:
@@ -38,6 +38,20 @@ jobs:
         run: python src/summarize.py
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+
+      # ── 等待北京时间 9:00 整再发送 ──
+      - name: Wait until 9:00 Beijing time
+        if: success()
+        run: |
+          TARGET_UTC=1   # 1:00 UTC = 9:00 Beijing
+          NOW_SEC=$(date +%s)
+          TARGET_SEC=$(date -d "today 0${TARGET_UTC}:00:00 UTC" +%s 2>/dev/null || date -d "today 01:00:00 UTC" +%s)
+          if [ "$NOW_SEC" -lt "$TARGET_SEC" ]; then
+            WAIT=$((TARGET_SEC - NOW_SEC))
+            echo "⏳ 所有内容已处理完毕，等待 ${WAIT} 秒后于北京时间 9:00 准时推送..."
+            sleep $WAIT
+          fi
+          echo "✅ 北京时间 $(TZ='Asia/Shanghai' date +%H:%M:%S)，开始推送"
 
       - name: Push to Feishu
         if: success()
