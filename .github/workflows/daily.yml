@@ -2,8 +2,8 @@ name: Daily Digest
 
 on:
   schedule:
-    # UTC 1:00 = 北京时间 9:00
-    - cron: '0 1 * * *'
+    # UTC 0:55 → 北京时间 8:55 开始跑, ~4分钟处理完, 刚好9:00收到推送
+    - cron: '55 0 * * *'
   workflow_dispatch: {}   # 支持手动触发测试
 
 permissions:
