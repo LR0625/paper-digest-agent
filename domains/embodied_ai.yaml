@@ -1,0 +1,79 @@
+# ============================================
+# 领域包：具身智能 / 机器人
+# 别人想换方向，复制本文件、改下面内容即可，无需碰任何 .py 代码
+# ============================================
+
+domain_name: "具身智能与机器人学习"     # 显示在推送标题、Pages 页面上
+categories: ["cs.RO", "cs.LG", "cs.CV", "cs.AI"]
+
+subfields:
+  vla_and_policy:          # 视觉-语言-动作 / 端到端策略
+    label: "VLA与端到端策略"
+    keywords:
+      - "vision-language-action"
+      - "VLA model"
+      - "generalist robot policy"
+      - "robot foundation model"
+
+  manipulation:             # 操作/抓取
+    label: "灵巧操作与抓取"
+    keywords:
+      - "dexterous manipulation"
+      - "robot grasping"
+      - "bimanual manipulation"
+      - "tactile manipulation"
+
+  navigation_and_slam:      # 导航与建图
+    label: "导航与场景理解"
+    keywords:
+      - "robot navigation"
+      - "visual navigation"
+      - "SLAM"
+      - "semantic mapping"
+
+  locomotion:               # 运动控制（四足/人形）
+    label: "运动控制（足式/人形）"
+    keywords:
+      - "legged locomotion"
+      - "humanoid whole-body control"
+      - "bipedal robot"
+      - "quadruped robot"
+
+  sim2real_and_rl:          # 仿真与强化学习
+    label: "仿真到真机 / 强化学习"
+    keywords:
+      - "sim-to-real"
+      - "reinforcement learning robot"
+      - "robot simulation benchmark"
+
+  world_model:              # 世界模型/规划
+    label: "世界模型与规划"
+    keywords:
+      - "world model robot"
+      - "robot planning"
+      - "model-based robot learning"
+
+  perception:               # 感知（触觉/多模态）
+    label: "多模态感知"
+    keywords:
+      - "tactile sensing"
+      - "multimodal robot perception"
+      - "3D scene representation robot"
+
+  human_robot_interaction:  # 人机交互/协作
+    label: "人机交互与协作"
+    keywords:
+      - "human-robot interaction"
+      - "robot collaboration"
+      - "assistive robot"
+
+# 重点跟踪团队/机构（命中即优先展示，不受 daily_limit 挤压）
+priority_labs:
+  - "Google DeepMind"
+  - "Physical Intelligence"
+  - "Figure AI"
+  - "Shanghai AI Lab"
+  - "Stanford IRIS"
+  - "Berkeley RAIL"
+  - "CMU Robotics Institute"
+  - "MIT CSAIL"

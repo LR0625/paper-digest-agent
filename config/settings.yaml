@@ -1,0 +1,49 @@
+# ============================================
+# 全局运行参数 —— 与领域无关
+# 换领域时不需要重新设置
+# ============================================
+
+# 指向 domains/ 下要激活的领域包文件名（不含 .yaml）
+active_domain: "embodied_ai"
+
+# 每日推送数量上限（宁缺毋滥）
+daily_limit: 5
+
+# DeepSeek 相关性打分阈值（1-10，低于此分不推送）
+relevance_threshold: 7
+
+# 多样性模式：开启后优先保证每天覆盖不同子方向
+diversity_mode: true
+
+# 推送渠道开关（按需增删）
+# 可选值: feishu, email, pages, issues
+# - pages: 生成 GitHub Pages 静态页，零配置即可浏览
+# - issues: 发布到 GitHub Issues，零密钥配置
+push_channels:
+  - "feishu"
+  - "email"
+  - "pages"
+
+# DeepSeek API 配置
+deepseek:
+  api_base: "https://api.deepseek.com"
+  model: "deepseek-chat"
+  max_tokens: 4096
+  temperature: 0.3
+
+# 飞书配置（仅 push_channels 含 feishu 时需要）
+feishu:
+  # webhook URL 通过环境变量 FEISHU_WEBHOOK 注入，此处可留空
+
+# 邮件配置（仅 push_channels 含 email 时需要）
+email:
+  smtp_host: "smtp.163.com"
+  smtp_port: 465
+  from_addr: "13531228330@163.com"
+  to_addr: "13531228330@163.com"
+  # 密码通过环境变量 SMTP_PASSWORD 注入，此处不存
+
+# 每周汇总设置
+weekly:
+  day_of_week: 1     # 周一（0=周日, 1=周一, ..., 6=周六）
+  relaxed_limit: 30  # 周报宽松抓取数量（不受 daily_limit 限制）

@@ -1,0 +1,63 @@
+name: Weekly Digest
+
+on:
+  schedule:
+    # 每周一 UTC 2:00 = 北京时间 10:00
+    - cron: '0 2 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取全部历史以读取 pages_output/data/history.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate Weekly Report
+        run: python src/weekly_digest.py
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+
+      - name: Push Email (Weekly)
+        if: success()
+        run: |
+          # 将周报通过邮件推送（复用 push_email.py 的类似逻辑）
+          echo "Weekly report generated at data/weekly_report.json"
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+
+      - name: Push Weekly to Feishu
+        if: success()
+        run: |
+          # 飞书推送周报（简单文本消息）
+          echo "Weekly report push placeholder"
+          # 实际推送逻辑可根据需要扩展
+        env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+
+      - name: Commit Weekly Report
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/weekly_report.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "📊 weekly digest report [skip ci]"
+          git push

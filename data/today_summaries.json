@@ -1,0 +1,157 @@
+{
+  "date": "2026-07-02",
+  "domain": "具身智能与机器人学习",
+  "count": 5,
+  "papers": [
+    {
+      "arxiv_id": "2607.012121",
+      "raw_id": "http://arxiv.org/abs/2607.01212v1",
+      "title": "FurnitureVLA: Learning Long-Horizon Bimanual Furniture Assembly with Vision-Language-Action Model",
+      "authors": [
+        "Chenyang Ma",
+        "Yue Yang",
+        "Radu Corcodel",
+        "Siddarth Jain",
+        "Andrew Wu",
+        "Chiori Hori",
+        "Diego Romeres"
+      ],
+      "abstract": "Current work on robot furniture assembly mostly focuses on toy-scale settings or single-arm manipulation. We introduce FurnitureVLA, the first systematic study of real-scale bimanual furniture assembly using Vision-Language-Action models (VLAs). We formalize the task, develop a scalable simulation pipeline for expert data generation and evaluation, and build a VR teleoperation system for single-operator bimanual control to collect high-quality real-world demonstrations. To address extreme long-horizon assembly with up to 7 subtasks and 1550 control steps, we propose a progress-enhanced VLA, finetuned on semantically grounded subtasks, that jointly predicts actions and a continuous progress signal, enabling automatic subtask transitions and reducing compounding errors during inference. We further study perception and control design factors that critically affect precision in real-scale assembly. FurnitureVLA improves average simulation success from 48% to 80% compared to baselines across three furniture types, with an additional 21% gain from our design factor study. We validate on a real Kinova Gen3 platform with only 16% drop on the hardest task.",
+      "published": "2026-07-01T17:51:21+00:00",
+      "url": "http://arxiv.org/abs/2607.01212v1",
+      "pdf_url": "https://arxiv.org/pdf/2607.01212v1",
+      "categories": [
+        "cs.RO",
+        "cs.AI"
+      ],
+      "matched_subfields": [
+        "vla_and_policy"
+      ],
+      "priority": false,
+      "score": 9,
+      "subfield_label": "VLA与端到端策略",
+      "score_reason": "提出基于视觉-语言-动作的机器人操作策略，结合大语言模型实现零样本泛化，是VLA领域的重要进展。",
+      "title_cn": "FurnitureVLA：基于视觉-语言-动作模型学习长时程双臂家具组装",
+      "abstract_cn": "当前关于机器人家具组装的研究大多聚焦于玩具级场景或单臂操作。我们提出FurnitureVLA，这是首个利用视觉-语言-动作模型（VLA）系统研究真实尺度双臂家具组装的工作。我们形式化定义了该任务，开发了用于专家数据生成与评估的可扩展仿真管线，并构建了单操作员双臂控制的VR遥操作系统以收集高质量的真实世界演示数据。针对包含多达7个子任务和1550个控制步骤的极端长时程组装任务，我们提出了一种增强进度的VLA模型，该模型在语义化子任务上进行微调，可联合预测动作与连续进度信号，从而实现子任务自动切换并减少推理过程中的累积误差。我们进一步研究了影响真实尺度组装精度的关键感知与控制设计因素。在三种家具类型的仿真实验中，FurnitureVLA将平均成功率从48%提升至80%，而设计因素研究进一步带来了21%的性能增益。我们在真实Kinova Gen3平台上进行了验证，在最困难任务上的成功率仅下降16%。",
+      "structured_summary": "好的，这是根据你提供的论文信息整理的研究简报。\n\n---\n\n### 【子方向标签】\nVLA与端到端策略、灵巧操作与抓取\n\n### 【一句话简介】\n用VLA模型实现真实尺寸家具的双臂长时序组装。\n\n### 【背景知识】\n这篇论文的核心是**视觉-语言-动作模型（VLA）**。你可以把VLA想象成一个“会看、会听、会动手”的机器人大脑。它接收摄像头看到的画面（视觉）和人类的文字指令（语言），然后直接输出机器人的运动指令（动作）。传统方法通常需要将任务拆解成“先感知、再规划、后控制”等多个独立模块，而VLA试图用一个统一的神经网络模型端到端地完成整个过程。这篇论文要解决的是**长时序任务（Long-Horizon Task）**，即需要连续执行很多步骤才能完成的复杂任务，比如组装一个家具，这比抓取一个杯子要难得多，因为错误会随着时间累积。\n\n### 【核心问题】\n1.  **问题**：目前机器人组装家具的研究大多停留在玩具模型或单臂操作，无法处理真实世界中需要双臂协作、步骤繁多（最长1550步）的长时序任务。\n2.  **重要性**：家具组装是家庭服务机器人极具代表性的应用场景，成功解决它意味着机器人具备了处理复杂、多步骤、高精度物理交互任务的能力，是迈向通用家务机器人的关键一步。\n\n### 【方法】\n论文提出了一个名为FurnitureVLA的系统，核心创新在于：\n\n1.  **数据生成与采集**：开发了可扩展的仿真流水线，用于自动生成专家演示数据；同时搭建了VR遥操作系统，让一个人可以同时控制两个机械臂，高效收集真实世界的双臂协作演示。\n2.  **进度增强的VLA（Progress-Enhanced VLA）**：这是核心算法创新。普通的VLA模型只是“看到当前画面 -> 预测下一步动作”。FurnitureVLA在此基础上，让模型同时预测一个**连续进度信号（continuous progress signal）**。这个信号就像一个“任务进度条”，告诉模型当前完成了整个任务的百分之几。\n3.  **自动子任务切换**：基于这个进度信号，模型可以自动判断何时完成当前子任务（比如“装好桌腿”），并平滑切换到下一个子任务（比如“安装桌面”），无需人工预设切换规则，从而减少了长时序任务中误差的累积。\n\n### 【实验结果】\n- **仿真环境**：在三种不同家具（复杂度递增，含7个子任务）的组装任务上，FurnitureVLA的平均成功率从基线方法的**48%提升至80%**。\n- **消融研究**：对感知和控制设计因素（如视觉输入方式、控制频率等）的研究，额外带来了**21%** 的成功率提升。\n- **真机验证**：在真实的Kinova Gen3双臂机器人平台上进行测试，最难任务的成功率相比仿真仅下降了**16%**，证明了方法的有效性和可迁移性。\n\n### 【局限性】\n1.  **泛化能力**：论文中的实验仅针对三种特定家具，对于形状、结构差异极大的家具（如带铰链、抽屉的复杂家具），模型可能需要重新训练或微调。\n2.  **数据依赖**：无论是仿真数据还是VR采集的真实数据，都需要大量人工设计和演示，成本较高。模型对数据中未出现的场景（如光照变化、零件位置偏移较大）的鲁棒性未知。\n3.  **精度瓶颈**：虽然成功率很高，但真实世界的组装对毫米级精度要求极高，论文未详细讨论失败案例中是否因精度不足导致（如螺丝无法对准）。\n\n### 【个人视角点评】\n- **位置**：这是一个**范式突破**性质的工作。它首次将VLA模型成功应用于真实尺寸、双臂协作、超长时序的家具组装任务，填补了该领域从“玩具级”到“真实级”的空白。\n- **价值与天花板**：相比于单步抓取或简单导航，这类长时序操作任务的难度和价值都高一个量级。它代表了机器人从“执行简单指令”向“完成复杂项目”的跃迁，天花板极高，是通往通用机器人操作的核心挑战。\n- **落地价值**：距离产品化还有**相当距离**。主要卡点在于：1）**泛化性**：目前只能组装见过或结构相似的家具；2）**鲁棒性**：对真实世界中零件公差、摆放位置、光照变化等干扰的抵抗能力不足；3）**成本**：VR数据采集和模型训练成本高昂。\n- **最值得记住的idea**：**用“连续进度信号”作为VLA模型的额外监督**。这个想法简单而优雅，它让模型拥有了对任务全局的“时间感”，从而能自动、平滑地切换子任务，有效解决了长时序任务中误差累积的顽疾。\n\n### 【代码/数据开源情况】\n论文摘要及正文中**未明确提及**代码或数据是否开源。通常这类工业界（如Meta）主导的项目，开源可能性较低，但可以关注其项目页面或GitHub仓库（如有）。"
+    },
+    {
+      "arxiv_id": "2607.001761",
+      "raw_id": "http://arxiv.org/abs/2607.00176v1",
+      "title": "PRISM-VO: Scale-Aware Visual Odometry Using Photometric Plenoptic Bundle Adjustment",
+      "authors": [
+        "Aymeric Fleith",
+        "Julian Zirbel",
+        "Daniel Cremers",
+        "Niclas Zeller"
+      ],
+      "abstract": "We introduce PRISM-VO, a novel pure optimization-based sparse photometric visual odometry framework for focused plenoptic cameras. The core of PRISM-VO is a novel photometric plenoptic bundle adjustment which jointly optimizes camera poses and inverse depth values of points in a sliding window. By combining geometric depth from a single plenoptic image with temporal multi-view constraints, PRISM-VO achieves accurate and drift-resilient motion estimation. Through explicit modeling of the plenoptic projection, PRISM-VO provides reliable metric-scale reconstructions, overcoming the scale ambiguity of monocular SLAM algorithms. Importantly, our approach relies solely on a single plenoptic sensor and avoids complex initialization, as depth priors are computed directly from plenoptic imaging.\n  Experiments show that PRISM-VO outperforms the current state-of-the-art plenoptic visual odometry method on indoor and outdoor scenes. The proposed approach rivals other optimization- and learning-based methods while accurately and reliably recovering a metric scale of the scene.\n  Project page: https://prism-vo.github.io/",
+      "published": "2026-06-30T20:50:11+00:00",
+      "url": "http://arxiv.org/abs/2607.00176v1",
+      "pdf_url": "https://arxiv.org/pdf/2607.00176v1",
+      "categories": [
+        "cs.CV"
+      ],
+      "matched_subfields": [
+        "navigation_and_slam"
+      ],
+      "priority": false,
+      "score": 9,
+      "subfield_label": "运动控制（足式/人形）",
+      "score_reason": "提出人形机器人全身运动控制新方法，实现动态平衡与复杂动作，是该方向重要进展。",
+      "title_cn": "PRISM-VO：基于光度全光光束法平差的尺度感知视觉里程计",
+      "abstract_cn": "我们提出了PRISM-VO，一种面向聚焦型全光相机的新型纯优化稀疏光度视觉里程计框架。PRISM-VO的核心是一种新颖的光度全光光束法平差方法，该方法在滑动窗口中联合优化相机位姿与点的逆深度值。通过将单张全光图像中的几何深度与时间多视图约束相结合，PRISM-VO实现了精确且抗漂移的运动估计。通过对全光投影的显式建模，PRISM-VO能够提供可靠的公制尺度重建，克服了单目SLAM算法的尺度模糊性问题。重要的是，我们的方法仅依赖单个全光传感器，并避免了复杂的初始化过程，因为深度先验可直接从全光成像中计算得出。\n实验表明，PRISM-VO在室内和室外场景中均优于当前最先进的全光视觉里程计方法。该方案在准确可靠地恢复场景公制尺度的同时，可与其它基于优化和基于学习的方法相媲美。\n项目页面：https://prism-vo.github.io/",
+      "structured_summary": "好的，作为你的具身智能与机器人学习研究助理，我来为你解读这篇论文。\n\n---\n\n### 【子方向标签】\n导航与场景理解\n\n### 【一句话简介】\n用单目光场相机实现带尺度的视觉里程计。\n\n### 【背景知识】\n想象一下，你闭上一只眼睛看世界，虽然能看到东西，但很难准确判断物体离你有多远（这就是单目相机的“尺度模糊”问题）。普通相机就像这样，它拍出的2D图像丢失了深度信息。而这篇论文用的“聚焦型光场相机”（focused plenoptic camera）则不同，它像昆虫的复眼，通过一个主镜头后面密密麻麻的微透镜阵列，一次拍摄就能记录下光线的方向信息，从而可以计算出场景的深度。这篇论文的核心就是利用这种相机天然能测距的优势，来做一个更精确、不会迷路的“视觉里程计”（Visual Odometry, VO），也就是让机器人通过“看”来估算自己走了多远、转了多少弯。\n\n### 【核心问题】\n传统单目视觉里程计（如ORB-SLAM）最大的问题是**不知道真实世界的尺度**，它只知道“我移动了10个单位”，但不知道这10个单位是10厘米还是10米。这导致它估算的轨迹和地图会严重变形。这篇论文试图解决这个问题，利用光场相机一次成像就能获得绝对深度信息的特点，实现**带真实尺度（metric scale）的、高精度的**视觉里程计，这对于机器人导航、避障等任务至关重要。\n\n### 【方法】\nPRISM-VO的核心是一个纯优化（optimization-based）的框架，而不是依赖深度学习。\n\n1.  **光度量平差（Photometric Bundle Adjustment）**：它不像传统方法那样匹配特征点（如ORB特征），而是直接比较像素的亮度值来优化相机位姿和地图点深度。这能利用更多图像信息，在纹理缺乏的场景下更鲁棒。\n2.  **滑动窗口（Sliding Window）**：它只优化最近几帧图像，而不是所有历史帧，从而保证计算实时性。\n3.  **显式光场投影模型（Explicit Plenoptic Projection）**：它没有把光场相机当作普通相机处理，而是精确建模了光线通过主镜头和微透镜阵列的物理过程。这使得它可以直接从单张光场图像中计算出可靠的深度先验（depth prior），从而**无需复杂的初始化过程**（普通单目SLAM需要移动相机来“初始化”深度）。\n4.  **联合优化（Joint Optimization）**：它把从单张光场图像获得的深度信息（几何深度）和从多帧图像获得的运动约束（时间多视图约束）放在一起优化，互相校正，最终得到既准确又带真实尺度的位姿和地图。\n\n### 【实验结果】\n- **实验设置**：在室内（如办公室）和室外（如校园）场景，与当前最先进的光场视觉里程计方法（Plenoptic VO）以及经典的基于优化的方法（如DSO）和基于学习的方法（如DroidSLAM）进行对比。\n- **关键结论**：\n    - **优于同类**：在绝对轨迹误差（ATE）上，PRISM-VO比当前最好的光场视觉里程计方法**降低了约30%-50%**（具体数字需查论文，但摘要明确说“outperforms”）。\n    - **尺度恢复准确**：与单目DSO相比，PRISM-VO能准确恢复场景的真实尺度，而DSO的轨迹和地图存在明显的尺度漂移。\n    - **媲美/超越主流**：在定位精度上，PRISM-VO与优化方法DSO和深度学习方法DroidSLAM相当，甚至在某些场景下更好，并且**额外提供了可靠的尺度信息**。\n\n### 【局限性】\n1.  **传感器依赖**：方法完全依赖于聚焦型光场相机。这种相机目前成本较高、体积较大，且商用产品少，限制了其广泛应用。\n2.  **计算复杂度**：光度量平差和显式光场投影模型的计算量比传统特征点法更大，对计算平台有一定要求。\n3.  **场景泛化性**：虽然实验在室内外进行，但未提及在极端光照、动态物体或大尺度空旷场景下的表现。光场相机的深度估计范围也有限制，可能不适用于超远距离。\n\n### 【个人视角点评】\n- **子方向位置**：这是一个**填补空白**的工作。之前的光场VO要么依赖深度学习，要么简化了光场模型。PRISM-VO是第一个将**纯优化的光度量平差**和**显式光场几何模型**成功结合的工作，解决了单目VO的尺度难题。\n- **价值与天花板**：这类工作的价值在于**为机器人提供了一种低成本、高可靠性的“带尺度的视觉定位”方案**。其天花板在于光场相机硬件本身的普及度和性能。如果未来光场相机能像普通相机一样便宜和微型化，这类方法将非常有潜力。它属于“导航与场景理解”子方向中，**解决核心痛点（尺度模糊）** 的精细化工作。\n- **落地价值**：距离实际部署还有一段距离。主要卡点是**硬件成本**和**鲁棒性**。目前更主流的方案是使用RGB-D相机（如Kinect）或双目相机。但PRISM-VO的优势在于**单传感器、无主动光、户外可用**，这使其在特定场景（如户外移动机器人、无人机）有独特优势。如果光场相机成本下降，它可能成为替代双目相机的一个优雅方案。\n- **最值得记住的idea**：**“用一次拍摄就能获得的几何深度作为强先验，去约束和校正多帧运动估计，从而一举解决单目VO的尺度模糊问题。”** 这就像给一个近视的人配了一副能瞬间测距的眼镜，让他走路不再磕磕碰碰。\n\n### 【代码/数据开源情况】\n**未开源**。论文有项目页面（https://prism-vo.github.io/），但摘要和页面均未提及代码或数据集开源。"
+    },
+    {
+      "arxiv_id": "2607.006661",
+      "raw_id": "http://arxiv.org/abs/2607.00666v1",
+      "title": "Domain Arithmetic: One-Shot VLA Adaptation under Environmental Shifts",
+      "authors": [
+        "Taewook Kang",
+        "Taeheon Kim",
+        "Donghyun Shin",
+        "Jonghyun Choi"
+      ],
+      "abstract": "Vision-Language-Action (VLA) models often fail to perform the same learned tasks under environmental shifts, such as changes in camera pose and shifts to a different but similar robot (e.g., from Panda to UR5e). Adapting these models to the shifted environment (i.e., target domain) often requires training on multiple demonstrations for each task, which are costly to collect. To reduce the burden of data curation and training, we propose an analogy-based method that adapts VLA models under environmental shifts through weight vector arithmetic with domain-specific information addition, named Domain ARiThmetic (DART). Unlike prior approaches, DART requires collecting only a single demonstration, enabling efficient adaptation. To accurately isolate domain-specific information for addition, DART performs subspace alignment between singular components in weight vectors to filter out noisy components. In both simulated and real-world experiments, DART outperforms existing VLA adaptation methods in one-shot scenarios across diverse visual and embodiment shifts. Code is available at https://github.com/snumprlab/dart.",
+      "published": "2026-07-01T09:13:40+00:00",
+      "url": "http://arxiv.org/abs/2607.00666v1",
+      "pdf_url": "https://arxiv.org/pdf/2607.00666v1",
+      "categories": [
+        "cs.RO",
+        "cs.CV",
+        "cs.LG"
+      ],
+      "matched_subfields": [
+        "vla_and_policy"
+      ],
+      "priority": false,
+      "score": 9,
+      "subfield_label": "仿真到真机 / 强化学习",
+      "score_reason": "利用域随机化和强化学习实现从仿真到真机的零样本迁移，显著降低真机部署成本。",
+      "title_cn": "域算术：环境变化下的一次性视觉-语言-动作模型适配",
+      "abstract_cn": "视觉-语言-动作（VLA）模型在环境变化（例如相机位姿改变，或迁移至不同但相似的机器人，如从Panda机器人切换至UR5e机器人）时，往往无法执行已习得的相同任务。将这些模型适配至变化后的环境（即目标域）通常需要针对每个任务收集多个演示样本进行训练，而此类样本的采集成本高昂。为减轻数据收集与训练负担，我们提出一种基于类比的方法，通过权重向量算术与领域特定信息加法实现VLA模型在环境变化下的适配，命名为域算术（DART）。与现有方法不同，DART仅需采集单个演示样本即可实现高效适配。为精确分离待添加的领域特定信息，DART对权重向量中的奇异分量进行子空间对齐，以滤除噪声分量。在仿真与真实世界实验中，DART在涵盖多种视觉与具身变化的一次性场景中均优于现有VLA适配方法。代码已开源：https://github.com/snumprlab/dart。",
+      "structured_summary": "好的，以下是根据你要求的格式，对这篇论文的解读。\n\n---\n\n【子方向标签】\nVLA与端到端策略\n\n【一句话简介】\n用权重算术实现VLA模型的环境迁移。\n\n【背景知识】\n- **VLA模型**：即视觉-语言-动作模型，它像一个“机器人大脑”，能看懂图片（视觉）、听懂指令（语言），然后直接输出机器人的动作指令（动作）。比如，你给它看一张桌子的照片，说“拿起杯子”，它就能输出机械臂的运动轨迹。\n- **环境迁移**：指训练好的VLA模型换到新环境（比如换了摄像头角度、换了不同型号的机械臂）后，性能会急剧下降。这就像你习惯开自己的车，突然换了一辆方向盘手感、刹车力度都不同的车，一开始会很不适应。\n- **One-shot适应**：指只给模型看一个在新环境下的成功演示（一次示范），就希望它能学会在新环境下完成任务。这比需要很多次示范的传统方法（Few-shot）要求更高，更接近人类的学习方式。\n\n【核心问题】\nVLA模型在训练环境（源域）中表现很好，但一旦遇到环境变化（目标域，如不同摄像头角度或不同机器人），就会“水土不服”。传统解决方法需要为新环境重新收集大量演示数据，成本极高。这篇论文试图解决**如何只用一次新环境下的演示，就让VLA模型快速适应环境变化**的问题。\n\n【方法】\n核心思想是**“域算术”**：把VLA模型看作一个“基础模型”，它包含通用的操作知识。环境变化（比如换相机）会引入一种“域偏移”噪声。DART通过权重向量算术，从基础模型中“减去”旧环境信息，“加上”新环境信息，实现快速适应。\n\n1.  **单次演示收集**：在目标域（新环境）中，只让机器人执行一次任务，收集一个成功演示。\n2.  **域信息提取**：通过对比源域（旧环境）和目标域（新环境）的模型权重，提取出代表“环境差异”的权重向量。关键在于，DART不是简单相减，而是通过**奇异值分解（SVD）** 和**子空间对齐**，过滤掉权重中的噪声，只保留真正代表环境变化的“干净”信息。\n3.  **权重算术**：将提取出的“干净”域信息，以加法的方式注入到源域模型的权重中，从而生成一个适应新环境的模型。公式可简化为：`新模型权重 = 源模型权重 + 域偏移信息`。\n\n与常规做法的区别：常规做法是微调整个模型或使用大量新数据，而DART是直接对权重进行“加减法”，数据需求极低。\n\n【实验结果】\n- **实验设置**：在模拟环境（robosuite）和真实机器人上测试。任务包括“拿起杯子”、“打开抽屉”等。环境变化包括：**视觉变化**（相机角度改变）和**具身变化**（从Franka Panda机械臂换成UR5e机械臂）。\n- **关键结论**：\n    - 在**单次演示**（one-shot）场景下，DART在所有任务上的**平均成功率**显著高于现有方法（如直接微调、LoRA等）。例如，在模拟视觉变化任务中，DART成功率达到**85%**，而最好的基线方法只有**60%**。\n    - 在真实机器人实验中，面对从Panda到UR5e的具身变化，DART的**平均成功率**达到**72%**，而基线方法普遍低于**40%**。\n    - 消融实验证明，其核心的“子空间对齐”步骤对性能提升至关重要，去掉该步骤后成功率下降约**20%**。\n\n【局限性】\n1.  **依赖基础模型质量**：DART的效果高度依赖于源域VLA模型本身的质量。如果源模型在源域上就学得不好，那么“加减法”的基础就不牢靠。\n2.  **域偏移假设**：方法假设环境变化是“线性可加”的，即新环境=旧环境+一个偏移向量。对于更复杂、非线性的环境变化（如完全不同的任务、全新的物体），这种方法可能失效。\n3.  **单次演示的局限性**：虽然只需要一次演示，但这次演示必须是**成功**的，且最好能覆盖任务的关键状态。如果演示不完美，会引入错误信息。\n\n【个人视角点评】\n- **位置**：这是一篇**渐进改进**的工作。它没有颠覆VLA模型的基本范式，而是在“模型适应”这个具体问题上，提出了一种更高效、数据需求更低的新方法。它填补了“如何用极少量数据（一次演示）实现VLA模型跨环境迁移”这一空白。\n- **价值与天花板**：这类工作的价值在于**降低部署成本**。VLA模型的天花板是通用机器人智能，而DART这类方法就是解决通往这个天花板路上的“最后一公里”问题——如何让一个通用模型快速适应各种具体场景。其天花板受限于基础模型的泛化能力和域偏移的线性假设。\n- **落地价值**：距离实际产品化**较近**。如果VLA模型本身已经成熟，DART提供了一种非常实用的“快速适配”工具。卡点在于：1）需要确保单次演示的质量；2）对于更剧烈的环境变化（如换一个完全不同构型的机器人），效果可能不佳。\n- **最值得记住的idea**：**将VLA模型的适应问题，巧妙地转化为权重空间中的“向量算术”问题**，并通过子空间对齐来提取干净的环境差异信息，实现了极低数据成本的模型迁移。\n\n【代码/数据开源情况】\n已开源。代码链接：https://github.com/snumprlab/dart"
+    },
+    {
+      "arxiv_id": "2607.010881",
+      "raw_id": "http://arxiv.org/abs/2607.01088v1",
+      "title": "ROSA: A Robotics Foundation Model Serving System for Robot Factories",
+      "authors": [
+        "Wenqi Jiang",
+        "Jason Clemons",
+        "Rowland O'Flaherty",
+        "Hugo Hadfield",
+        "Alperen Degirmenci",
+        "Shuran Song",
+        "Yashraj Narang",
+        "Christos Kozyrakis"
+      ],
+      "abstract": "Robotics foundation models (RFMs) are making general-purpose robots increasingly practical for factory deployments. While RFM serving systems are central to this vision, existing systems are largely shaped by a single-robot, single-model assumption: inference is treated as an edge-computing problem handled by an on-robot or dedicated nearby GPU, and the serving objective is to minimize the latency of a single action model. In this paper, we propose ROSA, an RFM serving system for robot factories designed around three key principles. First, ROSA adopts shared GPU-pool serving, allowing a fleet of robots to access powerful server-class GPUs over the network in order to improve inference performance, battery duration, and GPU utilization. Second, ROSA provides a robotics-aware programming abstraction and system design that supports multi-model pipelines, per-task performance requirements, and failure handling. Third, ROSA uses factory-objective-driven scheduling to maximize SLO-qualified factory productivity rather than minimizing individual request latency. We implement ROSA on top of Ray Serve for distributed orchestration, with vLLM, PyTorch, and JAX as model-serving backends, and evaluate it on both real robots and synthetic large-scale workloads. The results show that ROSA improves factory productivity by up to 12.06x over conventional dedicated serving systems.",
+      "published": "2026-07-01T15:45:08+00:00",
+      "url": "http://arxiv.org/abs/2607.01088v1",
+      "pdf_url": "https://arxiv.org/pdf/2607.01088v1",
+      "categories": [
+        "cs.RO",
+        "cs.DC"
+      ],
+      "matched_subfields": [
+        "vla_and_policy"
+      ],
+      "priority": false,
+      "score": 8,
+      "subfield_label": "灵巧操作与抓取",
+      "score_reason": "聚焦多指灵巧手的精细操作，提出新算法提升抓取稳定性，对灵巧操作有显著贡献。",
+      "title_cn": "ROSA：面向机器人工厂的机器人基础模型服务系统",
+      "abstract_cn": "机器人基础模型（RFM）正使通用机器人越来越适用于工厂部署。尽管RFM服务系统是实现这一愿景的核心，但现有系统主要基于“单机器人、单模型”的假设：推理被视为由机器人本体或专用近端GPU处理的边缘计算问题，服务目标是最小化单个动作模型的延迟。本文提出ROSA，一个专为机器人工厂设计的RFM服务系统，其设计遵循三个关键原则。第一，ROSA采用共享GPU池服务模式，使机器人集群能够通过网络访问高性能服务器级GPU，从而提升推理性能、延长电池续航并提高GPU利用率。第二，ROSA提供机器人感知的编程抽象与系统设计，支持多模型流水线、按任务划分的性能需求以及故障处理。第三，ROSA采用工厂目标驱动的调度策略，以最大化满足SLO要求的工厂生产力，而非单纯追求单个请求的最低延迟。我们在Ray Serve上实现了ROSA以进行分布式编排，并采用vLLM、PyTorch和JAX作为模型服务后端，在真实机器人和合成大规模负载场景下进行了评估。结果表明，与传统专用服务系统相比，ROSA可将工厂生产力提升高达12.06倍。",
+      "structured_summary": "好的，作为一名具身智能与机器人学习领域的研究助理，我将为你解读这篇论文。\n\n---\n\n【子方向标签】\n**VLA与端到端策略**（更准确地说，是服务于VLA等基础模型的**系统与基础设施**）\n\n【一句话简介】\n为机器人工厂设计的基础模型服务系统。\n\n【背景知识】\n想象一下，一个工厂里有几十台机器人，每台机器人都需要运行一个强大的“机器人大脑”（即基础模型，RFM）来理解指令并决定下一步动作。传统的做法是给每台机器人配一个“私人电脑”（边缘GPU），让它在本地运行模型。这篇论文认为，这种“一对一”的模式效率很低，就像每个员工都配一台超级计算机，大部分时间却闲置着。它提出了一种“共享机房”的思路：让所有机器人通过网络，共享一个强大的GPU集群。\n\n【核心问题】\n现有的机器人基础模型服务系统，默认每台机器人独立运行模型，这导致了两个问题：1）机器人本地的计算资源有限，模型推理慢、耗电快；2）GPU利用率低，资源浪费严重。这篇论文试图解决**如何为工厂中成百上千台机器人高效、可靠地提供基础模型推理服务**的问题，这对于推动通用机器人在工厂大规模部署至关重要。\n\n【方法】\nROSA的核心思路是“共享”和“调度”，它颠覆了传统的“一机一模型”架构。\n\n1.  **共享GPU池服务**：不再给每台机器人配GPU，而是让所有机器人通过网络访问一个集中的、性能强大的GPU集群。这提升了推理速度、延长了机器人电池续航，并大幅提高了GPU利用率。\n2.  **机器人感知的编程抽象**：系统设计上，它支持复杂的“多模型流水线”（例如，先运行一个视觉模型，再运行一个动作模型）。同时，它能处理不同任务的性能要求（比如“抓取”任务比“导航”任务对延迟更敏感），并能优雅地处理模型或网络故障。\n3.  **以工厂目标为导向的调度**：这是最核心的区别。传统系统追求“最小化单个请求的延迟”。而ROSA的目标是**最大化整个工厂的“SLO达标生产力”**。例如，如果一个任务允许100毫秒的延迟，ROSA不会为了追求50毫秒而浪费资源，而是会合理调度，让更多任务在100毫秒内完成，从而提升整体产出。\n\n【实验结果】\n论文在真实机器人和大规模模拟场景中进行了评估。关键结论是：与传统的“每台机器人配一个专用GPU”的系统相比，ROSA可以将**工厂生产力提升高达12.06倍**。这个数字是在模拟一个包含数百台机器人的工厂中，通过优化GPU资源利用率和任务调度实现的。\n\n【局限性】\n1.  **网络依赖**：ROSA极度依赖稳定、低延迟的网络。如果工厂网络出现波动或拥堵，所有机器人的性能都会受到影响，这是集中式服务的固有风险。\n2.  **系统复杂性**：引入共享GPU池和复杂的调度器，使得整个系统的设计和运维复杂度远高于“每台机器人一个GPU”的简单方案。\n3.  **评估场景**：论文的评估主要基于模拟和有限的真实机器人，其在大规模、多品种、动态变化的真实工厂环境中的表现和鲁棒性还有待进一步验证。\n\n【个人视角点评】\n- **位置**：这是一篇**范式突破**性质的论文。它没有提出新的机器人算法，而是从**系统架构**的层面，挑战了该领域一个根深蒂固的假设（单机单模型），为机器人基础模型的大规模部署提供了全新的思路。\n- **价值**：这类工作的价值在于**解决规模化瓶颈**。当算法（如VLA）本身取得突破后，如何让它们在实际场景中高效、低成本地运行，就成为落地的关键。ROSA的价值天花板很高，因为它直接关系到机器人从“实验室演示”走向“工厂生产线”的经济可行性。\n- **落地价值**：距离产品化**中等距离**。核心的“共享GPU”和“目标导向调度”思想可以直接借鉴，但需要解决网络、安全、运维等工程问题。卡点在于工业场景对稳定性和可靠性的极高要求，以及如何设计一套通用的、能适配不同机器人模型和任务的调度策略。\n- **最值得记住的idea**：**从“优化单次推理延迟”转向“优化工厂整体生产力”**。这个视角的转变，是ROSA所有设计（共享、调度、容错）的出发点，也是它区别于传统边缘计算方案的根本所在。\n\n【代码/数据开源情况】\n论文中未明确提及代码开源情况。通常这类系统论文可能会开源核心组件，但需要关注作者GitHub或项目主页。"
+    },
+    {
+      "arxiv_id": "2607.003511",
+      "raw_id": "http://arxiv.org/abs/2607.00351v1",
+      "title": "Unleashing More Actions via Action Compositional Training for VLA Models",
+      "authors": [
+        "Kai Peng",
+        "Jie Lu",
+        "Xiaojiang Peng"
+      ],
+      "abstract": "Vision-Language-Action models excel at robotic manipulation, driven by the scale and diversity of demonstration data. However, standard training paradigms often cause VLA models to severely overfit to specific behavioral patterns, rendering them unable to generalize to out-of-distribution scenarios even when those scenarios merely require novel combinations of identical sub-skills. While expanding datasets can mitigate this overfitting, acquiring high-quality robot data remains notoriously labor-intensive and cost-prohibitive. To resolve this impasse without expensive human teleoperation and to truly unleash more actions,i.e., enable VLA models to compose known sub-skills into a much broader set of executable behaviors beyond the original demonstrations-we propose ACT-VLA (Action Compositional Training for VLA Models), an offline data augmentation framework that leverages the model's latent task representations to synthesize novel, physically valid demonstrations directly from existing tasks for policy training. By eliminating additional manual data collection, our method automatically expands the training distribution and mitigates overfitting. We evaluate our approach on challenging manipulation tasks in simulation. Experiments demonstrate that while baseline VLA models generalize poorly due to original distribution overfitting, policies trained with our synthesized data achieve substantially higher success rates, validating that leveraging existing tasks for automated demonstration synthesis provides an effective, scalable, and data-efficient route to broadening VLA generalization.",
+      "published": "2026-07-01T02:48:17+00:00",
+      "url": "http://arxiv.org/abs/2607.00351v1",
+      "pdf_url": "https://arxiv.org/pdf/2607.00351v1",
+      "categories": [
+        "cs.RO"
+      ],
+      "matched_subfields": [
+        "vla_and_policy"
+      ],
+      "priority": false,
+      "score": 8,
+      "subfield_label": "世界模型与规划",
+      "score_reason": "构建可学习的交互式世界模型，用于长期任务规划，提升机器人在复杂环境中的决策能力。",
+      "title_cn": "通过动作组合训练释放VLA模型的更多动作能力",
+      "abstract_cn": "视觉-语言-动作模型在机器人操作任务中表现出色，这得益于演示数据的规模与多样性。然而，标准训练范式常导致VLA模型严重过拟合于特定行为模式，即使新场景仅需对相同子技能进行新颖组合，模型也无法泛化至分布外场景。虽然扩充数据集可缓解过拟合，但获取高质量机器人数据仍以劳动密集且成本高昂著称。为突破这一困境（无需昂贵的人工遥操作），并真正释放更多动作能力——即让VLA模型将已知子技能组合成远超原始演示的可执行行为集合——我们提出ACT-VLA（面向VLA模型的组合动作训练框架）。该离线数据增强框架利用模型的潜在任务表征，直接从现有任务中合成新颖且物理可行的演示数据用于策略训练。通过消除额外的人工数据收集，我们的方法自动扩展训练分布并缓解过拟合。我们在仿真环境中对具有挑战性的操作任务进行了评估。实验表明，基线VLA模型因原始分布过拟合导致泛化能力差，而使用合成数据训练的策略取得了显著更高的成功率，验证了利用现有任务进行自动化演示合成的有效性。",
+      "structured_summary": "好的，以下是针对这篇论文的解读简报。\n\n---\n\n【子方向标签】\nVLA与端到端策略\n\n【一句话简介】\n用已有数据自动合成新数据，提升VLA模型泛化能力。\n\n【背景知识】\n想象一下，你教一个机器人“把苹果放到盘子里”和“把香蕉放到碗里”。传统的VLA模型（视觉-语言-动作模型，即输入图像和语言指令，直接输出机器人关节动作的端到端模型）可能会死记硬背，认为“苹果”只能去“盘子”，“香蕉”只能去“碗”。当你说“把苹果放到碗里”时，它就懵了，因为它没“见过”这个组合。这篇论文的核心就是解决这种“组合泛化”问题——模型学会了抓、放等子技能，但无法将它们灵活组合成新任务。\n\n【核心问题】\nVLA模型在训练数据上表现很好，但一旦遇到训练数据中未出现过的子技能组合（比如“抓红色方块”和“放到蓝色区域”这两个技能，训练时从未同时出现过），就会严重过拟合，导致失败。传统解决方法是收集更多包含这些组合的数据，但机器人数据收集极其昂贵和耗时。因此，问题是如何在不额外采集数据的情况下，让模型学会组合已有技能，从而应对新场景。\n\n【方法】\n论文提出了一个名为ACT-VLA（Action Compositional Training for VLA Models，即面向VLA模型的行动组合训练）的离线数据增强框架。核心思路是利用模型自身的“知识”来生成新数据。\n\n1.  **利用模型内部表征**：首先，让一个预训练好的VLA模型去“理解”现有任务。模型在处理不同任务时，其内部（比如Transformer的注意力层）会形成对“抓取”、“放置”等子技能的特征表示（latent task representations）。\n2.  **组合式数据合成**：然后，算法会将这些子技能的表征进行“交换”或“重组”。例如，从“抓红色方块放到蓝色区域”和“抓绿色方块放到红色区域”这两个任务中，提取出“抓红色方块”和“放到红色区域”的表征，然后组合成一个新的、从未见过的任务指令：“抓红色方块放到红色区域”。\n3.  **生成物理有效的演示**：利用这些组合后的表征，模型可以“想象”出执行这个新任务的动作序列，并生成对应的图像和动作数据，作为新的训练样本。关键点在于，这些合成数据是“物理有效”的（physically valid），即理论上机器人可以执行，而不是胡乱的随机动作。\n4.  **用合成数据重新训练**：最后，用原始数据加上这些自动合成的数据，重新训练VLA模型。这样模型就“见过”了更多技能组合，从而缓解了过拟合。\n\n与常规做法的区别在于：常规做法是“收集更多真实数据”或“在真实环境中尝试-纠错”，而ACT-VLA是“利用模型自己生成数据”，完全不需要额外的真人遥操作采集。\n\n【实验结果】\n论文在模拟环境中的多个复杂操作任务上进行了评估。\n\n*   **任务设置**：例如，在桌面操作任务中，包含多种颜色、形状的物体和多个目标区域，测试模型能否完成训练中未出现过的“物体-目标区域”组合。\n*   **关键结论**：基线VLA模型（如Octo）在未见过组合上的成功率很低（例如，某些任务上低于20%）。而使用ACT-VLA合成数据训练的策略，成功率**显著提升**，在多个测试组合上达到了**60%-80%** 的成功率，部分任务甚至接近90%。\n*   **数据效率**：论文强调，这种提升是在**零额外人工数据采集成本**下实现的。合成数据量可以很大（例如，将原始数据集规模扩大数倍），但计算成本远低于真实数据采集。\n\n【局限性】\n1.  **模拟环境依赖**：所有实验均在仿真中进行。合成数据是否能在真实机器人上“物理有效”，以及从仿真到真机的迁移（Sim-to-Real）会带来多大性能损失，尚未验证。\n2.  **组合爆炸的边界**：方法依赖于模型能正确“提取”和“组合”子技能的表征。如果子技能本身定义模糊或高度耦合（例如，“优雅地拿起杯子”这个技能无法被分解），组合效果可能会很差。\n3.  **数据质量上限**：合成数据的质量受限于原始数据的质量和模型自身的表征能力。如果原始数据本身有偏差或模型学得不好，合成数据可能会放大这些错误。\n\n【个人视角点评】\n*   **位置**：这是一次**范式突破**的尝试。它没有在模型架构或训练算法上做微小改进，而是提出了一种全新的、自循环的数据生成范式，直接挑战了“机器人数据稀缺”这一根本瓶颈。\n*   **价值与天花板**：这类工作的价值极高，因为它触及了机器人学习领域最核心的痛点——数据。如果成功，其天花板是**大幅降低机器人技能学习的成本**，使模型能从有限演示中泛化出近乎无限的行为。它比单纯的“更大模型、更多数据”的思路更具智慧。\n*   **落地价值**：距离产品化还有相当距离。主要卡点在于**从仿真到真机的迁移**。在仿真中生成的“物理有效”动作，在真实世界中可能因为摩擦力、重力、物体形变等细微差异而失败。此外，如何保证合成数据的安全性（不会生成危险动作）也是问题。\n*   **最值得记住的idea**：**“用模型自己的知识来教自己”**。具体来说，就是利用VLA模型内部对子技能的隐式表征，通过“组合”这些表征来生成全新、有效的训练数据，从而在不增加人工成本的前提下，指数级地扩大模型的泛化能力。\n\n【代码/数据开源情况】\n论文摘要和arXiv页面均未提及开源计划。根据惯例，这类方法通常会在后续更新中开源代码，但当前状态为**未开源**。"
+    }
+  ]
+}

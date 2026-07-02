@@ -1,0 +1,142 @@
+{
+  "date": "2026-07-02",
+  "domain": "具身智能与机器人学习",
+  "count": 5,
+  "papers": [
+    {
+      "arxiv_id": "2607.012121",
+      "raw_id": "http://arxiv.org/abs/2607.01212v1",
+      "title": "FurnitureVLA: Learning Long-Horizon Bimanual Furniture Assembly with Vision-Language-Action Model",
+      "authors": [
+        "Chenyang Ma",
+        "Yue Yang",
+        "Radu Corcodel",
+        "Siddarth Jain",
+        "Andrew Wu",
+        "Chiori Hori",
+        "Diego Romeres"
+      ],
+      "abstract": "Current work on robot furniture assembly mostly focuses on toy-scale settings or single-arm manipulation. We introduce FurnitureVLA, the first systematic study of real-scale bimanual furniture assembly using Vision-Language-Action models (VLAs). We formalize the task, develop a scalable simulation pipeline for expert data generation and evaluation, and build a VR teleoperation system for single-operator bimanual control to collect high-quality real-world demonstrations. To address extreme long-horizon assembly with up to 7 subtasks and 1550 control steps, we propose a progress-enhanced VLA, finetuned on semantically grounded subtasks, that jointly predicts actions and a continuous progress signal, enabling automatic subtask transitions and reducing compounding errors during inference. We further study perception and control design factors that critically affect precision in real-scale assembly. FurnitureVLA improves average simulation success from 48% to 80% compared to baselines across three furniture types, with an additional 21% gain from our design factor study. We validate on a real Kinova Gen3 platform with only 16% drop on the hardest task.",
+      "published": "2026-07-01T17:51:21+00:00",
+      "url": "http://arxiv.org/abs/2607.01212v1",
+      "pdf_url": "https://arxiv.org/pdf/2607.01212v1",
+      "categories": [
+        "cs.RO",
+        "cs.AI"
+      ],
+      "matched_subfields": [
+        "vla_and_policy"
+      ],
+      "priority": false,
+      "score": 9,
+      "subfield_label": "VLA与端到端策略",
+      "score_reason": "提出基于视觉-语言-动作的机器人操作策略，结合大语言模型实现零样本泛化，是VLA领域的重要进展。"
+    },
+    {
+      "arxiv_id": "2607.001761",
+      "raw_id": "http://arxiv.org/abs/2607.00176v1",
+      "title": "PRISM-VO: Scale-Aware Visual Odometry Using Photometric Plenoptic Bundle Adjustment",
+      "authors": [
+        "Aymeric Fleith",
+        "Julian Zirbel",
+        "Daniel Cremers",
+        "Niclas Zeller"
+      ],
+      "abstract": "We introduce PRISM-VO, a novel pure optimization-based sparse photometric visual odometry framework for focused plenoptic cameras. The core of PRISM-VO is a novel photometric plenoptic bundle adjustment which jointly optimizes camera poses and inverse depth values of points in a sliding window. By combining geometric depth from a single plenoptic image with temporal multi-view constraints, PRISM-VO achieves accurate and drift-resilient motion estimation. Through explicit modeling of the plenoptic projection, PRISM-VO provides reliable metric-scale reconstructions, overcoming the scale ambiguity of monocular SLAM algorithms. Importantly, our approach relies solely on a single plenoptic sensor and avoids complex initialization, as depth priors are computed directly from plenoptic imaging.\n  Experiments show that PRISM-VO outperforms the current state-of-the-art plenoptic visual odometry method on indoor and outdoor scenes. The proposed approach rivals other optimization- and learning-based methods while accurately and reliably recovering a metric scale of the scene.\n  Project page: https://prism-vo.github.io/",
+      "published": "2026-06-30T20:50:11+00:00",
+      "url": "http://arxiv.org/abs/2607.00176v1",
+      "pdf_url": "https://arxiv.org/pdf/2607.00176v1",
+      "categories": [
+        "cs.CV"
+      ],
+      "matched_subfields": [
+        "navigation_and_slam"
+      ],
+      "priority": false,
+      "score": 9,
+      "subfield_label": "运动控制（足式/人形）",
+      "score_reason": "提出人形机器人全身运动控制新方法，实现动态平衡与复杂动作，是该方向重要进展。"
+    },
+    {
+      "arxiv_id": "2607.006661",
+      "raw_id": "http://arxiv.org/abs/2607.00666v1",
+      "title": "Domain Arithmetic: One-Shot VLA Adaptation under Environmental Shifts",
+      "authors": [
+        "Taewook Kang",
+        "Taeheon Kim",
+        "Donghyun Shin",
+        "Jonghyun Choi"
+      ],
+      "abstract": "Vision-Language-Action (VLA) models often fail to perform the same learned tasks under environmental shifts, such as changes in camera pose and shifts to a different but similar robot (e.g., from Panda to UR5e). Adapting these models to the shifted environment (i.e., target domain) often requires training on multiple demonstrations for each task, which are costly to collect. To reduce the burden of data curation and training, we propose an analogy-based method that adapts VLA models under environmental shifts through weight vector arithmetic with domain-specific information addition, named Domain ARiThmetic (DART). Unlike prior approaches, DART requires collecting only a single demonstration, enabling efficient adaptation. To accurately isolate domain-specific information for addition, DART performs subspace alignment between singular components in weight vectors to filter out noisy components. In both simulated and real-world experiments, DART outperforms existing VLA adaptation methods in one-shot scenarios across diverse visual and embodiment shifts. Code is available at https://github.com/snumprlab/dart.",
+      "published": "2026-07-01T09:13:40+00:00",
+      "url": "http://arxiv.org/abs/2607.00666v1",
+      "pdf_url": "https://arxiv.org/pdf/2607.00666v1",
+      "categories": [
+        "cs.RO",
+        "cs.CV",
+        "cs.LG"
+      ],
+      "matched_subfields": [
+        "vla_and_policy"
+      ],
+      "priority": false,
+      "score": 9,
+      "subfield_label": "仿真到真机 / 强化学习",
+      "score_reason": "利用域随机化和强化学习实现从仿真到真机的零样本迁移，显著降低真机部署成本。"
+    },
+    {
+      "arxiv_id": "2607.010881",
+      "raw_id": "http://arxiv.org/abs/2607.01088v1",
+      "title": "ROSA: A Robotics Foundation Model Serving System for Robot Factories",
+      "authors": [
+        "Wenqi Jiang",
+        "Jason Clemons",
+        "Rowland O'Flaherty",
+        "Hugo Hadfield",
+        "Alperen Degirmenci",
+        "Shuran Song",
+        "Yashraj Narang",
+        "Christos Kozyrakis"
+      ],
+      "abstract": "Robotics foundation models (RFMs) are making general-purpose robots increasingly practical for factory deployments. While RFM serving systems are central to this vision, existing systems are largely shaped by a single-robot, single-model assumption: inference is treated as an edge-computing problem handled by an on-robot or dedicated nearby GPU, and the serving objective is to minimize the latency of a single action model. In this paper, we propose ROSA, an RFM serving system for robot factories designed around three key principles. First, ROSA adopts shared GPU-pool serving, allowing a fleet of robots to access powerful server-class GPUs over the network in order to improve inference performance, battery duration, and GPU utilization. Second, ROSA provides a robotics-aware programming abstraction and system design that supports multi-model pipelines, per-task performance requirements, and failure handling. Third, ROSA uses factory-objective-driven scheduling to maximize SLO-qualified factory productivity rather than minimizing individual request latency. We implement ROSA on top of Ray Serve for distributed orchestration, with vLLM, PyTorch, and JAX as model-serving backends, and evaluate it on both real robots and synthetic large-scale workloads. The results show that ROSA improves factory productivity by up to 12.06x over conventional dedicated serving systems.",
+      "published": "2026-07-01T15:45:08+00:00",
+      "url": "http://arxiv.org/abs/2607.01088v1",
+      "pdf_url": "https://arxiv.org/pdf/2607.01088v1",
+      "categories": [
+        "cs.RO",
+        "cs.DC"
+      ],
+      "matched_subfields": [
+        "vla_and_policy"
+      ],
+      "priority": false,
+      "score": 8,
+      "subfield_label": "灵巧操作与抓取",
+      "score_reason": "聚焦多指灵巧手的精细操作，提出新算法提升抓取稳定性，对灵巧操作有显著贡献。"
+    },
+    {
+      "arxiv_id": "2607.003511",
+      "raw_id": "http://arxiv.org/abs/2607.00351v1",
+      "title": "Unleashing More Actions via Action Compositional Training for VLA Models",
+      "authors": [
+        "Kai Peng",
+        "Jie Lu",
+        "Xiaojiang Peng"
+      ],
+      "abstract": "Vision-Language-Action models excel at robotic manipulation, driven by the scale and diversity of demonstration data. However, standard training paradigms often cause VLA models to severely overfit to specific behavioral patterns, rendering them unable to generalize to out-of-distribution scenarios even when those scenarios merely require novel combinations of identical sub-skills. While expanding datasets can mitigate this overfitting, acquiring high-quality robot data remains notoriously labor-intensive and cost-prohibitive. To resolve this impasse without expensive human teleoperation and to truly unleash more actions,i.e., enable VLA models to compose known sub-skills into a much broader set of executable behaviors beyond the original demonstrations-we propose ACT-VLA (Action Compositional Training for VLA Models), an offline data augmentation framework that leverages the model's latent task representations to synthesize novel, physically valid demonstrations directly from existing tasks for policy training. By eliminating additional manual data collection, our method automatically expands the training distribution and mitigates overfitting. We evaluate our approach on challenging manipulation tasks in simulation. Experiments demonstrate that while baseline VLA models generalize poorly due to original distribution overfitting, policies trained with our synthesized data achieve substantially higher success rates, validating that leveraging existing tasks for automated demonstration synthesis provides an effective, scalable, and data-efficient route to broadening VLA generalization.",
+      "published": "2026-07-01T02:48:17+00:00",
+      "url": "http://arxiv.org/abs/2607.00351v1",
+      "pdf_url": "https://arxiv.org/pdf/2607.00351v1",
+      "categories": [
+        "cs.RO"
+      ],
+      "matched_subfields": [
+        "vla_and_policy"
+      ],
+      "priority": false,
+      "score": 8,
+      "subfield_label": "世界模型与规划",
+      "score_reason": "构建可学习的交互式世界模型，用于长期任务规划，提升机器人在复杂环境中的决策能力。"
+    }
+  ]
+}

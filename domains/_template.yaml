@@ -1,0 +1,29 @@
+# ============================================
+# 领域包模板：复制本文件为 domains/你的领域名.yaml，
+# 把下面内容改成你自己关注的方向，不用改任何 .py 代码
+# ============================================
+
+domain_name: "在这里填领域中文名，比如：多模态大模型 / NLP / 强化学习"
+categories:
+  - "cs.CL"
+  - "cs.LG"
+# ↑ 参考 arXiv 分类表 https://arxiv.org/category_taxonomy 自行选择
+
+subfields:
+  subfield_id_1:                 # 用英文/拼音做 key，仅供程序内部引用
+    label: "子方向中文名1"
+    keywords:
+      - "English keyword 1"
+      - "English keyword 2"
+
+  subfield_id_2:
+    label: "子方向中文名2"
+    keywords:
+      - "English keyword 3"
+      - "English keyword 4"
+
+  # ...可以加任意多个子方向，建议 6-10 个，
+  # 太少起不到"多样性覆盖"的效果，太多每个方向曝光过少
+
+priority_labs:
+  - "你想优先关注的实验室/机构，英文名"
