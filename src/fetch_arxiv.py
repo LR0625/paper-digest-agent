@@ -61,31 +61,41 @@ def build_queries(domain: dict) -> list[dict]:
     return queries
 
 
-def fetch_candidates(query: str, max_results: int = 15) -> list[dict]:
-    """从 arXiv 抓取单条查询的候选论文。"""
+def fetch_candidates(query: str, max_results: int = 15, max_retries: int = 3) -> list[dict]:
+    """从 arXiv 抓取单条查询的候选论文，503/429 自动重试。"""
     client = arxiv.Client()
     search = arxiv.Search(
         query=query,
         max_results=max_results,
         sort_by=arxiv.SortCriterion.SubmittedDate,
     )
-    papers = []
-    try:
-        for result in client.results(search):
-            papers.append({
-                "arxiv_id": result.entry_id.split("/")[-1].replace("v", "").split("v")[0],
-                "raw_id": result.entry_id,
-                "title": result.title,
-                "authors": [a.name for a in result.authors],
-                "abstract": result.summary,
-                "published": result.published.isoformat(),
-                "url": result.entry_id,
-                "pdf_url": result.pdf_url,
-                "categories": list(result.categories),
-            })
-    except Exception as e:
-        print(f"[WARN] arXiv 查询出错: {e}")
-    return papers
+
+    for attempt in range(max_retries + 1):
+        papers = []
+        try:
+            for result in client.results(search):
+                papers.append({
+                    "arxiv_id": result.entry_id.split("/")[-1].replace("v", "").split("v")[0],
+                    "raw_id": result.entry_id,
+                    "title": result.title,
+                    "authors": [a.name for a in result.authors],
+                    "abstract": result.summary,
+                    "published": result.published.isoformat(),
+                    "url": result.entry_id,
+                    "pdf_url": result.pdf_url,
+                    "categories": list(result.categories),
+                })
+            return papers  # 成功，直接返回
+        except Exception as e:
+            err_msg = str(e)
+            is_retryable = any(code in err_msg for code in ["503", "429", "ConnectionError", "Timeout", "RemoteDisconnected"])
+            if is_retryable and attempt < max_retries:
+                wait = 2 ** attempt  # 2, 4, 8 秒
+                print(f"[WARN] arXiv 查询出错 (尝试 {attempt+1}/{max_retries+1}): {err_msg[:100]}, {wait}s 后重试...")
+                time.sleep(wait)
+            else:
+                print(f"[WARN] arXiv 查询出错: {e}")
+                return papers  # 不可重试或重试耗尽，返回空列表
 
 
 def check_priority(paper: dict, priority_labs: list[str]) -> bool:
@@ -267,9 +277,9 @@ def main():
         target_date = datetime.strptime(args.date, "%Y-%m-%d").replace(tzinfo=tz.utc)
     else:
         target_date = datetime.now(tz.utc)
-    cutoff = target_date - timedelta(days=2)
+    cutoff = target_date - timedelta(days=3)
     recent = [p for p in candidates if datetime.fromisoformat(p["published"]) >= cutoff]
-    print(f"[INFO] 最近2天内的论文: {len(recent)} 篇")
+    print(f"[INFO] 最近3天内的论文: {len(recent)} 篇")
 
     # 相关性打分
     threshold = settings.get("relevance_threshold", 7)
@@ -286,6 +296,29 @@ def main():
         scored = recent
 
     print(f"[INFO] 超过阈值({threshold}分)的论文: {len(scored)} 篇")
+
+    # ── 自动降阈值：0篇时逐级降低，确保每天至少有几篇推送 ──
+    if len(scored) == 0 and not args.dry_run and recent:
+        fallback_thresholds = [6, 5]
+        saved_scored = list(scored)
+        for fallback_t in fallback_thresholds:
+            if fallback_t >= threshold:
+                continue
+            print(f"[INFO] 阈值 {threshold} 分为 0 篇，尝试降为 {fallback_t} 分重选...")
+            # 重新筛选：从已打分论文中选出 >= fallback_t 分的
+            fallback_papers = [p for p in recent if p.get("score", 0) >= fallback_t]
+            if fallback_papers:
+                scored = fallback_papers
+                print(f"[INFO] 阈值 {fallback_t} 分命中 {len(scored)} 篇，使用此结果")
+                break
+            else:
+                print(f"[INFO] 阈值 {fallback_t} 分仍为 0 篇")
+        # 保底：如果所有降级都无效，取打分最高的一篇
+        if len(scored) == 0:
+            scored_by_score = sorted(recent, key=lambda x: x.get("score", 0), reverse=True)
+            top_score = scored_by_score[0].get("score", 0) if scored_by_score else 0
+            print(f"[INFO] 所有阈值均无命中，保底选取最高分论文 (score={top_score})")
+            scored = scored_by_score[:3]  # 最多取 top 3
 
     # 优先展示 priority 论文
     priority_papers = [p for p in scored if p.get("priority")]
