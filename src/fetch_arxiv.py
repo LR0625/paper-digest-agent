@@ -15,6 +15,7 @@ import json
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime, timedelta
 
 import arxiv
@@ -61,31 +62,57 @@ def build_queries(domain: dict) -> list[dict]:
     return queries
 
 
-def fetch_candidates(query: str, max_results: int = 15, max_retries: int = 3) -> list[dict]:
-    """从 arXiv 抓取单条查询的候选论文，503/429 自动重试。"""
+def _do_fetch(query: str, max_results: int) -> list[dict]:
+    """实际执行 arXiv API 调用的内部函数（在独立线程中运行）。"""
     client = arxiv.Client()
     search = arxiv.Search(
         query=query,
         max_results=max_results,
         sort_by=arxiv.SortCriterion.SubmittedDate,
     )
+    papers = []
+    for result in client.results(search):
+        papers.append({
+            "arxiv_id": result.entry_id.split("/")[-1].replace("v", "").split("v")[0],
+            "raw_id": result.entry_id,
+            "title": result.title,
+            "authors": [a.name for a in result.authors],
+            "abstract": result.summary,
+            "published": result.published.isoformat(),
+            "url": result.entry_id,
+            "pdf_url": result.pdf_url,
+            "categories": list(result.categories),
+        })
+    return papers
+
+
+def fetch_candidates(query: str, max_results: int = 15, max_retries: int = 3, timeout: int = 90) -> list[dict]:
+    """从 arXiv 抓取单条查询的候选论文，带超时 + 503/429 自动重试。
+
+    每条查询最多 90s 超时（包含重试），防止 arXiv API 无响应时整个 job 卡死。
+    """
+    total_start = time.time()
 
     for attempt in range(max_retries + 1):
-        papers = []
+        # 检查是否超时
+        elapsed = time.time() - total_start
+        if elapsed >= timeout:
+            print(f"[WARN] arXiv 查询总超时 ({timeout}s): {query[:80]}...")
+            return []
+
+        remaining = timeout - elapsed
         try:
-            for result in client.results(search):
-                papers.append({
-                    "arxiv_id": result.entry_id.split("/")[-1].replace("v", "").split("v")[0],
-                    "raw_id": result.entry_id,
-                    "title": result.title,
-                    "authors": [a.name for a in result.authors],
-                    "abstract": result.summary,
-                    "published": result.published.isoformat(),
-                    "url": result.entry_id,
-                    "pdf_url": result.pdf_url,
-                    "categories": list(result.categories),
-                })
-            return papers  # 成功，直接返回
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_do_fetch, query, max_results)
+                return future.result(timeout=remaining)
+        except FuturesTimeoutError:
+            if attempt < max_retries:
+                wait = 2 ** attempt
+                print(f"[WARN] arXiv 查询超时 (尝试 {attempt+1}/{max_retries+1}): {query[:80]}..., {wait}s 后重试...")
+                time.sleep(wait)
+            else:
+                print(f"[WARN] arXiv 查询超时，重试耗尽: {query[:80]}...")
+                return []
         except Exception as e:
             err_msg = str(e)
             is_retryable = any(code in err_msg for code in ["503", "429", "ConnectionError", "Timeout", "RemoteDisconnected"])
@@ -95,7 +122,9 @@ def fetch_candidates(query: str, max_results: int = 15, max_retries: int = 3) ->
                 time.sleep(wait)
             else:
                 print(f"[WARN] arXiv 查询出错: {e}")
-                return papers  # 不可重试或重试耗尽，返回空列表
+                return []
+
+    return []
 
 
 def check_priority(paper: dict, priority_labs: list[str]) -> bool:
