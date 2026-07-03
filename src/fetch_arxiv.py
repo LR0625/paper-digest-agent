@@ -90,39 +90,43 @@ def fetch_candidates(query: str, max_results: int = 15, max_retries: int = 3, ti
     """从 arXiv 抓取单条查询的候选论文，带超时 + 503/429 自动重试。
 
     每条查询最多 90s 超时（包含重试），防止 arXiv API 无响应时整个 job 卡死。
+    关键：使用 executor.shutdown(wait=False, cancel_futures=True) 确保超时后立即释放线程。
     """
     total_start = time.time()
 
     for attempt in range(max_retries + 1):
-        # 检查是否超时
         elapsed = time.time() - total_start
         if elapsed >= timeout:
             print(f"[WARN] arXiv 查询总超时 ({timeout}s): {query[:80]}...")
             return []
 
-        remaining = timeout - elapsed
+        remaining = max(timeout - elapsed, 5)
+        executor = ThreadPoolExecutor(max_workers=1)
         try:
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(_do_fetch, query, max_results)
+            future = executor.submit(_do_fetch, query, max_results)
+            try:
                 return future.result(timeout=remaining)
-        except FuturesTimeoutError:
-            if attempt < max_retries:
-                wait = 2 ** attempt
-                print(f"[WARN] arXiv 查询超时 (尝试 {attempt+1}/{max_retries+1}): {query[:80]}..., {wait}s 后重试...")
-                time.sleep(wait)
-            else:
-                print(f"[WARN] arXiv 查询超时，重试耗尽: {query[:80]}...")
-                return []
+            except FuturesTimeoutError:
+                if attempt < max_retries:
+                    wait = 2 ** attempt
+                    print(f"[WARN] arXiv 查询超时 (尝试 {attempt+1}/{max_retries+1}): {query[:80]}..., {wait}s 后重试...")
+                    time.sleep(wait)
+                else:
+                    print(f"[WARN] arXiv 查询超时，重试耗尽: {query[:80]}...")
+                    return []
         except Exception as e:
             err_msg = str(e)
             is_retryable = any(code in err_msg for code in ["503", "429", "ConnectionError", "Timeout", "RemoteDisconnected"])
             if is_retryable and attempt < max_retries:
-                wait = 2 ** attempt  # 2, 4, 8 秒
+                wait = 2 ** attempt
                 print(f"[WARN] arXiv 查询出错 (尝试 {attempt+1}/{max_retries+1}): {err_msg[:100]}, {wait}s 后重试...")
                 time.sleep(wait)
             else:
                 print(f"[WARN] arXiv 查询出错: {e}")
                 return []
+        finally:
+            # 关键：超时后不等待后台线程，直接终止
+            executor.shutdown(wait=False, cancel_futures=True)
 
     return []
 
