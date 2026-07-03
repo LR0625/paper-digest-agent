@@ -15,10 +15,11 @@ import json
 import os
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 
-import arxiv
 import yaml
 from openai import OpenAI
 
@@ -62,71 +63,119 @@ def build_queries(domain: dict) -> list[dict]:
     return queries
 
 
-def _do_fetch(query: str, max_results: int) -> list[dict]:
-    """实际执行 arXiv API 调用的内部函数（在独立线程中运行）。"""
-    client = arxiv.Client()
-    search = arxiv.Search(
-        query=query,
-        max_results=max_results,
-        sort_by=arxiv.SortCriterion.SubmittedDate,
-    )
+# arXiv API 命名空间
+ARXIV_NS = {
+    "atom": "http://www.w3.org/2005/Atom",
+    "arxiv": "http://arxiv.org/schemas/atom",
+}
+
+
+def _clean_id(entry_id: str) -> str:
+    """从 arXiv entry_id 提取纯 ID（去版本号）。"""
+    # e.g. "http://arxiv.org/abs/2501.12345v2" -> "2501.12345"
+    parts = entry_id.split("/")[-1]
+    # 去掉版本号后缀
+    for sep in ("v", "V"):
+        if sep in parts:
+            idx = parts.rindex(sep)
+            if parts[idx + 1:].isdigit():
+                parts = parts[:idx]
+    return parts
+
+
+def _fetch_arxiv_http(query: str, max_results: int = 15, timeout: int = 30) -> list[dict]:
+    """
+    直接通过 HTTP GET 调用 arXiv API，完全控制超时。
+    不使用 arxiv 库，避免其内部重试/卡死问题。
+    """
+    base_url = "http://export.arxiv.org/api/query"
+    params = {
+        "search_query": query,
+        "start": 0,
+        "max_results": max_results,
+        "sortBy": "submittedDate",
+        "sortOrder": "descending",
+    }
+    url = base_url + "?" + urllib.parse.urlencode(params)
+
+    req = urllib.request.Request(url, headers={"User-Agent": "paper-digest-agent/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read()
+    except Exception as e:
+        raise Exception(f"HTTP request failed: {e}")
+
+    # 解析 Atom XML
+    root = ET.fromstring(raw)
     papers = []
-    for result in client.results(search):
+    for entry in root.findall("atom:entry", ARXIV_NS):
+        entry_id = entry.find("atom:id", ARXIV_NS)
+        title_el = entry.find("atom:title", ARXIV_NS)
+        summary_el = entry.find("atom:summary", ARXIV_NS)
+        published_el = entry.find("atom:published", ARXIV_NS)
+
+        authors = []
+        for author in entry.findall("atom:author", ARXIV_NS):
+            name_el = author.find("atom:name", ARXIV_NS)
+            if name_el is not None and name_el.text:
+                authors.append(name_el.text.strip())
+
+        categories = []
+        for cat in entry.findall("atom:category", ARXIV_NS):
+            term = cat.get("term", "")
+            if term:
+                categories.append(term)
+
+        # 链接
+        pdf_url = ""
+        abs_url = ""
+        for link in entry.findall("atom:link", ARXIV_NS):
+            href = link.get("href", "")
+            title = link.get("title", "")
+            if "pdf" in title.lower() or href.endswith(".pdf"):
+                pdf_url = href
+            elif "abs" in title.lower() or "abstract" in title.lower():
+                abs_url = href
+            elif not abs_url and href:
+                abs_url = href
+
+        eid = entry_id.text.strip() if entry_id is not None and entry_id.text else ""
+        arxiv_id = _clean_id(eid)
+        published = published_el.text.strip() if published_el is not None and published_el.text else ""
+
         papers.append({
-            "arxiv_id": result.entry_id.split("/")[-1].replace("v", "").split("v")[0],
-            "raw_id": result.entry_id,
-            "title": result.title,
-            "authors": [a.name for a in result.authors],
-            "abstract": result.summary,
-            "published": result.published.isoformat(),
-            "url": result.entry_id,
-            "pdf_url": result.pdf_url,
-            "categories": list(result.categories),
+            "arxiv_id": arxiv_id,
+            "raw_id": eid,
+            "title": title_el.text.strip() if title_el is not None and title_el.text else "",
+            "authors": authors,
+            "abstract": summary_el.text.strip() if summary_el is not None and summary_el.text else "",
+            "published": published,
+            "url": abs_url or eid,
+            "pdf_url": pdf_url,
+            "categories": categories,
         })
+
     return papers
 
 
-def fetch_candidates(query: str, max_results: int = 15, max_retries: int = 3, timeout: int = 90) -> list[dict]:
-    """从 arXiv 抓取单条查询的候选论文，带超时 + 503/429 自动重试。
+def fetch_candidates(query: str, max_results: int = 15, max_retries: int = 3, timeout: int = 30) -> list[dict]:
+    """从 arXiv 抓取单条查询的候选论文，HTTP 超时 + 503/429 自动重试。
 
-    每条查询最多 90s 超时（包含重试），防止 arXiv API 无响应时整个 job 卡死。
-    关键：使用 executor.shutdown(wait=False, cancel_futures=True) 确保超时后立即释放线程。
+    直接 HTTP 调用 arXiv API，不使用第三方库，完全可控超时。
     """
-    total_start = time.time()
-
     for attempt in range(max_retries + 1):
-        elapsed = time.time() - total_start
-        if elapsed >= timeout:
-            print(f"[WARN] arXiv 查询总超时 ({timeout}s): {query[:80]}...")
-            return []
-
-        remaining = max(timeout - elapsed, 5)
-        executor = ThreadPoolExecutor(max_workers=1)
         try:
-            future = executor.submit(_do_fetch, query, max_results)
-            try:
-                return future.result(timeout=remaining)
-            except FuturesTimeoutError:
-                if attempt < max_retries:
-                    wait = 2 ** attempt
-                    print(f"[WARN] arXiv 查询超时 (尝试 {attempt+1}/{max_retries+1}): {query[:80]}..., {wait}s 后重试...")
-                    time.sleep(wait)
-                else:
-                    print(f"[WARN] arXiv 查询超时，重试耗尽: {query[:80]}...")
-                    return []
+            return _fetch_arxiv_http(query, max_results, timeout=timeout)
         except Exception as e:
             err_msg = str(e)
-            is_retryable = any(code in err_msg for code in ["503", "429", "ConnectionError", "Timeout", "RemoteDisconnected"])
+            is_retryable = any(code in err_msg for code in ["503", "429", "timed out", "ConnectionError", "reset", "refused"])
             if is_retryable and attempt < max_retries:
-                wait = 2 ** attempt
-                print(f"[WARN] arXiv 查询出错 (尝试 {attempt+1}/{max_retries+1}): {err_msg[:100]}, {wait}s 后重试...")
+                wait = 2 ** attempt  # 2, 4, 8 秒
+                print(f"[WARN] arXiv HTTP 出错 (尝试 {attempt+1}/{max_retries+1}): {err_msg[:120]}, {wait}s 后重试...")
                 time.sleep(wait)
             else:
-                print(f"[WARN] arXiv 查询出错: {e}")
+                print(f"[WARN] arXiv HTTP 出错: {err_msg[:120]}")
                 return []
-        finally:
-            # 关键：超时后不等待后台线程，直接终止
-            executor.shutdown(wait=False, cancel_futures=True)
 
     return []
 
