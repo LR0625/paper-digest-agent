@@ -29,8 +29,23 @@ jobs:
       - name: Install Dependencies
         run: pip install -r requirements.txt
 
-      - name: Fetch Papers
+      - name: Fetch Papers (arXiv)
         run: python src/fetch_arxiv.py
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+
+      # ── arXiv 0 篇时自动 fallback 到 Semantic Scholar ──
+      - name: Fetch Papers (Semantic Scholar fallback)
+        if: success()
+        run: |
+          COUNT=$(python -c "import json; d=json.load(open('data/today_papers.json')); print(d.get('count', 0))")
+          echo "arXiv 抓取结果: $COUNT 篇"
+          if [ "$COUNT" -eq 0 ]; then
+            echo "⚠️  arXiv 返回 0 篇，启动 Semantic Scholar 备用源..."
+            python src/fetch_semantic_scholar.py
+          else
+            echo "✅ arXiv 已有结果，跳过备用源"
+          fi
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
 
