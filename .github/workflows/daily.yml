@@ -2,10 +2,9 @@ name: Daily Digest
 
 on:
   schedule:
-    # UTC 0:50 = 北京时间 8:50 启动（兜底）。主触发由外部 cron 在 8:55 通过
-    # workflow_dispatch API 即时触发，绕过 GitHub Actions 调度延迟。
-    # 幂等性检查确保同一天不会重复推送。
-    - cron: '50 0 * * *'
+    # UTC 2:00 = 北京时间 10:00（纯兜底）。主力由 cron-job.org 在 UTC 0:52 触发。
+    # 幂等性检查确保 cron-job.org 已经推送过的话这里会跳过。
+    - cron: '0 2 * * *'
   workflow_dispatch: {}
 
 permissions:
