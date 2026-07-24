@@ -3126,5 +3126,190 @@
         "structured_summary": "好的，作为一名具身智能与机器人学习领域的研究助理，我将为你详细解读这篇关于半人形机器人NICO模仿人类手臂姿态的论文。请仔细阅读，希望能帮你建立起对这个方向的理解。\n\n【子方向标签】\n人机交互与协作\n\n【一句话简介】\n用几何计算和现成姿态估计模型，让半人形机器人NICO仅凭单目摄像头就能模仿人类手臂动作。\n\n【背景知识】\n要理解这篇论文，你需要先知道几个核心概念：\n\n1.  ▲人机交互 (Human-Robot Interaction, HRI)▲：这是研究人与机器人如何有效沟通和协作的领域。就像两个人交流需要语言和肢体动作一样，机器人也需要理解人类的意图并做出合适的回应。模仿人类手势是实现自然、直观交互的关键一步，因为人类天生就擅长理解手势。\n2.  ▲姿态估计 (Pose Estimation)▲：这是计算机视觉的一个任务，旨在从图像或视频中推断出人体（或物体）的关键点（Landmarks）位置。例如，肩膀、肘部、手腕、手指尖等。你可以把它想象成给照片里的人“贴骨点”。这篇论文使用了MediaPipe这个预训练好的模型，它就像一个“黑盒子”，你输入一张RGB图片，它就能输出每个人体关键点的3D坐标。\n3.  ▲逆运动学 (Inverse Kinematics, IK)▲：这是机器人学中的核心问题。简单来说，▲正运动学▲是知道机器人的每个关节角度，去计算机器人末端（比如手）的位置；而▲逆运动学▲则反过来：我们想让机器人的手到达某个特定位置，需要计算出它的每个关节（肩膀、肘部、手腕）应该转多少度。这篇论文没有使用通用的IK算法，而是针对NICO机器人的具体结构，推导了专门的几何公式，直接从人体关键点坐标计算出关节角度。\n4.  ▲运动映射 (Motion Mapping)▲：人类和机器人的身体结构（运动学构型）完全不同。人类的手臂有7个自由度（比如肩关节能前后、上下、旋转），而NICO这样的机器人自由度更少且关节活动范围不同。因此，不能把人类关节的角度直接复制给机器人。运动映射就是解决这个“结构差异”问题，将计算出的“人类关节角度”转换成“机器人能执行的角度”。例如，人类可以轻松地将手臂完全向后伸展，但机器人的肩关节可能只能向后转30度，映射过程就需要将这个动作“截断”或“缩放”到机器人允许的范围内。\n\n【核心问题】\n这篇论文试图解决一个非常实际的问题：▲如何让一个低成本、结构简单的半人形机器人，仅使用一个普通的RGB摄像头，就能实时、鲁棒地模仿人类复杂的手臂手势？▲\n\n这个问题的“重要”之处在于：\n1.  ▲填补了“低成本”与“自然交互”之间的鸿沟▲：许多高保真的人形机器人模仿研究依赖于昂贵的动作捕捉系统（Motion Capture）或多个深度摄像头。这篇论文探索了仅用单目RGB摄像头（如普通网络摄像头）的解决方案，大大降低了硬件门槛和部署成本，让机器人更有可能进入家庭和日常环境。\n2.  ▲解决了“结构差异”带来的映射难题▲：半人形机器人（如NICO）的关节数量、运动范围与人类不同。直接复制角度会导致机器人动作别扭甚至损坏自身。该工作提供了一个基于几何分析的、针对特定机器人构型的映射方案，保证了模仿动作的合理性和安全性。\n3.  ▲验证了“现成工具”的潜力与局限▲：研究使用了MediaPipe这个广泛使用的开源姿态估计框架。这项工作不仅展示了其有效性，更重要的是，它通过实验揭示了MediaPipe在处理复杂姿态（如手臂交叉）和精细动作（如手腕旋转）时的局限性，为后续研究指明了改进方向。\n\n【方法】\n这篇论文的技术方案非常清晰，可以概括为三个步骤：感知、计算、映射。\n\n1.  ▲感知：用MediaPipe提取3D关键点▲：这是整个系统的输入。对于每一帧RGB图像，系统调用预训练的MediaPipe Pose模型。这个模型能输出人体33个关键点的3D坐标（x, y, z），其中z代表深度（距离摄像头的远近）。▲创新点在于▲：作者没有重新训练模型，而是直接利用了这个成熟、轻量级的工具，体现了“站在巨人肩膀上”的思路。为什么有效？因为MediaPipe已经在海量数据上训练过，对常见姿态的检测非常鲁棒，且计算效率高，适合实时应用。\n\n2.  ▲计算：用几何公式反推关节角度▲：这是论文的核心技术贡献。作者没有使用通用的逆运动学求解器，而是为NICO机器人推导了一套▲解析解▲。具体来说，他们利用MediaPipe输出的肩、肘、腕关键点坐标，通过向量运算来计算角度。\n• ▲肩关节角度▲：通过计算从肩到肘的向量，以及从肩到身体中轴线的向量，分解出肩关节在前后、上下、旋转三个方向上的角度。\n• ▲肘关节角度▲：通过计算肩-肘向量和肘-腕向量之间的夹角，得到肘关节的弯曲角度。\n• ▲手腕角度▲：这里比较有挑战性。作者利用手腕关键点和手部关键点（如指尖）来计算手腕的俯仰和偏航角度。\n▲为什么之前没人这么做？▲ 因为通用IK求解器虽然强大，但计算复杂，有时会收敛到不自然的解。而针对特定机器人几何结构推导的解析解，计算速度极快（几乎零延迟），且结果唯一、物理上可解释。缺点是泛化性差，换一个机器人就得重新推导。\n\n3.  ▲映射：将人体角度适配到机器人构型▲：这是确保机器人能安全、合理执行动作的关键。NICO的肩关节活动范围远小于人类。因此，作者设计了一个▲线性映射函数▲，将计算出的“人类角度范围”线性地“缩放”到“NICO关节的范围”内。例如，如果人类肩关节能前后摆动[-90°, 90°]，而NICO只能[-45°, 45°]，那么人类摆动90°时，NICO只会摆动45°。\n▲为什么有效？▲ 这种缩放映射保证了动作的“趋势”是一致的（比如都指向同一个方向），虽然幅度被压缩了，但模仿的意图和语义得以保留。▲创新点在于▲：这个映射不是简单的截断，而是平滑的缩放，避免了机器人动作的突兀和卡顿。\n\n【实验结果】\n论文在6位身高不同的参与者身上进行了实验，测试了多种代表性手势，并给出了定量和定性结果。\n\n1.  ▲成功率▲：对于简单手势（如“举手”、“平举”、“指向一侧”），系统成功率很高，▲平均成功率超过90%▲。这表明对于基础动作，基于MediaPipe的几何方法是可靠的。\n2.  ▲复杂姿态的失败率▲：对于复杂手势（如“手臂交叉”、“手放在头上”），成功率显著下降，▲平均成功率仅为60%左右▲。作者分析，这主要是因为MediaPipe在身体自遮挡（如手臂挡住另一侧肩膀）时，关键点检测的精度会大幅下降，导致计算出的关节角度不准确。\n3.  ▲手腕动作的局限性▲：实验特别指出，对于涉及手腕旋转（如“招手”中的手腕左右摆动）的动作，模仿效果很差。▲手腕角度的平均误差高达30度以上▲。这是因为MediaPipe的手部关键点（指尖）在手臂姿态变化时，其相对于手腕的位置关系并不稳定，导致几何计算失效。消融实验（虽然没有明确命名，但通过对比不同手势的结果可以体现）表明，系统的性能瓶颈主要在于▲感知层▲（MediaPipe的精度）和▲映射层▲（对手腕这种小范围、高自由度关节的建模不足）。\n\n【局限性】\n1.  ▲感知的脆弱性▲：系统严重依赖于MediaPipe的检测精度。当出现身体自遮挡、复杂背景、光照变化或快速运动时，MediaPipe容易产生抖动或错误的关键点，导致机器人动作不连贯或完全错误。▲这意味着该系统无法在真实、动态的交互环境中稳定工作▲，比如在一个堆满杂物的客厅里，或者当人快速挥手时。\n2.  ▲映射的简单性▲：采用的线性缩放映射过于简单。它无法处理人类和机器人之间更细微的运动差异。例如，人类在“指路”时，不仅手臂指向，肩膀和躯干也会有微妙的配合。线性映射只考虑了手臂，忽略了躯干姿态，导致机器人的动作显得僵硬、不自然。▲这限制了模仿的逼真度和表现力▲，无法传达丰富的情感或社交信号。\n3.  ▲缺乏对“意图”的理解▲：系统只是机械地复制了姿态的“形”，而没有理解姿态的“意”。例如，人类“挥手”和“驱赶苍蝇”的手臂动作可能非常相似，但意图完全不同。机器人无法区分，只会执行相同的动作。▲这导致交互是单向的、被动的，无法进行有意义的、上下文相关的对话▲。\n4.  ▲机器人硬件限制▲：NICO作为半人形机器人，其自由度（特别是手腕）有限。即使感知和计算都完美，机器人也无法精确复现所有人类手势。▲这从根本上限制了系统的上限▲，即使算法再优秀，也无法超越物理硬件的约束。\n\n【个人视角点评】\n• ▲在子方向中的位置▲：这篇论文属于▲渐进改进▲。它没有提出任何颠覆性的新算法或新范式，而是巧妙地将现有成熟的感知工具（MediaPipe）与经典的几何方法结合，解决了一个特定机器人（NICO）的模仿问题。它的价值在于▲验证了“低配版”方案的可行性▲，并清晰地指出了其边界。它更像一份扎实的“工程报告”，而非理论突破。\n• ▲与其他子方向比较▲：与当前火热的▲VLA与端到端策略▲（如RT-2, Octo）相比，这篇论文显得非常“古典”。VLA模型动辄数十亿参数，试图学习从像素到动作的通用映射，目标是“理解世界并行动”。而这篇文章则是在一个非常狭窄的“模仿手势”任务上，用最直接、可解释的方式解决问题。它的▲天花板很低▲，无法泛化到抓取、导航等复杂任务。但它的▲落地门槛也极低▲，一个普通摄像头、一台普通电脑就能跑起来，而VLA模型需要巨大的算力和数据。\n• ▲落地价值▲：距离产品化▲非常近▲，但仅限于▲玩具级▲应用。比如，一个能模仿你动作的桌面教育机器人，或者一个简单的迎宾机器人。卡点在于：1) ▲鲁棒性不足▲，无法应对真实世界的混乱；2) ▲交互深度不够▲，无法进行有意义的对话。要落地，需要结合更鲁棒的多模态感知（如加一个深度摄像头或IMU），并引入一个▲行为决策模块▲，让机器人能根据上下文（如用户的表情、语音）决定是否模仿以及模仿什么。例如，用户做“停止”手势，机器人应该停止模仿并做出相应反应，而不是也跟着做“停止”手势。\n• ▲最值得记住的idea▲：▲“用最轻量的方法，做最直接的事”▲。在大家都在追求大模型、大数据、大算力的时代，这篇论文提醒我们，对于一些定义明确、约束清晰的机器人任务，基于几何和解析解的经典方法，配合一个现成的感知模块，依然是一个高效、低成本的解决方案。这个idea之所以特别，是因为它▲强调了“工程智慧”▲——即如何利用现有工具，通过巧妙的系统设计，在资源受限的条件下达到可接受的效果。它告诉我们，不是所有问题都需要用“核武器”来解决。\n\n【代码/数据开源情况】\n根据论文内容，作者没有明确提及开源计划。论文中提到“Preliminary experiments”，可能意味着这是一个正在进行中的工作，未来可能会在作者的实验室主页或GitHub上发布相关代码。目前，▲代码和数据集均未公开▲。"
       }
     ]
+  },
+  {
+    "date": "2026-07-24",
+    "domain": "具身智能与机器人学习",
+    "count": 5,
+    "papers": [
+      {
+        "arxiv_id": "2607.215881",
+        "raw_id": "http://arxiv.org/abs/2607.21588v1",
+        "title": "AXIS: A Growable Community-Driven Data Engine for Scalable Robot Manipulation",
+        "authors": [
+          "Mengfei Zhao",
+          "Dihong Huang",
+          "Yikai Tang",
+          "Peihao Li",
+          "Mingxuan Yan",
+          "Ruiqi Zhuang",
+          "Yanjia Huang",
+          "Jie Wang",
+          "Hai Zhai",
+          "Tony Zhou",
+          "Rui Zhang",
+          "Zhexi Luo",
+          "Yuchen Huang",
+          "Jianfei Yang",
+          "Jiachen Li"
+        ],
+        "abstract": "Learning effective robot manipulation policies requires diverse, high-quality demonstrations, yet existing data pipelines are often difficult to scale because they rely on specialized hardware, centralized operators, or fixed task suites. We present AXIS, a growable community-driven data engine and benchmark for scalable robot learning, which enables browser-based teleoperation for large-scale demonstration collection, automatically generates and validates new manipulation tasks, and transforms community-collected demonstrations into training-ready data through automated success checking, quality filtering, trajectory smoothing, and visual and physics-based augmentation. The AXIS dataset currently contains 207 diverse tasks and 50K+ trajectories. Meanwhile, AXIS organizes data into task snapshots and evaluates policies with a systematic held-out protocol. We compare vision-language-action (VLA) policies under a unified AXIS evaluation suite and analyze scaling behavior across different data volumes. Continual pretraining on AXIS substantially improves the overall success rate of $π_{0.5}$ by 5.8%, outperforms the model pretrained on RoboCasa365 by 37.3%, and exhibits consistent scaling with increasing data volume, with the largest gains observed under layout, sensor-noise, and camera perturbations.",
+        "published": "2026-07-23T17:58:08+00:00",
+        "url": "http://arxiv.org/abs/2607.21588v1",
+        "pdf_url": "https://arxiv.org/pdf/2607.21588v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 7,
+        "subfield_label": "",
+        "score_reason": "API error, kept by default",
+        "title_cn": "AXIS: A Growable Community-Driven Data Engine for Scalable Robot Manipulation",
+        "abstract_cn": "Learning effective robot manipulation policies requires diverse, high-quality demonstrations, yet existing data pipelines are often difficult to scale because they rely on specialized hardware, centralized operators, or fixed task suites. We present AXIS, a growable community-driven data engine and benchmark for scalable robot learning, which enables browser-based teleoperation for large-scale demonstration collection, automatically generates and validates new manipulation tasks, and transforms community-collected demonstrations into training-ready data through automated success checking, quality filtering, trajectory smoothing, and visual and physics-based augmentation. The AXIS dataset currently contains 207 diverse tasks and 50K+ trajectories. Meanwhile, AXIS organizes data into task snapshots and evaluates policies with a systematic held-out protocol. We compare vision-language-action (VLA) policies under a unified AXIS evaluation suite and analyze scaling behavior across different data volumes. Continual pretraining on AXIS substantially improves the overall success rate of $π_{0.5}$ by 5.8%, outperforms the model pretrained on RoboCasa365 by 37.3%, and exhibits consistent scaling with increasing data volume, with the largest gains observed under layout, sensor-noise, and camera perturbations.",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2607.215881",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2607.215881"
+        },
+        "structured_summary": "【摘要生成失败】Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}"
+      },
+      {
+        "arxiv_id": "2607.209881",
+        "raw_id": "http://arxiv.org/abs/2607.20988v1",
+        "title": "HyWorldVLA: A Vision-Language-Action Model with Hybrid World Modeling for Autonomous Driving",
+        "authors": [
+          "Quanfu Yu",
+          "Xian Wu",
+          "Hao Xu",
+          "Liulong Ma"
+        ],
+        "abstract": "Vision-Language-Action (VLA) models augmented with world modeling represent a promising paradigm for end-to-end autonomous driving. While pixel-level future prediction enables fine-grained spatiotemporal reasoning, it compromises robustness in noisy driving scenarios. Conversely, latent-based world models alleviate this sensitivity but often incur limited interpretability and representational degradation due to absent pixel-level grounding. To reconcile this trade-off, we propose HyWorldVLA, a hybrid world-VLA framework that unifies pixel-level supervision and latent representation learning. In the pre-training stage, HyWorldVLA predicts video latents encoded by a pre-trained video VAE, while simultaneously reconstructing video frames to provide precise pixel-level grounding. During the subsequent co-fine-tuning phase, the model exclusively predicts latent features, which are fed into an action expert to generate trajectories. Extensive experiments on NAVSIM v1 and v2 benchmarks demonstrate that HyWorldVLA significantly outperforms both pixel-based and latent-based world model baselines. Notably, we present the first comprehensive qualitative and quantitative analysis of world model noise robustness in autonomous driving, establishing a new benchmark for evaluating future architectures.",
+        "published": "2026-07-23T07:11:41+00:00",
+        "url": "http://arxiv.org/abs/2607.20988v1",
+        "pdf_url": "https://arxiv.org/pdf/2607.20988v1",
+        "categories": [
+          "cs.CV",
+          "cs.AI"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 7,
+        "subfield_label": "",
+        "score_reason": "API error, kept by default",
+        "title_cn": "HyWorldVLA: A Vision-Language-Action Model with Hybrid World Modeling for Autonomous Driving",
+        "abstract_cn": "Vision-Language-Action (VLA) models augmented with world modeling represent a promising paradigm for end-to-end autonomous driving. While pixel-level future prediction enables fine-grained spatiotemporal reasoning, it compromises robustness in noisy driving scenarios. Conversely, latent-based world models alleviate this sensitivity but often incur limited interpretability and representational degradation due to absent pixel-level grounding. To reconcile this trade-off, we propose HyWorldVLA, a hybrid world-VLA framework that unifies pixel-level supervision and latent representation learning. In the pre-training stage, HyWorldVLA predicts video latents encoded by a pre-trained video VAE, while simultaneously reconstructing video frames to provide precise pixel-level grounding. During the subsequent co-fine-tuning phase, the model exclusively predicts latent features, which are fed into an action expert to generate trajectories. Extensive experiments on NAVSIM v1 and v2 benchmarks demonstrate that HyWorldVLA significantly outperforms both pixel-based and latent-based world model baselines. Notably, we present the first comprehensive qualitative and quantitative analysis of world model noise robustness in autonomous driving, establishing a new benchmark for evaluating future architectures.",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2607.209881",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2607.209881"
+        },
+        "structured_summary": "【摘要生成失败】Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}"
+      },
+      {
+        "arxiv_id": "2607.196331",
+        "raw_id": "http://arxiv.org/abs/2607.19633v1",
+        "title": "LENS: LLM-guided Environment Simplification for Planning and Control in Clutter",
+        "authors": [
+          "Aileen Liao",
+          "Rachel Holladay",
+          "Dinesh Jayaraman",
+          "Michael Posa"
+        ],
+        "abstract": "Despite recent advances in general-purpose robotic manipulation, real-world multi-object clutter remains challenging to handle for today's prevalent approaches. The problem scales in complexity due to more objects and collisions, more unpredictable contact physics, distractors, and task ambiguity. Bridging this gap to real-world deployment requires effective scene abstractions; yet today, producing such abstractions requires extensive task-specific manual engineering, which does not scale. These abstractions are costly to generate and difficult to adjust or fine-tune. We instead propose a plug-and-play fix to automatically generate scene-specific, task-specific, adaptively updating abstractions on top of existing planning and control stacks. LLM-guided Environment Simplification (LENS) produces a de-cluttered abstracted scene representation by merging (e.g., stacked objects) or pruning (e.g., distant objects) scene entities in a closed loop in response to task progress. These dynamic, task-relevant abstractions are versatile and easy to use. In our experiments, we show that LENS improves classical planning, model-based control, and a vision-language-action model, across a diverse set of highly cluttered manipulation scenes. Project website: https://lens-2026.github.io/.",
+        "published": "2026-07-22T00:05:00+00:00",
+        "url": "http://arxiv.org/abs/2607.19633v1",
+        "pdf_url": "https://arxiv.org/pdf/2607.19633v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 7,
+        "subfield_label": "",
+        "score_reason": "API error, kept by default",
+        "title_cn": "LENS: LLM-guided Environment Simplification for Planning and Control in Clutter",
+        "abstract_cn": "Despite recent advances in general-purpose robotic manipulation, real-world multi-object clutter remains challenging to handle for today's prevalent approaches. The problem scales in complexity due to more objects and collisions, more unpredictable contact physics, distractors, and task ambiguity. Bridging this gap to real-world deployment requires effective scene abstractions; yet today, producing such abstractions requires extensive task-specific manual engineering, which does not scale. These abstractions are costly to generate and difficult to adjust or fine-tune. We instead propose a plug-and-play fix to automatically generate scene-specific, task-specific, adaptively updating abstractions on top of existing planning and control stacks. LLM-guided Environment Simplification (LENS) produces a de-cluttered abstracted scene representation by merging (e.g., stacked objects) or pruning (e.g., distant objects) scene entities in a closed loop in response to task progress. These dynamic, task-relevant abstractions are versatile and easy to use. In our experiments, we show that LENS improves classical planning, model-based control, and a vision-language-action model, across a diverse set of highly cluttered manipulation scenes. Project website: https://lens-2026.github.io/.",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2607.196331",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2607.196331"
+        },
+        "structured_summary": "【摘要生成失败】Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}"
+      },
+      {
+        "arxiv_id": "2607.214161",
+        "raw_id": "http://arxiv.org/abs/2607.21416v1",
+        "title": "GLAM-SLAM: Real-time Gaussian Large-scale Mapping via Flow Densification and Spatial Decomposition",
+        "authors": [
+          "Panagiotis Mermigkas",
+          "Argyris Manetas",
+          "Petros Maragos"
+        ],
+        "abstract": "Existing Gaussian-splatting-based monocular Simultaneous Localization and Mapping (SLAM) systems are either tailored to short sequences, are not real-time, or suffer from prohibitive GPU memory requirements, limiting their applicability in realistic, long-horizon scenarios. To address this, we present GLAM-SLAM, a real-time, decoupled Gaussian-splatting SLAM system designed for large-scale outdoor scenes. We ensure lightweight tracking using a robust, feature-based SLAM frontend, while for mapping, we adopt a structured, sparse anchor grid representation that ensures scalable operation and maintains scene coherence across long-term sequences. To satisfy the dense initialization requirements of 3D Gaussian Splatting (3DGS), we introduce a geometry-based flow-densification anchoring strategy using epipolar constraints. Furthermore, by treating mapping as a multi-scene problem, we propose a scene-partitioning strategy that introduces a strong spatial inductive bias via MLP initializations to generate localized Gaussians. We evaluate our system on the challenging, long-sequence KITTI Odometry, Oxford RobotCar, and M'alaga datasets. Extensive ablations and comparisons demonstrate a 15% improvement in reconstruction quality over the second-best performer, while maintaining real-time performance and the ability to scale to longer sequences. Code is publicly available for the benefit of the community.",
+        "published": "2026-07-23T15:22:42+00:00",
+        "url": "http://arxiv.org/abs/2607.21416v1",
+        "pdf_url": "https://arxiv.org/pdf/2607.21416v1",
+        "categories": [
+          "cs.RO",
+          "cs.CV"
+        ],
+        "matched_subfields": [
+          "navigation_and_slam"
+        ],
+        "priority": false,
+        "score": 7,
+        "subfield_label": "",
+        "score_reason": "API error, kept by default",
+        "title_cn": "GLAM-SLAM: Real-time Gaussian Large-scale Mapping via Flow Densification and Spatial Decomposition",
+        "abstract_cn": "Existing Gaussian-splatting-based monocular Simultaneous Localization and Mapping (SLAM) systems are either tailored to short sequences, are not real-time, or suffer from prohibitive GPU memory requirements, limiting their applicability in realistic, long-horizon scenarios. To address this, we present GLAM-SLAM, a real-time, decoupled Gaussian-splatting SLAM system designed for large-scale outdoor scenes. We ensure lightweight tracking using a robust, feature-based SLAM frontend, while for mapping, we adopt a structured, sparse anchor grid representation that ensures scalable operation and maintains scene coherence across long-term sequences. To satisfy the dense initialization requirements of 3D Gaussian Splatting (3DGS), we introduce a geometry-based flow-densification anchoring strategy using epipolar constraints. Furthermore, by treating mapping as a multi-scene problem, we propose a scene-partitioning strategy that introduces a strong spatial inductive bias via MLP initializations to generate localized Gaussians. We evaluate our system on the challenging, long-sequence KITTI Odometry, Oxford RobotCar, and M'alaga datasets. Extensive ablations and comparisons demonstrate a 15% improvement in reconstruction quality over the second-best performer, while maintaining real-time performance and the ability to scale to longer sequences. Code is publicly available for the benefit of the community.",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2607.214161",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2607.214161"
+        },
+        "structured_summary": "【摘要生成失败】Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}"
+      },
+      {
+        "arxiv_id": "2607.214001",
+        "raw_id": "http://arxiv.org/abs/2607.21400v1",
+        "title": "VoLN: Vision-Only Long-Horizon Navigation---Paradigm, Benchmark, and Method",
+        "authors": [
+          "Jiabin Lou",
+          "Haopeng Wang",
+          "Yuanshuai Wang",
+          "Xinyu Liu",
+          "Xuxin Lv",
+          "Yuxin Guo",
+          "Lei Huang",
+          "Rongye Shi",
+          "Wenjun Wu"
+        ],
+        "abstract": "Vision-and-Language Navigation (VLN) enables embodied agents to follow natural-language instructions. However, route-level instructions commonly encode spatial priors, such as orientation, distance, and layout, that are not explicitly available from onboard sensing at deployment in open, GPS-denied environments. Benchmark performance under such interfaces therefore jointly reflects visual navigation ability and the use of route structure explicitly supplied by the task description. As a complementary formulation, we propose Vision-Only Long-Horizon Navigation (VoLN), which shifts route-relevant information from externally supplied instructions and global guidance to locally observable in-scene cues. In VoLN, goal views specify the destination, while route-relevant information is available only through locally observable in-scene cues that the agent must detect, interpret, and select online. We instantiate VoLN for aerial navigation through VoLN-UAV, a 7,210-episode benchmark that combines long-horizon goal-directed flight, continuous 3D motion, large viewpoint changes, and context-dependent beacon selection. We further provide VoLN-MLLM as an initial reference baseline. It aligns self-supervised visual features with a structured semantic space and predicts short-horizon waypoint segments from observation history, goal views, retrieved visual--semantic tokens, and proprioception. On the five-environment Test-Unseen split, it obtains success rates of 7.4%, 4.5%, and 1.8% on Easy, Normal, and Hard episodes, respectively. These results provide an initial evaluation of VoLN and reveal substantial remaining challenges in long-horizon evidence integration, cross-view goal matching, and closed-loop stability. Project page: https://admire-ljb.github.io/VoLN-UAV/",
+        "published": "2026-07-23T15:02:01+00:00",
+        "url": "http://arxiv.org/abs/2607.21400v1",
+        "pdf_url": "https://arxiv.org/pdf/2607.21400v1",
+        "categories": [
+          "cs.RO",
+          "cs.AI"
+        ],
+        "matched_subfields": [
+          "navigation_and_slam"
+        ],
+        "priority": false,
+        "score": 7,
+        "subfield_label": "",
+        "score_reason": "API error, kept by default",
+        "title_cn": "VoLN: Vision-Only Long-Horizon Navigation---Paradigm, Benchmark, and Method",
+        "abstract_cn": "Vision-and-Language Navigation (VLN) enables embodied agents to follow natural-language instructions. However, route-level instructions commonly encode spatial priors, such as orientation, distance, and layout, that are not explicitly available from onboard sensing at deployment in open, GPS-denied environments. Benchmark performance under such interfaces therefore jointly reflects visual navigation ability and the use of route structure explicitly supplied by the task description. As a complementary formulation, we propose Vision-Only Long-Horizon Navigation (VoLN), which shifts route-relevant information from externally supplied instructions and global guidance to locally observable in-scene cues. In VoLN, goal views specify the destination, while route-relevant information is available only through locally observable in-scene cues that the agent must detect, interpret, and select online. We instantiate VoLN for aerial navigation through VoLN-UAV, a 7,210-episode benchmark that combines long-horizon goal-directed flight, continuous 3D motion, large viewpoint changes, and context-dependent beacon selection. We further provide VoLN-MLLM as an initial reference baseline. It aligns self-supervised visual features with a structured semantic space and predicts short-horizon waypoint segments from observation history, goal views, retrieved visual--semantic tokens, and proprioception. On the five-environment Test-Unseen split, it obtains success rates of 7.4%, 4.5%, and 1.8% on Easy, Normal, and Hard episodes, respectively. These results provide an initial evaluation of VoLN and reveal substantial remaining challenges in long-horizon evidence integration, cross-view goal matching, and closed-loop stability. Project page: https://admire-ljb.github.io/VoLN-UAV/",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2607.214001",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2607.214001"
+        },
+        "structured_summary": "【摘要生成失败】Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}"
+      }
+    ]
   }
 ]
