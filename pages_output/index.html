@@ -82,6 +82,67 @@ body {
 <div class="header"><h1>📄 embodied_ai 论文速递</h1><p>每日自动推送 · 由 paper-digest-agent 驱动</p></div>
 <div class="container">
 <section class="day">
+<h2>📅 2026-07-25 <span class="count">(4 篇)</span></h2>
+
+<div class="paper">
+<h3>Grasp, Handover, Rotate: Bimanual Object Reorientation via Compositional Diffusion and Energy-Based Optimization</h3>
+<div class="title-en">Grasp, Handover, Rotate: Bimanual Object Reorientation via Compositional Diffusion and Energy-Based Optimization</div>
+<div class="meta">
+<span>📂 </span>
+<span>📊 相关性 7/10</span>
+<a href="http://arxiv.org/abs/2607.21341v1" target="_blank">arXiv: 2607.213411</a>
+<a href="https://xxx.itp.ac.cn/abs/2607.213411" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2607.213411" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2607.213411" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2607.213411" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">Bimanual object reorientation - picking an object, handing it over between two arms, and placing it in a desired target pose - is valuable when direct placement from the initial grasp is infeasible due to collisions, kinematic constraints, or poor final orientation. However, achieving this under multiple competing objectives remains challenging. We introduce BiCompoDiff, a compositional diffusion and energy-based framework that jointly optimizes grasp selection, handover, regrasp, and motion planning under multiple constraints. By combining a pretrained grasp diffusion model with bimanual planning energy-based models (EBMs), our method injects gradient guidance during reverse diffusion to enforce collision avoidance, trajectory smoothness (via differentiable inverse kinematics), handover feasibility, and regrasp safety. Annealed MCMC sampling further refines grasp poses over the composite energy landscape. Experiments across diverse simulated household reorientation tasks demonstrate that BiCompoDiff achieves over 20% higher success rates and up to 37% smoother trajectories (measured by joint displacement) compared to strong sampling-based baselines. Real-world validation confirms effective sim-to-real transfer and robust performance on challenging scenes.</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">摘要生成失败</div>
+<p>Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}</p></div>
+</div>
+<div class="paper">
+<h3>FORGE-plus: Force-Budgeted Recovery for Contact-Rich Assembly with a Frozen LLM Supervisor</h3>
+<div class="title-en">FORGE-plus: Force-Budgeted Recovery for Contact-Rich Assembly with a Frozen LLM Supervisor</div>
+<div class="meta">
+<span>📂 </span>
+<span>📊 相关性 7/10</span>
+<a href="http://arxiv.org/abs/2607.21227v1" target="_blank">arXiv: 2607.212271</a>
+<a href="https://xxx.itp.ac.cn/abs/2607.212271" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2607.212271" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2607.212271" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2607.212271" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">Force-conditioned reinforcement learning (RL) enables tight-clearance assembly under a commanded force ceiling, but practical deployment requires determining an appropriate force limit for each object and recovering from insertion failures without exceeding it. We present a two-layer framework in which a frozen, text-only large language model (LLM) assigns a per-object force ceiling before execution and selects recovery maneuvers from a fixed action menu using compact textual force signatures. The LLM never controls force directly: a low-level controller enforces the force ceiling, the recovery policy cannot increase it, and the hidden breaking-force threshold is known only to the evaluator.
+  We evaluate the framework on fragile bottle placement and 0.4 mm diametral-clearance gear insertion using two grippers (Robotiq 2F-140 and Franka Panda hand). A single policy passes 256/256 evaluation episodes on both fragile and robust objects without breakage, correctly predicts release timing, and completes a full table-pick-and-insert pipeline with a mean peak force of 5.4 N. Under injected in-grip slip, the force-signature recovery strategy resolves 40% and 64% of failures on the two grippers, whereas a press-harder baseline is either ineffective or causes frequent breakage. We also report negative results, including the failure of PPO to solve the task under strict force constraints and unsuccessful learned release strategies. All experiments are conducted in rigid-body simulation with hidden force-threshold breakage; no sim-to-real claim is made.</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">摘要生成失败</div>
+<p>Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}</p></div>
+</div>
+<div class="paper">
+<h3>Safe and Scalable Multi-Drone Payload Transport via CBF-based Reinforcement Learning with Zero-Shot Sim-to-Real Transfer</h3>
+<div class="title-en">Safe and Scalable Multi-Drone Payload Transport via CBF-based Reinforcement Learning with Zero-Shot Sim-to-Real Transfer</div>
+<div class="meta">
+<span>📂 </span>
+<span>📊 相关性 7/10</span>
+<a href="http://arxiv.org/abs/2607.20665v1" target="_blank">arXiv: 2607.206651</a>
+<a href="https://xxx.itp.ac.cn/abs/2607.206651" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2607.206651" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2607.206651" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2607.206651" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">Multi-drone payload transportation has emerged as a promising research paradigm with potential applications in construction, logistics, and disaster response. However, the complex coupled dynamics among drones, cables, and payloads pose significant challenges, and existing approaches remain limited in safety and scalability, particularly in dynamic and unstructured environments. In this work, we propose a learning-based framework for safe and scalable multi-drone cooperative payload transport. We introduce a minimal 2D abstraction that preserves the task-relevant drone-payload coupling required for coordination and safety, while remaining computationally efficient for large-scale learning. Using domain randomization over team size and physical parameters, we train a fully distributed policy via Discrete Graph Control Barrier Function Proximal Policy Optimization (DGPPO), enabling robust zero-shot sim-to-real transfer without fine-tuning. Extensive real-world evaluations demonstrate that a single learned policy generalizes across varying team sizes and task scenarios. Furthermore, multi-group hardware experiments show that the same policy can safely operate in dynamic environments, where other drone teams act as moving obstacles. These results indicate that the proposed framework enables efficient, safe, and scalable multi-drone payload transportation with strong generalization to complex real-world conditions.</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">摘要生成失败</div>
+<p>Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}</p></div>
+</div>
+<div class="paper">
+<h3>Factorized Spatio-Temporal Convolutions for Human Pose Estimation from Planar Lidar</h3>
+<div class="title-en">Factorized Spatio-Temporal Convolutions for Human Pose Estimation from Planar Lidar</div>
+<div class="meta">
+<span>📂 </span>
+<span>📊 相关性 7/10</span>
+<a href="http://arxiv.org/abs/2607.21309v1" target="_blank">arXiv: 2607.213091</a>
+<a href="https://xxx.itp.ac.cn/abs/2607.213091" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2607.213091" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2607.213091" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2607.213091" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">Localizing nearby humans and estimating their facing direction are key capabilities for safe navigation and socially aware human-robot interaction. Many pose-estimation pipelines target cameras and 3D LiDAR or assume GPU-class compute, whereas service robots are often equipped only with omnidirectional planar LiDARs and modest onboard processors. We address omnidirectional human detection and relative 2D pose estimation from planar LiDAR sequences with a lightweight network based on Space-Time Blocks, which explicitly separate spatial processing along scan rays from temporal aggregation across scans. Our network processes 360° LiDAR sequences to output per-ray human presence, distance, and relative orientation. We train it via cross-modal self-supervision from a narrow RGB-D body tracker in the sensors' overlap region, removing the need for manual LiDAR labels. Quantitative experiments show that our approach consistently outperforms a parameter-matched baseline model, reducing errors in distance (-38%), position (-28%), and orientation (-15%). We further benchmark on the public FROG dataset, report real-time CPU inference on a service robot, and validate with in-field demonstrations, supporting its suitability for spatial perception on computationally constrained service robots.</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">摘要生成失败</div>
+<p>Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}</p></div>
+</div>
+</section>
+<section class="day">
 <h2>📅 2026-07-24 <span class="count">(5 篇)</span></h2>
 
 <div class="paper">
