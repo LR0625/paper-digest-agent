@@ -3311,5 +3311,146 @@
         "structured_summary": "【摘要生成失败】Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}"
       }
     ]
+  },
+  {
+    "date": "2026-07-25",
+    "domain": "具身智能与机器人学习",
+    "count": 4,
+    "papers": [
+      {
+        "arxiv_id": "2607.213411",
+        "raw_id": "http://arxiv.org/abs/2607.21341v1",
+        "title": "Grasp, Handover, Rotate: Bimanual Object Reorientation via Compositional Diffusion and Energy-Based Optimization",
+        "authors": [
+          "Wun Lam Yeung",
+          "Wenjun Liu",
+          "Yui Cheung Yu",
+          "Zhengyan Lambo Qin",
+          "Qijin She",
+          "Heng Li",
+          "Ziqi Wang",
+          "Ping Tan"
+        ],
+        "abstract": "Bimanual object reorientation - picking an object, handing it over between two arms, and placing it in a desired target pose - is valuable when direct placement from the initial grasp is infeasible due to collisions, kinematic constraints, or poor final orientation. However, achieving this under multiple competing objectives remains challenging. We introduce BiCompoDiff, a compositional diffusion and energy-based framework that jointly optimizes grasp selection, handover, regrasp, and motion planning under multiple constraints. By combining a pretrained grasp diffusion model with bimanual planning energy-based models (EBMs), our method injects gradient guidance during reverse diffusion to enforce collision avoidance, trajectory smoothness (via differentiable inverse kinematics), handover feasibility, and regrasp safety. Annealed MCMC sampling further refines grasp poses over the composite energy landscape. Experiments across diverse simulated household reorientation tasks demonstrate that BiCompoDiff achieves over 20% higher success rates and up to 37% smoother trajectories (measured by joint displacement) compared to strong sampling-based baselines. Real-world validation confirms effective sim-to-real transfer and robust performance on challenging scenes.",
+        "published": "2026-07-23T14:11:14+00:00",
+        "url": "http://arxiv.org/abs/2607.21341v1",
+        "pdf_url": "https://arxiv.org/pdf/2607.21341v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "sim2real_and_rl"
+        ],
+        "priority": false,
+        "score": 7,
+        "subfield_label": "",
+        "score_reason": "API error, kept by default",
+        "title_cn": "Grasp, Handover, Rotate: Bimanual Object Reorientation via Compositional Diffusion and Energy-Based Optimization",
+        "abstract_cn": "Bimanual object reorientation - picking an object, handing it over between two arms, and placing it in a desired target pose - is valuable when direct placement from the initial grasp is infeasible due to collisions, kinematic constraints, or poor final orientation. However, achieving this under multiple competing objectives remains challenging. We introduce BiCompoDiff, a compositional diffusion and energy-based framework that jointly optimizes grasp selection, handover, regrasp, and motion planning under multiple constraints. By combining a pretrained grasp diffusion model with bimanual planning energy-based models (EBMs), our method injects gradient guidance during reverse diffusion to enforce collision avoidance, trajectory smoothness (via differentiable inverse kinematics), handover feasibility, and regrasp safety. Annealed MCMC sampling further refines grasp poses over the composite energy landscape. Experiments across diverse simulated household reorientation tasks demonstrate that BiCompoDiff achieves over 20% higher success rates and up to 37% smoother trajectories (measured by joint displacement) compared to strong sampling-based baselines. Real-world validation confirms effective sim-to-real transfer and robust performance on challenging scenes.",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2607.213411",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2607.213411"
+        },
+        "structured_summary": "【摘要生成失败】Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}"
+      },
+      {
+        "arxiv_id": "2607.212271",
+        "raw_id": "http://arxiv.org/abs/2607.21227v1",
+        "title": "FORGE-plus: Force-Budgeted Recovery for Contact-Rich Assembly with a Frozen LLM Supervisor",
+        "authors": [
+          "Kyupaeck Jeff Rah",
+          "Midum Oh"
+        ],
+        "abstract": "Force-conditioned reinforcement learning (RL) enables tight-clearance assembly under a commanded force ceiling, but practical deployment requires determining an appropriate force limit for each object and recovering from insertion failures without exceeding it. We present a two-layer framework in which a frozen, text-only large language model (LLM) assigns a per-object force ceiling before execution and selects recovery maneuvers from a fixed action menu using compact textual force signatures. The LLM never controls force directly: a low-level controller enforces the force ceiling, the recovery policy cannot increase it, and the hidden breaking-force threshold is known only to the evaluator.\n  We evaluate the framework on fragile bottle placement and 0.4 mm diametral-clearance gear insertion using two grippers (Robotiq 2F-140 and Franka Panda hand). A single policy passes 256/256 evaluation episodes on both fragile and robust objects without breakage, correctly predicts release timing, and completes a full table-pick-and-insert pipeline with a mean peak force of 5.4 N. Under injected in-grip slip, the force-signature recovery strategy resolves 40% and 64% of failures on the two grippers, whereas a press-harder baseline is either ineffective or causes frequent breakage. We also report negative results, including the failure of PPO to solve the task under strict force constraints and unsuccessful learned release strategies. All experiments are conducted in rigid-body simulation with hidden force-threshold breakage; no sim-to-real claim is made.",
+        "published": "2026-07-23T11:43:31+00:00",
+        "url": "http://arxiv.org/abs/2607.21227v1",
+        "pdf_url": "https://arxiv.org/pdf/2607.21227v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "sim2real_and_rl"
+        ],
+        "priority": false,
+        "score": 7,
+        "subfield_label": "",
+        "score_reason": "API error, kept by default",
+        "title_cn": "FORGE-plus: Force-Budgeted Recovery for Contact-Rich Assembly with a Frozen LLM Supervisor",
+        "abstract_cn": "Force-conditioned reinforcement learning (RL) enables tight-clearance assembly under a commanded force ceiling, but practical deployment requires determining an appropriate force limit for each object and recovering from insertion failures without exceeding it. We present a two-layer framework in which a frozen, text-only large language model (LLM) assigns a per-object force ceiling before execution and selects recovery maneuvers from a fixed action menu using compact textual force signatures. The LLM never controls force directly: a low-level controller enforces the force ceiling, the recovery policy cannot increase it, and the hidden breaking-force threshold is known only to the evaluator.\n  We evaluate the framework on fragile bottle placement and 0.4 mm diametral-clearance gear insertion using two grippers (Robotiq 2F-140 and Franka Panda hand). A single policy passes 256/256 evaluation episodes on both fragile and robust objects without breakage, correctly predicts release timing, and completes a full table-pick-and-insert pipeline with a mean peak force of 5.4 N. Under injected in-grip slip, the force-signature recovery strategy resolves 40% and 64% of failures on the two grippers, whereas a press-harder baseline is either ineffective or causes frequent breakage. We also report negative results, including the failure of PPO to solve the task under strict force constraints and unsuccessful learned release strategies. All experiments are conducted in rigid-body simulation with hidden force-threshold breakage; no sim-to-real claim is made.",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2607.212271",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2607.212271"
+        },
+        "structured_summary": "【摘要生成失败】Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}"
+      },
+      {
+        "arxiv_id": "2607.206651",
+        "raw_id": "http://arxiv.org/abs/2607.20665v1",
+        "title": "Safe and Scalable Multi-Drone Payload Transport via CBF-based Reinforcement Learning with Zero-Shot Sim-to-Real Transfer",
+        "authors": [
+          "Jaeyoun Choi",
+          "Oswin So",
+          "Songyuan Zhang",
+          "Cooper Taylor",
+          "Chuchu Fan"
+        ],
+        "abstract": "Multi-drone payload transportation has emerged as a promising research paradigm with potential applications in construction, logistics, and disaster response. However, the complex coupled dynamics among drones, cables, and payloads pose significant challenges, and existing approaches remain limited in safety and scalability, particularly in dynamic and unstructured environments. In this work, we propose a learning-based framework for safe and scalable multi-drone cooperative payload transport. We introduce a minimal 2D abstraction that preserves the task-relevant drone-payload coupling required for coordination and safety, while remaining computationally efficient for large-scale learning. Using domain randomization over team size and physical parameters, we train a fully distributed policy via Discrete Graph Control Barrier Function Proximal Policy Optimization (DGPPO), enabling robust zero-shot sim-to-real transfer without fine-tuning. Extensive real-world evaluations demonstrate that a single learned policy generalizes across varying team sizes and task scenarios. Furthermore, multi-group hardware experiments show that the same policy can safely operate in dynamic environments, where other drone teams act as moving obstacles. These results indicate that the proposed framework enables efficient, safe, and scalable multi-drone payload transportation with strong generalization to complex real-world conditions.",
+        "published": "2026-07-22T19:01:57+00:00",
+        "url": "http://arxiv.org/abs/2607.20665v1",
+        "pdf_url": "https://arxiv.org/pdf/2607.20665v1",
+        "categories": [
+          "cs.RO",
+          "cs.MA",
+          "eess.SY"
+        ],
+        "matched_subfields": [
+          "sim2real_and_rl"
+        ],
+        "priority": false,
+        "score": 7,
+        "subfield_label": "",
+        "score_reason": "API error, kept by default",
+        "title_cn": "Safe and Scalable Multi-Drone Payload Transport via CBF-based Reinforcement Learning with Zero-Shot Sim-to-Real Transfer",
+        "abstract_cn": "Multi-drone payload transportation has emerged as a promising research paradigm with potential applications in construction, logistics, and disaster response. However, the complex coupled dynamics among drones, cables, and payloads pose significant challenges, and existing approaches remain limited in safety and scalability, particularly in dynamic and unstructured environments. In this work, we propose a learning-based framework for safe and scalable multi-drone cooperative payload transport. We introduce a minimal 2D abstraction that preserves the task-relevant drone-payload coupling required for coordination and safety, while remaining computationally efficient for large-scale learning. Using domain randomization over team size and physical parameters, we train a fully distributed policy via Discrete Graph Control Barrier Function Proximal Policy Optimization (DGPPO), enabling robust zero-shot sim-to-real transfer without fine-tuning. Extensive real-world evaluations demonstrate that a single learned policy generalizes across varying team sizes and task scenarios. Furthermore, multi-group hardware experiments show that the same policy can safely operate in dynamic environments, where other drone teams act as moving obstacles. These results indicate that the proposed framework enables efficient, safe, and scalable multi-drone payload transportation with strong generalization to complex real-world conditions.",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2607.206651",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2607.206651"
+        },
+        "structured_summary": "【摘要生成失败】Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}"
+      },
+      {
+        "arxiv_id": "2607.213091",
+        "raw_id": "http://arxiv.org/abs/2607.21309v1",
+        "title": "Factorized Spatio-Temporal Convolutions for Human Pose Estimation from Planar Lidar",
+        "authors": [
+          "Simone Arreghini",
+          "Mirko Nava",
+          "Nicholas Carlotti",
+          "Antonio Paolillo",
+          "Alessandro Giusti"
+        ],
+        "abstract": "Localizing nearby humans and estimating their facing direction are key capabilities for safe navigation and socially aware human-robot interaction. Many pose-estimation pipelines target cameras and 3D LiDAR or assume GPU-class compute, whereas service robots are often equipped only with omnidirectional planar LiDARs and modest onboard processors. We address omnidirectional human detection and relative 2D pose estimation from planar LiDAR sequences with a lightweight network based on Space-Time Blocks, which explicitly separate spatial processing along scan rays from temporal aggregation across scans. Our network processes 360° LiDAR sequences to output per-ray human presence, distance, and relative orientation. We train it via cross-modal self-supervision from a narrow RGB-D body tracker in the sensors' overlap region, removing the need for manual LiDAR labels. Quantitative experiments show that our approach consistently outperforms a parameter-matched baseline model, reducing errors in distance (-38%), position (-28%), and orientation (-15%). We further benchmark on the public FROG dataset, report real-time CPU inference on a service robot, and validate with in-field demonstrations, supporting its suitability for spatial perception on computationally constrained service robots.",
+        "published": "2026-07-23T13:31:54+00:00",
+        "url": "http://arxiv.org/abs/2607.21309v1",
+        "pdf_url": "https://arxiv.org/pdf/2607.21309v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "human_robot_interaction"
+        ],
+        "priority": false,
+        "score": 7,
+        "subfield_label": "",
+        "score_reason": "API error, kept by default",
+        "title_cn": "Factorized Spatio-Temporal Convolutions for Human Pose Estimation from Planar Lidar",
+        "abstract_cn": "Localizing nearby humans and estimating their facing direction are key capabilities for safe navigation and socially aware human-robot interaction. Many pose-estimation pipelines target cameras and 3D LiDAR or assume GPU-class compute, whereas service robots are often equipped only with omnidirectional planar LiDARs and modest onboard processors. We address omnidirectional human detection and relative 2D pose estimation from planar LiDAR sequences with a lightweight network based on Space-Time Blocks, which explicitly separate spatial processing along scan rays from temporal aggregation across scans. Our network processes 360° LiDAR sequences to output per-ray human presence, distance, and relative orientation. We train it via cross-modal self-supervision from a narrow RGB-D body tracker in the sensors' overlap region, removing the need for manual LiDAR labels. Quantitative experiments show that our approach consistently outperforms a parameter-matched baseline model, reducing errors in distance (-38%), position (-28%), and orientation (-15%). We further benchmark on the public FROG dataset, report real-time CPU inference on a service robot, and validate with in-field demonstrations, supporting its suitability for spatial perception on computationally constrained service robots.",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2607.213091",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2607.213091"
+        },
+        "structured_summary": "【摘要生成失败】Error code: 400 - {'error': {'message': 'The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but you passed deepseek-chat.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}"
+      }
+    ]
   }
 ]
