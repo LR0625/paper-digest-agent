@@ -11333,5 +11333,191 @@
         "structured_summary": "【子方向标签】\nVLA与端到端策略（自动驾驶场景下的视觉-语言-动作模型）\n\n【一句话简介】\n给自动驾驶VLA模型的感知模块加了一条\"记忆反馈回路\"，让感知能根据导航目标和历史决策主动聚焦，闭环驾驶分数刷新SOTA。\n\n【背景知识】\n要理解这篇论文，需要先掌握几个关键概念。▲VLA模型（Vision-Language-Action Model）▲ 是一类将视觉感知、语言理解与动作输出统一到一个端到端网络中的模型，近年来从机器人操作领域扩展到自动驾驶，典型代表如ORION。▲端到端自动驾驶▲ 指的是从原始传感器输入（摄像头图像）直接输出驾驶动作（油门、刹车、转向），中间不再有传统模块化流水线中人工设计的感知→预测→规划→控制各独立模块。▲闭环评测（Closed-loop Benchmark）▲ 是指模型输出的动作会实际影响仿真环境的状态演化，下一帧的输入取决于上一帧模型做了什么——这与开环评测（给定固定数据集，逐帧独立评估）有本质区别，更接近真实部署。▲Bench2Drive▲ 是目前自动驾驶VLA领域最主流的闭环评测基准，基于CARLA仿真器构建，包含44种交互场景（如加塞、行人横穿、环岛等），用驾驶分数（Driving Score）和成功率（Success Rate）两个指标衡量。▲交叉注意力（Cross-Attention）▲ 是一种让一组查询（Query）从另一组键值（Key-Value）中提取信息的机制，在这里被用来让当前感知查询\"回看\"历史记忆。▲情境记忆（Situational Memory）▲ 是本文提出的核心概念，指将过去若干时间步的感知、推理、导航目标和预测行为压缩成潜在向量并存储，供当前感知步骤查询。\n\n【核心问题】\n当前自动驾驶VLA模型的信息流是单向的：感知→推理→规划→动作，感知模块在最前端，它处理视觉输入时完全不知道后面推理和规划需要什么信息。虽然一些现代架构在感知模块内部保留了时间递归（比如用RNN或Transformer维持帧间连续性），但这种递归是\"盲目的\"——它只保证时间上的平滑，并不根据导航目标（\"我要左转\"）或历史决策（\"我刚才决定要变道\"）来调整感知的注意力分配。这导致一个具体问题：当模型已经决定要变道时，感知模块仍然平均地处理所有视觉区域，而不会优先关注后视镜区域或盲区。这个gap在闭环驾驶中尤其致命，因为闭环场景下感知质量直接影响下一帧的决策，误差会累积。填补这个gap意味着VLA模型可以像人类驾驶员一样\"带着意图去看\"，而不是\"先看完再想干什么\"。\n\n【方法】\nPRIME的核心设计是在VLA的感知模块和下游推理/规划模块之间建立一条反馈通路，具体包含以下几个技术要点：\n\n1. ▲情境记忆的构建▲：模型维护一个长度为L步的滑动窗口，每一步存储四类潜在表示——感知特征（当前帧的视觉编码）、推理隐状态（语言推理模块的中间表示）、导航目标嵌入（如\"前方200米右转\"的编码）、以及预测行为（模型上一帧输出的动作意图）。这四类信息被拼接并通过一个轻量级编码器压缩成固定维度的记忆向量。关键创新在于：之前的工作从未将导航目标和预测行为纳入感知的反馈信号，而这两者恰恰是最能提供\"意图\"信息的来源。\n\n2. ▲基于交叉注意力的感知查询条件化▲：当前帧的感知查询（Perceptual Query）通过交叉注意力机制从情境记忆中提取相关信息。具体来说，感知模块原本有一组可学习的查询向量，现在这些查询向量额外与情境记忆做交叉注意力，使得感知注意力图被历史决策和未来目标所调制。这相当于给感知模块装了一个\"根据意图调整焦距\"的旋钮。\n\n3. ▲极低的计算开销▲：整个反馈机制只增加了最多29.7M参数，仅占7.3B基础模型的0.41%。这是因为交叉注意力的键值对来自压缩后的记忆向量（维度远小于原始特征），且只在感知模块的查询端增加了一个轻量适配层，不需要重新训练整个模型。这种设计使得PRIME可以作为\"插件\"式模块附加到现有VLA上。\n\n4. ▲端到端可微分训练▲：整个反馈回路是可微分的，梯度可以从最终的驾驶动作损失反向传播穿过情境记忆回到感知模块，使得感知模块学会\"为了更好的驾驶决策而调整注意力\"。这与传统方法中感知和规划分开训练有本质区别。\n\n5. ▲与时间递归的区别▲：论文特别强调，PRIME不是简单的时间递归。传统时间递归（如Transformer-XL中的记忆机制）只是把过去帧的特征拼进来，而PRIME的记忆中包含了推理结果和导航目标这些\"高层语义\"，且通过交叉注意力实现选择性提取而非简单拼接。这是从\"记住过去\"到\"带着目的回忆\"的质变。\n\n【实验结果】\n论文在Bench2Drive闭环基准上进行评测，使用CARLA仿真器，44种交互场景，训练数据来自Think2Drive演示。\n\n关键数据：\n• ▲驾驶分数（Driving Score）达到82.47▲，比之前最优的ORION（77.74）提升了4.73分，这是目前所有已发表VLA中在Think2Drive演示上训练的最高分。\n• ▲成功率（Success Rate）达到60.00%▲，比ORION提升了5.38个百分点，意味着在44种场景中多完成了约2-3个场景。\n• ▲参数效率▲：仅增加29.7M参数（0.41%），推理延迟增加极小，论文声称\"minimal computational cost\"。\n• 论文应该包含了消融实验来验证情境记忆中各组件的贡献（感知、推理、导航目标、预测行为），以及窗口长度L的影响，但摘要中未给出具体消融数字，需要查阅全文确认。\n\n对比基线包括ORION（之前SOTA的VLA自动驾驶模型）以及可能的其他VLA方法（如DriveVLM等）。值得注意的是，PRIME的提升是在闭环评测中取得的，这比开环评测的提升更有说服力，因为闭环下误差会累积，任何感知改进都会被放大。\n\n【局限性】\n1. ▲仅在仿真中验证▲：所有实验都在CARLA/Bench2Drive仿真器中进行，没有真实道路测试。仿真器无法完全复现真实世界的传感器噪声、光照变化、极端天气等，因此82.47的驾驶分数在真实场景中的可迁移性存疑。对实际应用而言，这意味着距离部署还有相当距离。\n\n2. ▲依赖Think2Drive演示数据▲：训练使用了Think2Drive的专家演示，这意味着模型的行为上限受限于演示数据的质量和覆盖范围。如果演示数据中缺少某些罕见场景（如施工区域、紧急车辆避让），PRIME的情境记忆也无法在这些场景中提供有效反馈。\n\n3. ▲记忆窗口长度L的选择▲：论文使用固定长度的滑动窗口，但不同驾驶场景对历史信息的需求不同——高速公路巡航可能只需要几秒记忆，而复杂路口可能需要更长。固定L可能在某些场景下不够、在某些场景下冗余。论文未提及是否探索了自适应窗口机制。\n\n4. ▲基础模型规模大▲：7.3B参数的基座模型对车载计算平台是巨大负担，即使PRIME只增加0.41%参数，整体推理仍需高端GPU。这对实际量产车的算力预算构成挑战，论文未讨论模型量化或蒸馏的可能性。\n\n【个人视角点评】\n▲在子方向中的位置▲：这篇论文属于\"填补空白\"型工作，而非范式突破。它识别了VLA架构中一个真实但被忽视的结构性缺陷——感知模块的\"意图盲区\"——并给出了一个优雅、轻量的解决方案。说它不是范式突破，是因为它没有改变VLA的基本架构范式（仍然是感知→推理→规划→动作的前馈主干），而是在这个范式内加了一条反馈线。但这个空白填得很关键：它把\"反馈\"这个概念从控制层（动作反馈）和感知层（时间递归）提升到了\"意图驱动感知\"的层面，这是之前自动驾驶VLA没有系统探索过的。\n\n▲与其他子方向相比的价值和天花板▲：在具身智能的大版图中，自动驾驶VLA是\"室外结构化环境\"的代表，与机器人操作（室内非结构化）和人形运动控制（全身动力学）形成互补。PRIME这类工作的价值在于它解决的是\"感知-决策耦合\"问题，这个问题在机器人操作中同样存在（比如抓取时根据抓取意图调整视觉注意力），因此其核心idea有跨子方向的迁移潜力。但天花板也明显：它本质上是一个架构层面的改进，不涉及新的学习范式或新的数据来源，因此性能提升有上限——驾驶分数从77到82是显著进步，但不可能通过这种方式达到95+，因为仿真器本身的物理保真度和场景覆盖才是终极瓶颈。\n\n▲落地价值▲：距离实际部署还很远。卡点有三个：（1）仿真到真实的sim-to-real gap，CARLA的视觉渲染与真实摄像头差异巨大；（2）7.3B模型的车载部署，需要至少100+ TOPS的推理芯片且功耗可控；（3）闭环评测中的44个场景远不能覆盖真实道路的长尾情况。要落地，需要先在真实道路上做小规模闭环测试，验证情境记忆在真实传感器噪声下是否仍然有效，然后通过模型蒸馏/量化把参数量降到车载可接受范围（通常<1B），最后需要大规模真实驾驶数据来微调。\n\n▲如果只记住一件事▲：最值得记住的idea是\"让感知知道自己在找什么\"。传统VLA的感知是\"先看完再想\"，PRIME是\"带着问题看\"。这个思路的普适性极强——任何分层决策系统中，底层模块都可以通过接收高层意图的反馈来提升效率。这不仅是自动驾驶的技巧，而是一种通用的具身智能设计原则：感知不应该是对世界的被动编码，而应该是对任务的主动询问。\n\n【代码/数据开源情况】\n论文摘要中未提及代码或数据的开源情况。arXiv链接为http://arxiv.org/abs/2609.22040v1。鉴于该工作来自工业界研究机构（作者包括Narunas Vaskevicius、Luigi Palmieri等，通常与博世等企业相关），代码开源的的可能性中等。Bench2Drive基准本身是公开的，Think2Drive演示数据也是公开的，因此即使代码不开源，结果理论上可复现。建议关注论文全文中的\"Code Availability\"部分或项目主页。如果未开源，论文通常会在结论中承诺\"will release upon acceptance\"或类似表述，但需查阅全文确认。"
       }
     ]
+  },
+  {
+    "date": "2026-09-22",
+    "domain": "具身智能与机器人学习",
+    "count": 5,
+    "papers": [
+      {
+        "arxiv_id": "2609.246821",
+        "raw_id": "http://arxiv.org/abs/2609.24682v1",
+        "title": "Think Like a World Model, Act Like a VLA: Distilling World-Model Representations into Compact Robot Policies",
+        "authors": [
+          "Trung Dao",
+          "Sankalp Yamsani",
+          "Jaden Park",
+          "Joohyung Kim",
+          "Yong Jae Lee"
+        ],
+        "abstract": "Vision-Language-Action (VLA) models map observations to actions with no objective that accounts for how the world responds, so their robustness is bounded primarily by data coverage. World models carry precisely that missing objective and are better grounded for it, yet rolling the future forward costs seconds per decision and rules them out of the control loop. We show the two can be separated. What a world model knows about physical scenes lives in its \\emph{internal features}; generating the future is merely the objective that produced them, so the grounding can be inherited while the generative machinery is left behind. We add one feature-alignment term to ordinary VLA training: a frozen world model is run over the training frames once and cached, and the student learns to agree with that cache. No teacher is loaded during training, the projector is discarded after it, and the deployed policy is identical to the undistilled baseline, running in $32$~ms and $1.86$~GB on a consumer RTX~5090, so every gain is attributable to the representation rather than to added capacity or test-time compute. A $0.8$B student reaches $97.9\\%$ on LIBERO, improves from $48.2\\%$ to $50.5\\%$ on RoboCasa-GR1 humanoid manipulation, and the same objective carries over to real hardware, on both a single-arm and a bimanual platform. The gain survives changes of student scale, backbone, alignment layer, and teacher, indicating a broad representational prior rather than a fragile alignment between two particular networks. Project page: https://thaw-vla.trung-dt.com/.",
+        "published": "2026-09-21T14:41:08+00:00",
+        "url": "http://arxiv.org/abs/2609.24682v1",
+        "pdf_url": "https://arxiv.org/pdf/2609.24682v1",
+        "categories": [
+          "cs.RO",
+          "cs.CV"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "VLA与端到端策略",
+        "score_reason": "提出视觉-语言-动作模型的新架构或训练范式，直接推动端到端机器人策略学习。",
+        "title_cn": "像世界模型一样思考，像VLA一样行动：将世界模型表征蒸馏为紧凑机器人策略（Think Like a World Model, Act Like a VLA: Distilling World-Model Representations into Compact Robot Policies）",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action，VLA）模型将观测映射为动作，但没有任何目标函数来考虑世界如何响应，因此其鲁棒性主要受限于数据覆盖范围。世界模型恰恰承载了那个缺失的目标函数，并因此具有更好的基础 grounding，然而将未来向前推演每个决策需要耗费数秒，这使其无法进入控制回路。我们表明，二者是可以分离的。世界模型关于物理场景所知道的一切存在于其\\emph{内部特征}中；生成未来仅仅是产生这些特征的目标函数，因此 grounding 可以被继承，而生成机制则可以被舍弃。我们在普通 VLA 训练中加入一个特征对齐项：一个冻结的世界模型在训练帧上运行一次并被缓存，学生模型学习与该缓存保持一致。训练期间不加载教师模型，投影器在其后被丢弃，部署的策略与未蒸馏的基线完全相同，在消费级 RTX~5090 上以 $32$~ms 和 $1.86$~GB 运行，因此每一分增益都可归因于表征，而非增加的容量或测试时计算。一个 $0.8$B 的学生模型在 LIBERO 上达到 $97.9\\%$，在 RoboCasa-GR1 人形操作任务上从 $48.2\\%$ 提升至 $50.5\\%$，且同一目标函数可迁移至真实硬件，在单臂和双臂平台上均有效。该增益在学生规模、骨干网络、对齐层和教师模型发生变化时依然存在，表明这是一种广泛的表征先验，而非两个特定网络之间脆弱的对齐。项目页面：https://thaw-vla.trung-dt.com/。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2609.246821",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2609.246821"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细一点：世界模型表征蒸馏 / 表征对齐训练）\n\n【一句话简介】\n把冻结世界模型的内部表征蒸馏进紧凑 VLA 策略，不增加推理开销却显著提升鲁棒性。\n\n【背景知识】\n要读懂这篇论文，需要先理清三个概念。第一，▲VLA（Vision-Language-Action，视觉-语言-动作模型）▲：它把摄像头图像和语言指令直接映射成机器人动作，是当前端到端机器人策略的主流范式，代表工作如 OpenVLA、π0 等。第二，▲世界模型（World Model）▲：一类学习\"给定当前状态和动作，预测未来观测/状态\"的模型，比如视频预测模型或 Dreamer 系列。因为要预测未来，它被迫学到关于物理世界如何演化的内部表征，因此对场景的\"物理接地（grounding）\"通常比只做动作回归的 VLA 更好。第三，▲表征蒸馏（Representation Distillation）▲：让一个\"学生\"网络去模仿\"教师\"网络内部特征（而非输出）的训练技巧，常见于模型压缩。本文的关键洞察是：世界模型的价值不在它\"能生成未来\"，而在它训练过程中被迫形成的内部特征——生成只是产生这些特征的手段。所以可以只继承特征、丢掉生成机制。此外还需知道 ▲LIBERO▲（一个常用的机器人操作基准，含大量语言条件任务）和 ▲RoboCasa▲（一个大规模仿真家居操作基准，GR1 是其人形机器人版本）。\n\n【核心问题】\nVLA 模型本质上是一个从观测到动作的映射，训练目标里没有任何一项要求它理解\"世界会如何响应我的动作\"，因此它的鲁棒性完全被训练数据的覆盖范围所限制——数据没见过的场景就容易失败。世界模型恰好携带了这个缺失的目标，理论上更\"接地\"，但它的推理代价极高：每做一个决策都要把未来滚动展开，耗时以秒计，根本无法放进实时控制回路。于是领域里出现了一个两难：要么用接地好但太慢的世界模型，要么用快但脆弱、泛化受数据限制的 VLA。这篇论文要堵的 gap 正是：能否在不付出世界模型推理代价的前提下，把它的物理接地能力\"偷\"进 VLA？这个问题重要，因为它直接决定了 VLA 能否摆脱对海量数据覆盖的依赖，走向真正的泛化与鲁棒。\n\n【方法】\n核心思路一句话：世界模型的物理知识藏在它的内部特征里，而生成未来只是产生这些特征的训练目标，因此可以只继承特征、抛弃生成机器。具体做法分几点。第一，▲离线缓存教师特征▲：在训练开始前，把一个冻结的世界模型在全部训练帧上跑一遍，把它的中间层特征缓存下来。这一步只做一次，之后训练过程中完全不加载教师模型——这消除了常规蒸馏中\"教师与学生同时前向\"的巨大显存和算力开销。第二，▲只加一个特征对齐项▲：在普通 VLA 训练损失之外，增加一项让学生网络在对应层去\"同意\"缓存中的教师特征（即最小化学生特征与缓存特征的差异）。第三，▲投影器用完即弃▲：为了对齐维度，会加一个投影头（projector）把学生特征映射到教师特征空间，但训练结束后这个投影器被丢弃，部署时用的策略与未蒸馏的基线▲完全一致▲。这一点是本文最精巧的设计——它保证了所有性能提升都只能归因于表征本身，而不是模型容量增加或测试时算力增加。第四，▲零推理开销▲：部署策略在消费级 RTX 5090 上跑 32 ms、占 1.86 GB，与基线相同。为什么之前没人这么做？因为大家默认世界模型的价值在于\"预测未来\"这个能力本身，而本文指出真正有价值的是预测未来这一目标所▲逼出来的内部表征▲，这是一个视角上的转变。第五，作者还验证了这种对齐不是两个特定网络之间的脆弱匹配，而是更广泛的表征先验——换学生规模、换骨干、换对齐层、换教师，增益依然存在。\n\n【实验结果】\n实验在多个仿真与真机平台上展开，关键数据如下。第一，在 ▲LIBERO▲ 基准上，一个 0.8B 参数的学生模型达到 ▲97.9%▲ 的成功率，这是相当高的水平。第二，在 ▲RoboCasa-GR1 人形操作▲任务上，从 ▲48.2% 提升到 50.5%▲（+2.3 个百分点），说明在更困难、更接近真实的人形操作场景中增益依然存在。第三，▲真机验证▲：同一目标成功迁移到真实硬件，覆盖单臂和双臂两个平台，证明仿真中的增益不是仿真特有的假象。第四，▲泛化性消融▲：作者系统性地改变了学生规模、骨干网络、对齐层位置以及教师模型，增益都存活下来，这表明该方法捕获的是一种广泛的表征先验，而非两个特定网络间的脆弱对齐。第五，▲效率对比▲：部署策略在 RTX 5090 上 32 ms、1.86 GB，与未蒸馏基线完全相同，说明所有收益来自表征而非额外容量或测试时算力。\n\n【局限性】\n第一，▲依赖一个高质量的世界模型教师▲。整个方法的前提是存在一个已经训练好、且其内部特征确实包含有用物理接地的世界模型；如果教师本身质量差或与目标任务域不匹配，蒸馏可能无益甚至有害。这对实际应用意味着：部署方需要先有一个合适的世界模型，这本身有成本。第二，▲离线缓存的特征是静态的▲。教师特征在训练前一次性算好并缓存，训练过程中学生无法向教师\"提问\"或获得自适应反馈，因此对齐是单向、被动的，可能无法充分利用教师的全部知识。第三，▲增益幅度在困难任务上偏小▲。LIBERO 上很高，但 RoboCasa-GR1 上只提升 2.3 个百分点，说明在更接近真实、更复杂的场景中，世界模型表征带来的收益可能被其他瓶颈（如数据、动作空间复杂度）稀释。第四，▲未充分讨论失败模式▲。论文强调增益的广泛性，但对\"什么情况下这种方法会失效\"着墨较少，这对工程落地判断风险是不够的。\n\n【个人视角点评】\n这篇论文在 VLA 与端到端策略这个子方向里，属于▲范式突破与填补空白的结合▲，而非渐进改进。判断依据是：它重新定义了世界模型在机器人学习中的角色——从\"一个太慢所以不能用的决策器\"变成\"一个可以离线榨取表征的教师\"。这个视角转变打开了一条新路径：任何昂贵的、接地的模型都可以被\"蒸馏成先验\"而不必进控制回路。和领域里其他子方向相比，这类工作的价值层级很高，因为它触及的是 VLA 泛化能力的根本瓶颈（数据覆盖 vs 物理接地），而不是某个具体任务的性能刷分。它的天花板取决于一个更深的问题：世界模型的内部特征到底携带了多少可迁移的物理知识？如果答案是\"很多\"，那么这条路可以持续放大；如果只是\"一些\"，那么增益会像 RoboCasa 上那样有限。\n\n落地价值方面，这篇论文距离实际部署▲相当近▲，这是它最大的优势。因为部署策略与基线完全一致（32 ms、1.86 GB、消费级显卡），没有任何推理侧负担，工程团队几乎可以零成本地把这个训练技巧加到现有 VLA 训练流程里。卡点主要在训练侧：需要一个合适的世界模型教师、需要一次性缓存全部训练帧的教师特征（对大规模数据集有存储成本）、以及需要调好对齐层和损失权重。要真正落地，需要的是\"现成的、开源的、与目标域匹配的世界模型\"，以及一套标准化的特征缓存与对齐流程。\n\n如果只记住一件事：▲世界模型的价值不在它能预测未来，而在预测未来这个目标逼它学到的内部表征；因此可以只偷表征、不偷生成，用零推理开销换取物理接地。▲ 这个 idea 特别之处在于它把\"能力\"和\"产生能力的过程\"解耦了——这是一个可以迁移到很多其他场景的思维工具。\n\n【代码/数据开源情况】\n论文提供了项目主页 https://thaw-vla.trung-dt.com/ ，通常此类页面会包含论文、代码和模型链接。但摘要中未明确承诺代码或数据开源，也未给出 GitHub 仓库地址。建议读者访问项目页确认代码、预训练模型与特征缓存脚本的公开情况；若尚未开源，需关注作者是否在后续更新中放出。"
+      },
+      {
+        "arxiv_id": "2609.243501",
+        "raw_id": "http://arxiv.org/abs/2609.24350v1",
+        "title": "LIBERO-VPro: Benchmarking Closed-Loop Visual Robustness of Robotic Foundation Models",
+        "authors": [
+          "Huiqiong Li",
+          "Zhiting Mei",
+          "Anirudha Majumdar",
+          "Jingjing Chen",
+          "Yu-Gang Jiang",
+          "Bin Zhu"
+        ],
+        "abstract": "Robotic foundation models achieve impressive performance on standard manipulation benchmarks, yet these evaluations typically assume clean, timely, and consistent visual observations throughout execution. We introduce LIBERO-VPro, a benchmark for systematically evaluating the closed-loop visual robustness of robotic foundation models by perturbing the visual evidence available during execution. LIBERO-VPro covers four complementary dimensions, including Visual Evidence Degradation, Camera Staleness, Visual Source Consistency, and Task-Relevant Scene Variation, spanning 12 challenge categories, 96 experimental settings, and 3,296 task-condition cases. We evaluate three vision-language-action models and three world-action models over approximately 196,000 simulated episodes, complemented by 200 real-world rollouts on a Franka Research 3. Our results reveal that strong nominal performance can mask substantial weaknesses in visual grounding and adaptation. Models often remain successful despite severe object-level occlusion, yet degrade sharply when local interaction cues are disrupted or familiar spatial priors are violated. They are also highly sensitive to stale or missing observations and struggle when changed task preconditions require behavioral adaptation. Finally, VLAs and WAMs exhibit distinct robustness profiles, showing that visual robustness is multi-dimensional and architecture-dependent. LIBERO-VPro provides a systematic diagnostic framework for developing robotic foundation models that can more reliably ground and adapt their actions under challenging visual conditions.",
+        "published": "2026-09-21T09:43:41+00:00",
+        "url": "http://arxiv.org/abs/2609.24350v1",
+        "pdf_url": "https://arxiv.org/pdf/2609.24350v1",
+        "categories": [
+          "cs.RO",
+          "cs.CV"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "运动控制（足式/人形）",
+        "score_reason": "提出足式或人形机器人运动控制新策略，显著提升动态行走与平衡能力。",
+        "title_cn": "LIBERO-VPro：面向机器人基础模型的闭环视觉鲁棒性基准测试",
+        "abstract_cn": "机器人基础模型（robotic foundation models）在标准操作基准测试上取得了令人瞩目的性能，然而这些评估通常假设在整个执行过程中视觉观测是干净、及时且一致的。我们提出了LIBERO-VPro，一个通过扰动执行过程中可用的视觉证据来系统评估机器人基础模型闭环视觉鲁棒性（closed-loop visual robustness）的基准测试。LIBERO-VPro涵盖四个互补维度，包括视觉证据退化（Visual Evidence Degradation）、相机陈旧性（Camera Staleness）、视觉源一致性（Visual Source Consistency）和任务相关场景变化（Task-Relevant Scene Variation），跨越12个挑战类别、96种实验设置和3,296个任务条件案例。我们评估了三个视觉-语言-动作模型（vision-language-action models, VLAs）和三个世界-动作模型（world-action models, WAMs），运行了约196,000个模拟回合，并辅以在Franka Research 3上进行的200次真实世界部署测试。我们的结果揭示，强大的标称性能可能掩盖视觉基础（visual grounding）和适应能力方面的重大缺陷。模型在面对严重的物体级遮挡时往往仍能保持成功，但当局部交互线索被破坏或熟悉的空间先验被违反时，性能会急剧下降。它们还对陈旧或缺失的观测高度敏感，并且当变化的任务前提条件需要行为适应时表现挣扎。最后，VLA和WAM展现出不同的鲁棒性特征，表明视觉鲁棒性是多维的且依赖于架构。LIBERO-VPro提供了一个系统性诊断框架，用于开发能够在具有挑战性的视觉条件下更可靠地对其动作进行基础和适应的机器人基础模型。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2609.243501",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2609.243501"
+        },
+        "structured_summary": "【子方向标签】\n仿真到真机 / 强化学习（更精确地说，是\"机器人基础模型的鲁棒性评测基准\"，横跨 VLA 与仿真评测）\n\n【一句话简介】\n提出 LIBERO-VPro 基准，系统评测机器人基础模型在视觉退化、延迟、不一致等扰动下的闭环鲁棒性。\n\n【背景知识】\n要理解这篇论文，先要弄清几个概念。▲机器人基础模型（Robotic Foundation Model）▲ 指在大规模机器人数据上预训练、能直接根据视觉观测输出动作的通用模型，典型代表是 ▲VLA（Vision-Language-Action，视觉-语言-动作模型）▲——它把图像、语言指令映射成动作序列，例如 OpenVLA、π0 这类模型；以及 ▲WAM（World-Action Model，世界-动作模型）▲——它内部建模环境动态（预测未来画面）再据此规划动作。▲闭环（closed-loop）▲ 指模型不是\"看一眼就规划到底\"，而是执行中不断接收新观测、重新决策，因此对观测质量高度敏感。▲视觉鲁棒性（visual robustness）▲ 指当输入图像被遮挡、模糊、延迟或与训练分布不一致时，模型还能否正确行动。▲LIBERO▲ 是当前主流的机器人操作仿真基准（一套标准化的桌面操作任务集），本文的 VPro 是它的\"鲁棒性扩展版\"。▲Nominal performance（标称性能）▲ 指在干净、理想观测下的成绩，本文核心论点正是：标称成绩好，不代表真实环境下可靠。\n\n【核心问题】\n现有机器人基础模型的评测几乎都假设观测是干净、及时、一致的——但真实部署中摄像头会脏、会延迟、会被遮挡、会换位置。这导致一个危险的假象：模型在 LIBERO 等基准上刷到高分，却在真实场景中因视觉扰动而崩溃，而学界缺乏系统手段去量化这种落差。本文要回答的是：当视觉证据被系统性破坏时，VLA 和 WAM 到底在哪些维度上脆弱、哪些维度上意外坚韧？这个问题重要，因为它把\"鲁棒性\"从模糊口号变成可分解、可测量、可诊断的多维指标，直接关系到基础模型能否走出实验室。\n\n【方法】\n核心贡献是一套▲系统化的视觉扰动评测框架▲，而非新模型。其设计要点如下：\n\n1. ▲四维扰动分类体系▲：作者把视觉鲁棒性拆成四个互补维度——(a) ▲Visual Evidence Degradation（视觉证据退化）▲：遮挡、模糊、噪声等直接损坏图像内容；(b) ▲Camera Staleness（相机陈旧/延迟）▲：模型收到的是过时帧，模拟真实系统的通信/计算延迟；(c) ▲Visual Source Consistency（视觉来源一致性）▲：不同相机或视角间信息不一致；(d) ▲Task-Relevant Scene Variation（任务相关场景变化）▲：物体位置、外观等改变，破坏模型依赖的空间先验。这个分解是创新点——之前没人把鲁棒性拆得这么细，多数工作只测单一遮挡。\n\n2. ▲规模化的评测矩阵▲：覆盖 12 个挑战类别、96 种实验设置、3,296 个任务条件案例，构成一个高维诊断网格，而非零散测试。\n\n3. ▲闭环执行中扰动▲：关键设计是扰动发生在▲执行过程中▲而非仅初始帧，这才能暴露闭环策略在动态观测退化下的真实行为——这是与\"静态图像鲁棒性测试\"的本质区别。\n\n4. ▲跨架构对比▲：同时评测 3 个 VLA 和 3 个 WAM，首次系统对比两类架构的鲁棒性画像差异，揭示鲁棒性是\"架构依赖\"的。\n\n5. ▲仿真+真机双验证▲：约 196,000 个仿真 episode 保证统计功效，再加 200 次 Franka Research 3 真机 rollout 验证仿真结论的可迁移性，避免纯仿真结论的失真。\n\n【实验结果】\n实验在 LIBERO 仿真环境 + Franka Research 3 真机上进行，对比 3 个 VLA 与 3 个 WAM，共约 196,000 仿真 episode 与 200 真机 rollout。关键结论有三组具体发现：(1) ▲物体级严重遮挡下模型仍常成功▲——说明模型对整体物体缺失有冗余，但对▲局部交互线索（local interaction cues）▲ 的破坏却急剧退化，即抓取点、接触区域等精细视觉信息才是命门；(2) 模型对▲陈旧或缺失观测高度敏感▲，且当▲熟悉的空间先验被违反▲时性能骤降，说明模型严重依赖训练分布中的位置规律而非真正理解场景；(3) ▲VLA 与 WAM 呈现不同的鲁棒性画像▲，证明视觉鲁棒性是多维且架构依赖的，不存在单一\"最鲁棒\"架构。这些结果系统性地证明：标称高分掩盖了视觉 grounding 与适应能力的实质缺陷。\n\n【局限性】\n1. ▲扰动是人工注入的，未必匹配真实退化分布▲：真实世界的相机脏污、光照变化、运动模糊有复杂的物理统计特性，人工扰动可能高估或低估某些脆弱性，意味着结论向真实部署外推时需谨慎。\n2. ▲真机验证规模有限（仅 200 rollout）▲：相比 19.6 万仿真 episode，真机样本量小，可能不足以覆盖全部 12 类扰动的真机表现，真机结论的统计置信度弱于仿真。\n3. ▲依赖 LIBERO 任务集，任务多样性受限▲：LIBERO 以桌面操作为主，对移动操作、长时序任务、多机器人协作等场景的鲁棒性结论可能不适用，限制了基准的普适性。\n4. ▲只评测不提供改进方法▲：论文是诊断工具而非解决方案，读者知道\"哪里脆弱\"却不知道\"怎么修\"，落地时仍需额外研究来提升鲁棒性。\n\n【个人视角点评】\n这篇论文在\"机器人基础模型评测\"这个子方向里属于▲填补空白▲型工作，而非范式突破。判断依据是：它没有提出新模型或新算法，但把此前零散、单维的鲁棒性测试升级为系统化、多维、闭环、跨架构的诊断框架——这类基准工作往往在领域从\"刷分\"转向\"可信部署\"的拐点上价值凸显，类似 NLP 领域的 GLUE/HELM 之于模型评测。它的价值层级属于\"基础设施级\"：本身不直接提升性能，但会改变整个社区衡量进步的方式，天花板在于能否被广泛采纳为标准。\n\n和其他子方向相比，这类评测工作的价值在于\"校准方向\"——当 VLA/WAM 论文都在宣称高分时，它提醒大家这些分数有多脆弱。但它的天花板也受限于此：基准会随模型迭代而过时，且不产生可直接部署的能力。落地价值上，它距离产品化很近（作为内部测试套件即可用），但真正让模型在真实视觉扰动下可靠，还需模型侧改进；卡点在于仿真扰动与真实退化的 gap，以及缺乏\"扰动感知训练\"的配套方法。若只记住一件事：▲标称性能会系统性掩盖视觉 grounding 的脆弱性，而鲁棒性是多维且架构依赖的——不能用一个分数概括▲。这个 idea 特别，因为它把\"鲁棒\"从形容词变成了可分解的诊断坐标，让\"哪里坏、为什么坏\"变得可测量。\n\n【代码/数据开源情况】\n摘要与给定信息中未明确说明开源状态及链接。按此类基准论文的惯例，作者通常会在论文接收后公开代码与评测套件（LIBERO 本身是开源基准），建议关注 arXiv 页面（http://arxiv.org/abs/2609.24350v1）及项目主页获取后续开源信息。"
+      },
+      {
+        "arxiv_id": "2609.241871",
+        "raw_id": "http://arxiv.org/abs/2609.24187v1",
+        "title": "StenoVLA-3D: 3D-Aware Reasoning VLA for Navigation Through Gastrointestinal Stenoses",
+        "authors": [
+          "Tamima Tabassum",
+          "Yiming Huang",
+          "Tianchun Wu",
+          "Changjing Liu",
+          "Zhiqing Tang",
+          "Chikit Ng",
+          "Beilei Cui",
+          "Liangjing Shao",
+          "Jiewen Lai",
+          "Hongliang Ren"
+        ],
+        "abstract": "Autonomous endoscopic navigation requires the policy model to predict actions from texture-poor monocular observations, make safe control decisions, and retain evidence of lesions after they leave the field of view. Existing vision-language-action (VLA) models primarily rely on visual appearance and short-term context, limiting geometric grounding and episode-level reporting. We introduce StenoVLA-3D, a 3D-aware VLA framework for navigating through stenotic regions. We integrate point-maps into the Cosmos-Reason 2 backbone through learned geometry-gated fusion, and also propose a temporal state branch to model traversal progress. Our reasoning-and-action backbone predicts grounded reasoning with actions, while dedicated heads estimate stenosis shape and generate the final lesion report. We further introduce EndoCausal, an episode-level dataset with lesion annotations, actions, and temporally grounded reasoning. On 40 held-out recorded test episodes, StenoVLA-3D reaches 95.2\\% semantic accuracy and 83.4\\% action accuracy. On the physical 3-DoF endoscope, it attains 88.9\\% and 77.8\\% task success in esophageal and colonic phantoms (36 trials each), substantially outperforming the evaluated baselines.",
+        "published": "2026-09-21T06:59:11+00:00",
+        "url": "http://arxiv.org/abs/2609.24187v1",
+        "pdf_url": "https://arxiv.org/pdf/2609.24187v1",
+        "categories": [
+          "cs.RO",
+          "cs.CV"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "仿真到真机 / 强化学习",
+        "score_reason": "聚焦仿真到真机的迁移与强化学习训练，解决现实部署的关键瓶颈。",
+        "title_cn": "StenoVLA-3D：用于穿越胃肠道狭窄的3D感知推理VLA",
+        "abstract_cn": "自主内镜导航要求策略模型能够从纹理贫乏的单目观测中预测动作、做出安全的控制决策，并在病灶离开视野后仍保留其证据。现有的视觉-语言-动作（vision-language-action，VLA）模型主要依赖视觉外观和短期上下文，限制了几何 grounding（几何基础）和 episode 级别的报告能力。我们提出了 StenoVLA-3D，一种用于穿越狭窄区域的3D感知VLA框架。我们通过学习到的几何门控融合（geometry-gated fusion）将点图（point-maps）集成到 Cosmos-Reason 2 主干中，并提出了一条时间状态分支来建模穿越进度。我们的推理与动作主干在预测动作的同时预测有 grounding 的推理，而专用头则估计狭窄形状并生成最终的病灶报告。我们进一步提出了 EndoCausal，一个带有病灶标注、动作和时间 grounded 推理的 episode 级数据集。在40个留出的录制测试 episode 上，StenoVLA-3D 达到了95.2%的语义准确率和83.4%的动作准确率。在物理3自由度内镜上，它在食管和结肠体模中分别取得了88.9%和77.8%的任务成功率（各36次试验），大幅优于所评估的基线方法。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2609.241871",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2609.241871"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（偏医疗具身智能 / 内窥镜自主导航）\n\n【一句话简介】\n给内窥镜VLA加上3D点图与时间状态分支，让机器人能自主穿过消化道狭窄并事后生成病灶报告。\n\n【背景知识】\n要读懂这篇论文，先要理解四个关键概念。第一，▲VLA（Vision-Language-Action，视觉-语言-动作模型）▲：把视觉观测和自然语言指令一起输入一个大模型，直接输出机器人动作，是当前具身智能最主流的端到端范式，代表工作有RT-2、OpenVLA等。第二，▲内窥镜自主导航（autonomous endoscopy）▲：让机器人自己操控软镜在消化道里前进、转弯、通过狭窄段，替代医生手工操作，核心难点是腔道纹理极度贫乏（\"texture-poor\"）、单目视野窄、且镜体一旦离开病灶视野就无法再回看。第三，▲点图（point-map）▲：由深度估计或SLAM生成的稠密3D点云表示，相比RGB图像能提供几何结构信息——在内窥镜场景里，狭窄段的\"形状\"（环状收缩）靠纹理几乎看不出来，但几何上非常明显。第四，▲几何门控融合（geometry-gated fusion）▲：一种把3D几何特征\"有选择地\"注入到2D视觉主干中的机制，门控（gating）指用可学习的权重决定在哪些位置、哪些时刻让几何信息占主导，避免几何噪声污染语义特征。此外，▲Cosmos-Reason 2▲是NVIDIA的物理AI推理基座模型（属于世界模型/推理模型系列），本文把它作为VLA的\"推理-动作\"主干。▲EndoCausal▲是本文提出的数据集，强调\"episode-level\"（整段手术级别）的因果标注，即不只标单帧动作，还标\"为什么这么做\"的时间接地推理。\n\n【核心问题】\n现有VLA模型（如OpenVLA、RT-2系列）本质上是\"2D外观驱动+短时上下文\"的：它们靠RGB纹理识别物体，靠几帧历史决定动作，这在桌面抓取里够用，但在内窥镜里会失效——因为狭窄段几乎没有纹理线索，纯靠外观无法判断\"这里是不是变窄了、能不能过\"。更关键的是，临床场景要求\"episode-level reporting\"（整段级报告）：病灶一旦滑出视野，模型必须还能记得它、描述它，而现有VLA的短时记忆机制做不到这一点。本文要堵的gap是：▲如何在纹理贫乏的单目内窥镜观测下，让VLA同时具备几何接地（geometric grounding）、穿越进度建模和事后病灶报告能力▲。这件事重要，是因为它把VLA从\"实验室桌面操作\"推向\"临床可用的自主手术辅助\"，是具身智能在医疗场景落地的关键一步。\n\n【方法】\n核心技术方案可拆成四块，每块都针对一个具体失效模式。\n\n1. ▲点图注入 + 几何门控融合▲：作者把点图（point-map）通过一个可学习的门控模块融合进Cosmos-Reason 2主干。原理是：点图提供狭窄段的3D形状（环状收缩的几何曲率），而RGB提供语义（这是食管还是结肠）。门控机制让网络自己决定\"何时信几何、何时信外观\"——比如在纹理丰富的正常腔道里门控偏向RGB，在狭窄处偏向点图。之前没人这么做，是因为内窥镜单目深度估计本身不可靠，直接拼接点图会引入噪声；门控相当于给几何信息加了一道\"可信度闸门\"。\n\n2. ▲时间状态分支（temporal state branch）▲：单独一个分支建模\"穿越进度\"（traversal progress），即当前镜体在狭窄段前、中、后哪个阶段。为什么有效？因为穿越狭窄是一个过程性任务，动作决策依赖\"我走到哪了\"，而普通VLA的短时上下文窗口不足以表达这种长时进度。这个分支相当于给策略装了一个\"进度条\"。\n\n3. ▲推理-动作主干 + 专用头▲：主干同时输出\"接地的推理\"（grounded reasoning，即自然语言解释为什么做这个动作）和动作；另外挂两个专用头，一个估计狭窄形状（stenosis shape），一个生成最终病灶报告（lesion report）。这种\"主干共享+多任务头\"的设计让推理、控制、报告三者共享表征，报告头能利用主干在病灶还在视野时留下的特征。\n\n4. ▲EndoCausal数据集▲：提供episode级的病灶标注、动作、以及时间接地的推理（temporally grounded reasoning），即\"在第t帧因为看到X所以做Y\"的因果链。这是训练上述推理-动作联合输出的前提，也是本文区别于以往只标动作的内窥镜数据集的关键。\n\n【实验结果】\n实验分仿真/录制回放和真机两部分。在▲40段held-out录制测试episode▲上，StenoVLA-3D达到▲95.2%语义准确率▲（semantic accuracy，指推理/报告文本的正确性）和▲83.4%动作准确率▲（action accuracy，指预测动作与专家动作一致率）。在▲物理3-DoF内窥镜▲上，食道体模（esophageal phantom）和结肠体模（colonic phantom）各做▲36次试验▲，任务成功率分别为▲88.9%▲ 和▲77.8%▲，论文称\"substantially outperforming the evaluated baselines\"（显著优于所评估的基线）。这里有三组具体数据：95.2%语义、83.4%动作、88.9%/77.8%真机成功率。不过摘要未给出baseline的具体数值和消融实验细节，从摘要看，几何门控融合和时间状态分支的单独贡献需要通过消融来验证，但摘要未披露，需查全文确认。\n\n【局限性】\n第一，▲真机试验规模小且是体模不是活体▲：36次试验×2种体模，样本量偏小，且phantom（体模）无法复现真实消化道的蠕动、分泌物、出血等干扰，这意味着88.9%的成功率在活体上大概率会下降，距离临床部署还有实质距离。第二，▲依赖点图质量▲：整个方法建立在点图能可靠反映狭窄几何的假设上，但内窥镜单目深度估计在纹理贫乏区域恰恰最容易失败——这是一个潜在的循环依赖（用不可靠的深度去解决纹理贫乏问题），论文未说明深度来源及其鲁棒性。第三，▲3-DoF内窥镜自由度极低▲：真实临床内窥镜通常有更多自由度（含镜头弯曲、旋转、进退），3-DoF简化了控制问题，方法的可扩展性存疑。第四，▲报告生成的临床可靠性未验证▲：病灶报告的\"语义准确率95.2%\"是在录制数据上测的，没有临床医生盲评，医学报告的错误代价极高，这个指标不足以支撑临床结论。\n\n【个人视角点评】\n这篇论文在VLA与端到端策略子方向里属于▲\"填补空白+领域迁移\"型工作▲，而非范式突破。它没有提出全新的VLA架构范式，而是把已有的\"3D几何注入VLA\"思路（在通用机器人里已有类似工作，如3D-VLA、PointVLA）迁移到内窥镜狭窄穿越这个特定场景，并补上了\"episode级报告\"这个临床刚需。判断依据是：几何门控融合、时间状态分支都是工程上合理的组合创新，但单看每个组件都不算首创。它的价值在于▲把VLA的能力边界从\"桌面操作\"推到\"临床腔道导航\"▲，并配套了EndoCausal数据集——数据集本身可能比模型更有长期价值。\n\n和其他子方向比，这类工作的天花板受限于医疗机器人的监管与验证门槛：通用VLA的天花板是\"通用操作智能\"，而医疗VLA的天花板是\"通过FDA/NMPA认证的自主手术辅助\"，后者需要大量活体实验、医生盲评、失败模式分析，周期以年计。所以它的学术价值高（开辟场景），但产品化路径极长。\n\n落地价值：距离实际部署还很远。卡点有三个——(1) 活体数据缺失，体模到活体是质变；(2) 深度/点图在真实腔道里的可靠性未证明；(3) 医疗AI的监管要求可解释性和失败安全机制，而VLA的黑盒推理目前难以满足。要落地，需要：大规模活体/离体数据、临床医生参与的闭环评估、以及\"人在回路\"的安全兜底。\n\n如果只记住一件事：▲在纹理贫乏的场景里，几何（点图）比外观（RGB）更该被信任，而门控机制是让网络自己学会\"何时信几何\"的关键▲。这个idea特别，是因为它挑战了VLA\"视觉至上\"的默认假设，提示我们：不同场景下，多模态信息的可信度是动态变化的，让模型学会\"选择性信任\"比简单拼接模态更重要。\n\n【代码/数据开源情况】\n摘要及给出的信息中▲未提及代码或数据集的开源链接▲，也未明确承诺后续公开。EndoCausal作为本文提出的episode级数据集，若不开源将显著削弱其社区影响力——建议关注论文全文的\"Data Availability\"或项目主页，确认是否会在GitHub/HuggingFace上发布。目前无法给出具体链接。"
+      },
+      {
+        "arxiv_id": "2609.249761",
+        "raw_id": "http://arxiv.org/abs/2609.24976v1",
+        "title": "DexTacWAM: A Visuo-Tactile World-Action Model for Dexterous Manipulation",
+        "authors": [
+          "Haoran Yuan",
+          "Zekai Wang",
+          "Boning Shao",
+          "Haoran Lu",
+          "Trevor Darrell",
+          "Ismini Lourentzou",
+          "Wei Zhan"
+        ],
+        "abstract": "Dexterous manipulation depends on contact dynamics that are often only partially observable from vision. Recent World-Action Models (WAMs) couple predictive video world modeling with action generation, but remain largely vision-centric and therefore cannot directly model these contact dynamics. We present DexTacWAM, a visuo-tactile WAM that encodes each fingertip independently, aggregates the resulting features through a finger- and pose-aware tactile compressor, and injects the tactile latent into a video diffusion world model for joint visuo-tactile world modeling. Across six contact-rich dexterous manipulation tasks on a 22-DoF bimanual platform, DexTacWAM achieves the highest score on every task, averaging 70.6 versus 38.0 for the strongest baseline. Ablations attribute the gain to modeling contact evolution as part of the predicted world state rather than tactile conditioning alone: removing tactile world modeling reduces the four-task mean from 74.7 to 26.6 while keeping the same tactile features and action expert. After four hours of tactile-encoder adaptation with a frozen pretrained vision VAE, our continual vision-to-touch learning extends the pretrained video model to touch using roughly 100 demonstrations per task without tactile midtraining, while retaining visual prediction quality within 0.5 dB of vision-only counterparts. The compressor retains 89.4% of pre-fusion contact recall while enabling 2.26x faster training and 1.29x faster inference. Together, these results show that pretrained video priors can be extended to distributed multi-finger contact dynamics in a data- and compute-efficient manner.",
+        "published": "2026-09-21T17:55:24+00:00",
+        "url": "http://arxiv.org/abs/2609.24976v1",
+        "pdf_url": "https://arxiv.org/pdf/2609.24976v1",
+        "categories": [
+          "cs.RO",
+          "cs.AI",
+          "cs.CV"
+        ],
+        "matched_subfields": [
+          "manipulation"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "世界模型与规划",
+        "score_reason": "构建可预测未来状态的世界模型并用于长程规划，对具身决策具有重要价值。",
+        "title_cn": "DexTacWAM：面向灵巧操作的视触觉世界-动作模型（A Visuo-Tactile World-Action Model for Dexterous Manipulation）",
+        "abstract_cn": "灵巧操作依赖于接触动力学，而这类动力学往往只能从视觉中被部分观测到。近期的世界-动作模型（World-Action Models, WAMs）将预测性视频世界建模与动作生成相耦合，但仍在很大程度上以视觉为中心，因此无法直接对这些接触动力学进行建模。我们提出了DexTacWAM，一种视触觉世界-动作模型（visuo-tactile WAM），它独立编码每个指尖，通过一个指别与位姿感知的触觉压缩器（finger- and pose-aware tactile compressor）聚合所得特征，并将触觉潜变量注入视频扩散世界模型，以实现联合的视触觉世界建模。在22自由度双臂平台上开展的六项富接触灵巧操作任务中，DexTacWAM在每项任务上均取得最高分，平均为70.6，而最强基线为38.0。消融实验将这一增益归因于将接触演化建模为预测世界状态的一部分，而非仅依赖触觉条件化：在保持相同触觉特征和动作专家（action expert）的情况下，移除触觉世界建模使四项任务均值从74.7降至26.6。在使用冻结的预训练视觉VAE进行四小时触觉编码器适配后，我们的持续视觉到触觉学习（continual vision-to-touch learning）无需触觉中间训练（tactile midtraining），即可利用每项任务约100条演示将预训练视频模型扩展至触觉，同时将视觉预测质量保持在仅视觉对照模型0.5 dB以内。该压缩器在实现训练速度提升2.26倍、推理速度提升1.29倍的同时，保留了融合前89.4%的接触召回率。这些结果共同表明，预训练视频先验能够以数据和计算高效的方式扩展至分布式多指接触动力学。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2609.249761",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2609.249761"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细分地说，是\"视触觉世界模型 + 动作生成\"这一交叉方向，介于世界模型与灵巧操作之间）\n\n【一句话简介】\n用视触觉世界-动作模型把指尖触觉预测纳入视频扩散世界模型，让灵巧手在接触密集任务上成功率翻倍。\n\n【背景知识】\n要读懂这篇论文，需要先理解四个概念。第一，▲世界模型（World Model）▲：让智能体在\"脑内\"预测未来画面或状态，再基于预测做决策，类似棋手落子前先在脑中推演几步。第二，▲世界-动作模型（World-Action Model, WAM）▲：把\"预测未来\"和\"输出动作\"耦合在同一个模型里，视频扩散模型负责想象未来帧，动作专家（action expert）负责从想象中解码出关节指令。第三，▲扩散模型（Diffusion Model）▲：通过逐步去噪从随机噪声中生成目标（这里是视频帧），天然适合建模多模态的未来分布。第四，▲触觉感知（Tactile Sensing）▲：灵巧手（dexterous hand，多自由度机械手，本文平台为22自由度双臂）指尖的触觉传感器能直接测量接触力、滑移、形变，这些信息在视觉里往往被遮挡或分辨率不足。核心矛盾在于：现有 WAM 几乎全是\"视觉中心\"的，而抓取、拧瓶盖、插拔这类接触密集任务的关键状态恰恰藏在指尖接触里，视觉看不到。\n\n【核心问题】\n论文要解决的是：如何让一个已经在大规模视频上预训练好的世界模型，低成本地\"长出触觉\"，从而建模视觉不可观测的接触动力学。这个问题的意义有三层。其一，它堵上了 WAM 领域\"视觉中心\"的空白——此前 WAM 假设世界状态可由视频充分表达，但接触力、滑移、接触几何这些量本质上不在像素里。其二，它回应了触觉学习的老大难：触觉数据稀缺、传感器异构、多指分布（每根手指一个传感器）难以统一编码，导致触觉策略往往要从小规模数据从头训练。其三，它给出了一个\"持续学习\"式的答案——不是重训一个多模态大模型，而是冻结视觉先验、只适配触觉编码器，这对算力和数据都紧张的机器人实验室极具现实意义。\n\n【方法】\n核心技术方案可拆为四点。\n\n1. ▲逐指独立编码 + 指-位姿感知触觉压缩器（finger- and pose-aware tactile compressor）▲。每根手指的触觉信号先被独立编码成特征，再用一个压缩器把这些\"分布式\"特征聚合。关键在于它同时感知\"是哪根手指\"和\"手当前处于什么位姿\"，因为同样的接触力在不同手指、不同手腕姿态下语义完全不同。压缩器把多指触觉压成一个紧凑的触觉隐变量（tactile latent），既保留了接触召回率（89.4%），又把训练加速2.26倍、推理加速1.29倍——这是工程上的关键设计，否则多指触觉会让扩散模型的计算量爆炸。\n\n2. ▲触觉隐变量注入视频扩散世界模型▲。触觉 latent 被注入到视频扩散过程中，使得模型预测的\"未来世界状态\"里同时包含视觉帧和触觉演化。这是与\"触觉条件化（tactile conditioning）\"的本质区别：条件化只是把触觉当作动作生成的额外输入，而这里触觉是被预测的世界状态的一部分。\n\n3. ▲联合视触觉世界建模（joint visuo-tactile world modeling）▲。模型同时预测未来视频和未来触觉，动作专家再从联合预测中解码动作。消融实验证明这是性能来源：去掉触觉世界建模（只保留触觉条件化），四任务均值从74.7暴跌到26.6。\n\n4. ▲持续视觉到触觉学习（continual vision-to-touch learning）▲。冻结预训练视觉 VAE（变分自编码器，负责把图像压成隐空间），只花4小时适配触觉编码器，每任务约100条演示即可，无需触觉中训练（tactile midtraining）。这利用了视频预训练先验的可迁移性，把\"从零学触觉\"变成\"给视觉模型接上触觉接口\"。\n\n【实验结果】\n实验在22自由度双臂平台上做六个接触密集的灵巧操作任务。关键数据有三组。第一，DexTacWAM 在全部六个任务上都拿到最高分，平均70.6，而最强 baseline 只有38.0——接近翻倍的提升，这在机器人学习里是相当大的差距。第二，消融实验直接定位了增益来源：去掉触觉世界建模后，四个任务的平均分从74.7掉到26.6，而触觉特征和动作专家完全不变，说明\"把接触演化当作世界状态来预测\"才是关键，而非触觉输入本身。第三，效率与保真度：触觉压缩器保留89.4%的融合前接触召回率，训练加速2.26倍、推理加速1.29倍；持续学习后视觉预测质量与纯视觉模型相差在0.5 dB以内，说明接上触觉没有牺牲视觉先验。\n\n【局限性】\n第一，任务和平台单一。所有实验都在同一个22自由度双臂平台上，触觉传感器型号、手指布局固定，压缩器的\"指-位姿感知\"设计是否迁移到其他手型（如三指、五指不同构型）未知，这意味着跨硬件泛化性存疑。第二，每任务仍需约100条演示。虽然比从头训练省，但对真正的新任务仍需人类示教，不是零样本，实际部署时数据采集成本依然存在。第三，依赖预训练视频 VAE 的质量。方法的前提是\"视觉先验足够好\"，若换到视觉预训练不足的领域（如透明物体、强反光场景），触觉适配可能失去支点。第四，触觉世界建模的预测精度未被单独量化。论文报告的是任务分数和视觉保真度，但触觉预测本身的误差、以及接触事件（如滑移发生时刻）的预测准确率没有细说，这影响我们对\"模型是否真懂接触\"的判断。\n\n【个人视角点评】\n这篇论文在所属子方向里属于▲范式突破的早期信号▲，而非渐进改进。判断依据是：它改变了 WAM 的建模假设——从\"世界状态=视频\"变成\"世界状态=视频+触觉演化\"。消融数据（74.7→26.6）是硬证据，说明这不是调参红利，而是建模层面的差异。同时它给出了一个可复制的配方：冻结视觉先验 + 轻量触觉适配，这让后续工作有明确的起点。\n\n放到整个具身智能坐标系里看，这类工作的价值层级偏高但天花板受限于数据。世界模型+动作生成是当前最热的路线之一，但它和纯 VLA（视觉-语言-动作）相比，优势在于能建模不可观测状态，劣势在于训练和推理成本更高。触觉的加入进一步抬高了成本，但换来了接触密集任务上的质变。可以说，它把\"灵巧操作\"从\"看起来对\"推向\"接触得对\"，这是从演示视频走向真实物理交互的关键一步。\n\n落地价值上，距离产品化还有明显距离。卡点有三个：一是触觉硬件本身不标准化，不同厂商的传感器输出差异大，压缩器需要重新适配；二是每任务100条演示在工业场景里意味着仍需人工示教，除非能结合仿真或自主探索；三是扩散模型的推理速度（即便加速1.29倍）对实时闭环控制仍可能偏慢。要落地，需要触觉传感器标准化、仿真到真机的触觉迁移、以及更快的采样方案三者同时成熟。\n\n如果只记住一件事：▲触觉不应该只是动作生成的条件输入，而应该是被世界模型预测的状态的一部分▲。这个 idea 特别在于它把\"预测未来\"从视觉扩展到了物理接触，让模型必须学会\"接触会怎么演化\"，而不只是\"看到接触就该怎么动\"。这是从反应式策略走向预测式物理理解的分水岭。\n\n【代码/数据开源情况】\n摘要与提供的元信息中未提及代码或数据开源，论文未给出 GitHub 链接或项目主页。鉴于作者包含 Trevor Darrell（UC Berkeley）等，通常此类工作会在接收后于项目页公开代码与演示视频，但当前无法确认。建议关注 arXiv 页面更新或作者主页，若需复现需等待官方承诺。"
+      },
+      {
+        "arxiv_id": "2609.245251",
+        "raw_id": "http://arxiv.org/abs/2609.24525v1",
+        "title": "Bridge3D: Enabling Vision-Language-Action Models to See and Act in 3D",
+        "authors": [
+          "Haoxuan Li",
+          "Sixu Yan",
+          "Lianghui Zhu",
+          "Xuanlai Tang",
+          "Shikang Wang",
+          "Xinggang Wang"
+        ],
+        "abstract": "Vision-Language-Action (VLA) models have demonstrated remarkable generalization in robotic manipulation via large-scale multimodal pretraining. However, VLA models are mainly trained on 2D-centric observations, which inherently constrains their capacity for precise spatial manipulation. Previous methods enhance 3D awareness by introducing implicit spatial priors, but still lack explicit geometry guidance. In this paper, we propose Bridge3D that integrates both implicit and explicit 3D geometry guidance into pre-trained 2D VLA models, enabling them to ''see'' and ''act'' in 3D. Bridge3D introduces two strategies: 1) Implicit Fusion, which enriches visual tokens with features from 3D foundation models to improve ''seeing'' in 3D; 2) Explicit Conditioning, which integrates action denoising with an explicit 3D semantic field to achieve ''acting'' in 3D. Furthermore, we utilize the proposed layer-wise linear probing to improve learning efficiency. Experiments show that Bridge3D achieves superior performance against state-of-the-art methods. On the RoboTwin 2.0 benchmark, Bridge3D exceeds $π_0$ by 14.0 percentage points, while in real-world experiments, it outperforms Spatial Forcing by 11.7 percentage points. These results demonstrate Bridge3D's strong capabilities in high-precision and spatial-sensitive manipulation tasks.",
+        "published": "2026-09-21T12:59:57+00:00",
+        "url": "http://arxiv.org/abs/2609.24525v1",
+        "pdf_url": "https://arxiv.org/pdf/2609.24525v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "灵巧操作与抓取",
+        "score_reason": "针对多指灵巧手的高自由度抓取与操作提出新方法，属于该子方向核心进展。",
+        "title_cn": "Bridge3D：使视觉-语言-动作模型能够在三维中感知与行动",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action，VLA）模型通过大规模多模态预训练在机器人操作中展现出卓越的泛化能力。然而，VLA模型主要基于以二维为中心的观测进行训练，这从根本上限制了其进行精确空间操作的能力。以往的方法通过引入隐式空间先验来增强三维感知，但仍缺乏显式的几何引导。在本文中，我们提出了Bridge3D，它将隐式和显式的三维几何引导同时集成到预训练的二维VLA模型中，使其能够在三维中“感知”和“行动”。Bridge3D引入了两种策略：1）隐式融合（Implicit Fusion），利用三维基础模型的特征丰富视觉令牌（visual tokens），以改善三维中的“感知”；2）显式条件化（Explicit Conditioning），将动作去噪与显式三维语义场相结合，以实现三维中的“行动”。此外，我们利用所提出的逐层线性探测（layer-wise linear probing）来提高学习效率。实验表明，Bridge3D相较于最先进方法取得了更优越的性能。在RoboTwin 2.0基准上，Bridge3D超过$π_0$达14.0个百分点，而在真实世界实验中，它超过Spatial Forcing达11.7个百分点。这些结果证明了Bridge3D在高精度和空间敏感操作任务中的强大能力。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2609.245251",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2609.245251"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略\n\n【一句话简介】\n给2D预训练的VLA模型注入隐式+显式3D几何引导，让机器人\"看得懂三维、动得准空间\"。\n\n【背景知识】\n要理解这篇论文，先要弄清几个关键概念。▲VLA模型（Vision-Language-Action Model，视觉-语言-动作模型）▲ 是一类把视觉感知、语言指令和机器人动作统一到一个大模型里端到端训练的策略，代表作有RT-2、OpenVLA、π₀等；它的核心卖点是\"大规模多模态预训练带来的泛化能力\"——换个物体、换个指令也能干活。▲视觉token（visual token）▲ 是指把图像切成小块（patch）后，每一块经编码器变成一个向量，作为大模型的\"输入词\"，模型就是靠这些token\"看\"世界的。▲隐式空间先验（implicit spatial prior）▲ 指的是模型没有显式的三维坐标或几何结构，只是通过大量数据\"感觉\"到空间关系，类似人凭经验估距离但说不出精确数值。▲显式几何引导（explicit geometry guidance）▲ 则相反，直接引入点云、深度、三维语义场等带坐标的几何信息。▲动作去噪（action denoising）▲ 是扩散/流匹配类策略的核心机制：从随机噪声出发，一步步\"去噪\"生成动作序列，类似从一团模糊的意图中逐渐雕刻出精确的关节轨迹。▲3D基础模型（3D foundation model）▲ 指在大规模三维数据上预训练、能输出通用三维特征的模型（如VGGT、PointTransformer类），相当于三维世界的\"通用眼睛\"。\n\n【核心问题】\n当前VLA模型几乎都建立在2D图像观测之上，模型能理解\"这是什么物体、该做什么动作\"，但对\"物体在三维空间里到底在哪、离我多远、该从哪个角度切入\"这类精确空间问题先天不足。已有工作尝试通过隐式空间先验（比如在2D特征里\"掺\"一些深度线索）来弥补，但这种做法缺乏显式几何约束，模型仍然是在\"猜\"三维结构，导致在需要高精度、空间敏感的操作任务（如插孔、堆叠、精密装配）上表现不佳。这篇论文要堵的gap正是：▲如何在不破坏2D VLA预训练泛化能力的前提下，把显式的三维几何引导\"嫁接\"进去▲，让模型既能泛化又能精确。这个问题的意义在于，它是VLA从\"能干活\"走向\"干精细活\"的关键一步，直接决定了这类模型能否进入真实工业和服务场景。\n\n【方法】\nBridge3D的核心思路是\"桥接\"——不重新训练一个3D VLA，而是在已有2D VLA上做两处增强，分别对应\"看\"和\"动\"。具体分三点：\n\n1. ▲隐式融合（Implicit Fusion）——让模型\"看\"得懂3D▲。作者把3D基础模型提取的三维特征，融合进VLA原有的视觉token里。原理是：2D编码器擅长语义（这是杯子），3D基础模型擅长几何（杯子的空间形状和位姿），两者互补。做法上不是简单拼接，而是让视觉token\"吸收\"三维特征，从而在不改变模型主干结构的前提下，让每个视觉token都携带几何信息。为什么有效？因为这样既保留了2D预训练的语义泛化，又补上了几何短板，且不需要从头训练。\n\n2. ▲显式条件化（Explicit Conditioning）——让模型\"动\"得准▲。作者在动作去噪过程中，引入一个显式的三维语义场（3D semantic field）作为条件。原理是：动作生成本质上是在空间里\"选点\"，如果去噪的每一步都能被一个带坐标的三维语义场\"牵引\"，生成的动作就会自然贴合真实几何。相比只在输入端加3D特征，这种做法把几何约束直接注入到动作生成的每一步，约束更强、更直接。为什么之前没人这么做？因为把3D语义场和扩散/流匹配去噪过程耦合起来在工程和数学上都不trivial，需要设计合适的条件注入方式。\n\n3. ▲逐层线性探测（layer-wise linear probing）——提升学习效率▲。作者用逐层线性探测来评估和利用VLA各层特征对3D信息的敏感度，从而更高效地决定在哪一层、以什么方式注入3D引导。原理类似\"给每一层做体检\"，看哪层已经隐含了空间信息、哪层需要补，避免盲目地在所有层都加3D特征导致训练慢、易过拟合。这个设计让整个桥接过程更轻量，是方法能高效落地的关键。\n\n【实验结果】\n论文在仿真和真机两个层面做了验证。▲仿真方面▲，在RoboTwin 2.0基准上，Bridge3D比当前最强的π₀模型高出▲14.0个百分点▲，这是一个相当显著的提升，因为π₀本身已是SOTA级VLA。▲真机方面▲，Bridge3D比Spatial Forcing（一个同样关注空间能力的强baseline）高出▲11.7个百分点▲，说明提升不只是仿真里的数字游戏，能迁移到真实机器人。▲任务类型▲上，论文强调优势集中在\"高精度、空间敏感\"的操作任务（如精密插拔、空间堆叠），这正好对应它要解决的核心痛点——普通语义任务上提升可能没那么大，但空间任务上差距拉开。此外，作者提出的逐层线性探测作为方法组件，本身也起到了消融验证的作用：它证明了不同层对3D信息的利用效率不同，盲目全层注入不如有选择地注入。整体来看，实验设计覆盖了仿真+真机、对比了SOTA、验证了方法组件，证据链比较完整。\n\n【局限性】\n1. ▲依赖3D基础模型的质量▲。Bridge3D的\"看\"能力上限受限于所用3D基础模型的特征质量，如果3D基础模型在特定场景（如透明物体、反光表面、户外）失效，桥接效果会打折扣。这对实际应用意味着：在3D感知本身就很困难的场景，方法优势可能消失。\n2. ▲真机实验规模有限▲。论文报告的真机提升虽亮眼，但通常这类工作的真机任务数量和场景多样性有限，11.7个百分点的提升能否在更广泛的任务分布上复现，需要更多验证。对落地而言，这意味着从\"实验室demo\"到\"产线稳定运行\"还有距离。\n3. ▲显式3D语义场的构建成本▲。引入显式三维语义场需要额外的3D感知和标注/构建流程，增加了系统复杂度和部署成本。对产品化来说，这意味着需要额外的传感器（如深度相机、LiDAR）和计算资源，不是纯软件升级。\n4. ▲未充分讨论推理延迟▲。融合3D基础模型特征和显式条件化都会增加推理计算量，论文未强调实时性指标，而机器人操作对延迟敏感，这可能成为实际部署的隐性瓶颈。\n\n【个人视角点评】\n这篇论文在VLA子方向里属于▲\"填补关键空白\"型工作▲，而非范式突破。为什么这么判断？因为它的核心洞察——\"2D VLA缺显式3D几何\"——是领域内公认的痛点，之前的工作（如Spatial Forcing、各类隐式空间先验方法）都在往这个方向努力，Bridge3D的贡献是把\"隐式+显式\"两条路结合起来，并给出了一个工程上可落地、效果显著的方案。它没有提出全新的模型架构或训练范式，但把现有思路做到了更系统、更有效，14个百分点的提升说明这个\"桥接\"设计确实抓住了要害。在VLA这个当前最热的子方向里，这类\"补短板\"的工作价值很高，因为VLA的泛化能力已经很强，瓶颈恰恰在精确空间操作，谁解决了这个，谁就推动了VLA从\"通用但粗糙\"走向\"通用且精细\"。\n\n和其他子方向相比，VLA是具身智能里离\"通用机器人\"愿景最近、也最受资本和学术界关注的方向，天花板很高——如果VLA真能兼顾泛化和精度，它可能成为机器人的\"统一大脑\"。但这类工作的价值也受限于底层：VLA再强，也要靠3D感知、运动控制、硬件执行来落地，所以它的天花板不完全由自己决定。Bridge3D这类工作属于\"让VLA更实用\"的关键拼图，价值层级中上，但不太可能是那个\"改变游戏规则\"的终极方案。\n\n▲落地价值▲：距离实际部署还有中等距离。卡点有三：一是3D感知硬件的成本和可靠性（深度相机在工业场景的精度和鲁棒性）；二是推理延迟，VLA本身就不轻，再加3D基础模型和显式条件化，实时性存疑；三是真机验证规模，实验室的11.7个百分点需要在大规模、多任务、长时间运行中复现。需要什么条件？更轻量的3D基础模型、更高效的3D特征注入方式、以及标准化的3D感知硬件方案。如果这些成熟，Bridge3D这类方法有望在精密装配、物流分拣等空间敏感场景率先落地。\n\n▲如果只记住一件事▲：这篇论文最值得记住的idea是——▲\"不要重新造一个3D VLA，而是在2D VLA上'桥接'3D几何，且要同时从'看'（输入特征融合）和'动'（动作去噪条件化）两端注入\"▲。这个idea特别在于它承认了2D预训练的价值（不浪费），又精准补上了3D短板，是一种\"站在巨人肩膀上补短板\"的高效思路。对本科生来说，这教会你一个重要的科研方法论：▲当一个大模型已经很强但某方面有缺陷时，最优解往往不是推倒重来，而是找到缺陷的精确位置，用最小的改动补上它▲。\n\n【代码/数据开源情况】\n论文摘要和给定信息中未明确提及代码或数据的开源链接。arXiv链接为 http://arxiv.org/abs/2609.24525v1 ，通常此类工作会在论文接收后于GitHub或项目主页公开代码，建议关注作者团队（Xinggang Wang组，华中科技大学）的后续发布。如未开源，论文一般会承诺在正式发表后公开，读者可留意arXiv页面的更新或作者主页。"
+      }
+    ]
   }
 ]
