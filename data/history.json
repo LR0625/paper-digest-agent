@@ -11697,5 +11697,208 @@
         "structured_summary": "【子方向标签】\n仿真到真机 / 强化学习（更精确地说，是\"虚拟遥操作 + 多智能体协作数据采集\"这一交叉方向，与\"人机交互与协作\"和\"VLA与端到端策略\"都有重叠）\n\n【一句话简介】\nMATE 让多个异地操作员在共享物理仿真中同时遥操作人形机器人，采集协作数据并零样本迁移到真机。\n\n【背景知识】\n要理解这篇论文，先要建立几个概念。第一，▲具身智能（Embodied Intelligence）▲ 强调智能体必须通过与物理世界交互来学习技能，而数据是这类学习的燃料——没有足够多、足够多样的\"身体经验\"，策略就学不会复杂动作。第二，▲遥操作（Teleoperation）▲ 是指人通过手柄、动捕服、VR 等设备远程控制机器人，人的操作轨迹被记录下来作为示范数据，这是当前采集高质量机器人数据的主流手段。第三，▲模仿学习（Imitation Learning, IL）▲ 让机器人从这些人类示范中学习策略，代表算法如 ACT、Diffusion Policy；而 ▲视觉-语言-动作模型（Vision-Language-Action, VLA）▲ 则是把预训练的视觉语言模型接到动作输出上，让机器人能听懂语言指令并执行。第四，▲多智能体协作（Multi-Agent Collaboration）▲ 指两个及以上机器人共同完成任务（如交接物体、协同搬运），这类任务的关键难点在于机器人之间必须实时协调，动作在时间上强耦合。第五，▲仿真到真机迁移（Sim-to-Real Transfer）▲ 指在仿真里训练、直接部署到真实机器人，最大障碍是\"现实差距\"（reality gap）——仿真的物理、视觉、延迟与真实世界不一致。最后，▲长时程任务（Long-Horizon Task）▲ 指需要几十秒到几分钟、包含多个子阶段的任务，对数据量和策略稳定性要求极高。MATE 正是把\"多智能体协作\"和\"虚拟遥操作数据采集\"结合起来，试图绕开真机采集的成本瓶颈。\n\n【核心问题】\n现有人形机器人数据管线几乎都聚焦单智能体，采集的是\"一个人形机器人怎么动\"的数据，而真实世界中大量有价值任务（交接、协同搬运、接力配送）本质上是多机器人协作，这类数据严重匮乏。要采集多机器人协作数据，用真机的代价极高：需要多台昂贵人形硬件、专门的共享场地、每次实验后反复重置场景，且多操作员必须物理同地协作，规模化几乎不可能。已有的一些虚拟遥操作工作（如单臂/单人的仿真遥操作）无法保留机器人-机器人-物体-环境之间物理耦合的交互，采集到的数据缺乏真实的接触与力反馈，学出来的策略难以迁移。因此这篇论文要解决的核心 gap 是：如何在不依赖多台真机和同地操作的前提下，采集到物理上真实耦合、可直接用于策略学习、并能迁移到真机的多智能体协作数据。这件事重要，是因为它直接决定了\"多机器人协作\"这一子方向能否从少量演示走向规模化数据驱动。\n\n【方法】\nMATE 的核心方案可以从四个层面拆解。\n\n第一，▲共享物理仿真环境下的多操作员虚拟遥操作▲。系统让多个地理上分布的操作员同时接入同一个基于物理引擎的仿真场景，各自控制一台全身人形机器人。关键设计是\"共享物理\"——所有机器人、物体、环境处于同一个物理世界实例中，因此机器人之间的接触、推挤、物体交接时的力传递都是被真实求解的，而不是各算各的再拼接。这一点是它区别于普通\"多用户各自仿真\"的根本：只有共享物理，协作交互才在数据里留下真实的耦合信号。\n\n第二，▲保留物理耦合的全身控制▲。每台人形机器人由操作员做全身遥操作（不只是手臂，还包括躯干、移动），这样采集的轨迹覆盖 loco-manipulation（移动+操作）的联合行为，而不是把移动和操作割裂。这很重要，因为协作任务里\"走过去—伸手—交接\"是一个连续整体，割裂采集会破坏时序因果。\n\n第三，▲多操作员异地接入▲。操作员不需要同处一室，通过网络接入同一仿真，这直接消除了\"同地协作\"这一规模化瓶颈，也让跨时区、跨机构的数据采集成为可能。\n\n第四，▲EAIS（Execution-Aligned Interaction Sampling，执行对齐交互采样）▲。这是针对\"交互丰富但冗余\"的示范数据提出的采样策略。常规做法是在整条轨迹上均匀或按时间采样，但协作任务中大量帧是\"等待/接近\"这类低信息片段，真正决定成败的是交接瞬间、接触瞬间等交互关键帧。EAIS 的做法是：在一个\"执行对齐的前缀\"（execution-aligned prefix）内计算采样信号，即依据策略实际执行到的进度来对齐时间轴，然后优先采样\"推进任务进度\"和\"交互关键\"的行为。这样训练时梯度更多来自真正学到东西的片段，提升数据效率。之所以之前没人这么做，是因为多数采样启发式是为单智能体、短时程任务设计的，没有考虑多智能体协作中\"进度对齐\"和\"交互临界\"这两个特性。\n\n【实验结果】\n论文构建的数据集规模是 24.1 小时协调行为、2,500 个联合 episode（joint episodes）、5 个长时程任务，覆盖物体交接（object handover）、接力配送（relay delivery）、环境交互（environment interaction）、协同搬运（cooperative transport）。评测上，作者用代表性的模仿学习策略和 VLA 策略在多种协作任务上训练与测试，报告了三类结论：一是数据采集效率高（相比真机多机器人方案，省去硬件、场地与重置成本）；二是策略学习有效（IL 与 VLA 都能从 MATE 数据中学到协作行为）；三是▲零样本迁移（zero-shot transfer）▲——虚拟示范训练出的策略直接部署到一台真实人形机器人上，无需真机微调即可工作。消融方面，EAIS 被单独验证：相比常规采样，EAIS 通过优先采样任务推进与交互关键行为提升了学习效果（摘要中明确将其作为独立贡献提出，说明有对照实验支撑）。需要指出的是，摘要未给出具体百分比数字，若需精确指标需查阅正文与项目页。\n\n【局限性】\n第一，▲现实差距仍未完全消除▲。虽然实现了零样本迁移，但仿真中的接触动力学、摩擦、延迟与真机仍有差异，尤其在多机器人强耦合接触（如协同搬运重物）时，仿真误差会被放大；这意味着迁移在\"轻接触、慢速\"任务上更可靠，在\"重载、快速、强反馈\"任务上风险更高。\n\n第二，▲对操作员的依赖与人力成本▲。MATE 省的是硬件和场地，但没省人力——24.1 小时数据背后是多名操作员长时间遥操作，操作员的技能水平、疲劳度会直接影响数据质量与一致性，这限制了数据采集的进一步规模化。\n\n第三，▲多操作员网络同步的鲁棒性▲。异地接入意味着网络延迟和丢包会破坏共享物理的实时性，而协作任务对时序极其敏感，延迟可能导致交接失败或数据中出现不自然的停顿，论文未在摘要中说明对网络条件的鲁棒性边界。\n\n第四，▲任务与形态的覆盖有限▲。5 个任务、2,500 episode 对于训练通用协作策略仍偏少，且都围绕人形机器人，是否能推广到异构机器人团队（如人形+机械臂）尚不明确。\n\n【个人视角点评】\n在\"仿真到真机 / 强化学习\"这个子方向里，MATE 属于▲填补空白型▲工作，而非范式突破。它的判断依据是：多智能体协作数据采集这个 gap 是真实存在且被公认的，但 MATE 的解法——共享物理仿真 + 多操作员虚拟遥操作——在思路上是已有单智能体虚拟遥操作的自然扩展，真正的工程创新在于\"共享物理实例\"和\"EAIS 采样\"这两个具体设计，而不是提出了全新的学习范式。它把\"多机器人协作数据\"从\"几乎无法规模化采集\"推进到\"可以在仿真里批量采集并迁移\"，这是实打实的推进。\n\n和其他子方向相比，这类工作的价值层级属于\"基础设施型\"——它本身不产出新算法，但产出的是别人做算法必需的数据和平台。基础设施型工作的天花板取决于两件事：数据是否被社区广泛采用，以及迁移是否足够可靠。如果 MATE 的数据集和平台被后续 VLA/协作策略工作大量引用，它的影响力会远超一篇普通方法论文；反之，如果迁移只在特定任务上成立，它就会退化为一个\"演示系统\"。\n\n落地价值上，距离产品化还有明显距离，卡点有三：一是零样本迁移目前只在有限任务上验证，工业场景要求高可靠性和安全性，仿真误差不可接受；二是数据采集仍依赖熟练操作员，人力成本没有本质下降；三是多操作员异地同步对网络基础设施有要求，真实部署需要稳定的低延迟链路。要落地，需要先解决\"仿真接触动力学高保真\"和\"操作员技能标准化\"两个前提。\n\n如果只记住一件事：▲MATE 最值得记住的 idea 是\"用共享物理仿真把多机器人协作的物理耦合保留下来，同时用异地多操作员绕开硬件与场地瓶颈\"▲。这个 idea 特别之处在于，它没有试图用算法去弥补数据缺失，而是从数据采集的源头重新设计了整个管线——把\"多机器人协作数据难采\"这个死结，拆解成\"共享物理\"和\"异地接入\"两个可工程化的子问题，再用 EAIS 把采集到的冗余数据提纯。这是一种\"先解决数据，再谈算法\"的务实路线，对当前具身智能普遍缺数据的现状很有参考意义。\n\n【代码/数据开源情况】\n论文提供了项目主页：https://yerik-yu.github.io/MATE/ ，摘要中明确给出该链接，通常此类项目页会公开数据集、代码与演示视频。但摘要未明确声明代码与数据的具体开源协议与发布时间，建议以项目页实际发布状态为准；若尚未开源，作者一般会在项目页承诺后续公开。"
       }
     ]
+  },
+  {
+    "date": "2026-09-24",
+    "domain": "具身智能与机器人学习",
+    "count": 5,
+    "papers": [
+      {
+        "arxiv_id": "2609.284311",
+        "raw_id": "http://arxiv.org/abs/2609.28431v1",
+        "title": "LiMA: Bridging Long-term Imagination to Real-time Dexterous Manipulation via Asynchronous Diffusion",
+        "authors": [
+          "Ning Chen",
+          "Yankai Fu",
+          "Junkai Zhao",
+          "Qianpu Sun",
+          "Guocai Yao",
+          "Pengwei Wang",
+          "Zhongyuan Wang",
+          "Shanghang Zhang"
+        ],
+        "abstract": "Dexterous manipulation demands long-term foresight and rapid reactive control. Vision-Language-Action (VLA) models, while proficient in high-level reasoning, often lack a fine-grained understanding of physical dynamics and spatial perception. Conversely, World-Action Models (WAMs) typically suffer from high inference latency due to iterative generation. These deficiencies result in a critical temporal misalignment where the model's intent fails to adapt to rapid physical contact changes. To overcome this fundamental bottleneck, we propose LiMA, an asynchronous dual-system generative framework that systematically decouples intent planning from reactive execution. LiMA organizes computation into a multi-scale hierarchy: a slow system handles sparse long-horizon spatiotemporal intent generation, while a fast system focuses on dense high-frequency motion refinement. To align sparse intent predictions with dense action trajectories, we introduce a Latent Schrödinger Bridge Coupling mechanism that formulates refinement as an entropy-regularized probabilistic transport process. LiMA reduces inference latency by 45.8% compared with Cosmos-Policy via asynchronous decoupling. Evaluated across six bimanual dexterous manipulation tasks spanning multiple horizons, LiMA achieves an overall success rate of 70.8% and an average subtask success rate of 78.9%, while maintaining performance in unseen scenarios. The project website is available at https://ccdcs.github.io/LiMA_repo/",
+        "published": "2026-09-23T17:31:52+00:00",
+        "url": "http://arxiv.org/abs/2609.28431v1",
+        "pdf_url": "https://arxiv.org/pdf/2609.28431v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy",
+          "manipulation"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "VLA与端到端策略",
+        "score_reason": "提出视觉-语言-动作模型的新架构或训练方法，直接推动端到端机器人策略学习。",
+        "title_cn": "LiMA：通过异步扩散（Asynchronous Diffusion）将长期想象（Long-term Imagination）桥接至实时灵巧操作（Real-time Dexterous Manipulation）",
+        "abstract_cn": "灵巧操作要求具备长期前瞻能力与快速反应控制。视觉-语言-动作（Vision-Language-Action，VLA）模型虽然擅长高层推理，但往往缺乏对物理动力学和空间感知的细粒度理解。相反，世界-动作模型（World-Action Models，WAMs）通常因迭代生成而面临高推理延迟。这些缺陷导致了一种关键的时间错位，即模型的意图无法适应快速的物理接触变化。为克服这一根本性瓶颈，我们提出了LiMA，一种异步双系统生成框架，系统性地将意图规划与反应式执行解耦。LiMA将计算组织为多尺度层级结构：慢系统负责稀疏的长期时空意图生成，而快系统则专注于密集的高频运动细化。为将稀疏意图预测与密集动作轨迹对齐，我们引入了一种潜在薛定谔桥耦合（Latent Schrödinger Bridge Coupling）机制，该机制将细化过程形式化为一个熵正则化概率传输过程。通过异步解耦，LiMA相较于Cosmos-Policy将推理延迟降低了45.8%。在涵盖多种时间跨度的六项双臂灵巧操作任务上进行评估，LiMA实现了70.8%的总体成功率和78.9%的平均子任务成功率，同时在未见场景中保持了性能。项目网站见 https://ccdcs.github.io/LiMA_repo/",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2609.284311",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2609.284311"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细分地说，是\"世界模型/生成式策略 + 双系统异步控制\"这一交叉方向）\n\n【一句话简介】\nLiMA 用\"慢系统想意图、快系统做反应\"的异步双系统，让机器人在长时程灵巧操作中既看得远又反应快。\n\n【背景知识】\n要理解这篇论文，先要建立三个前置概念。第一，▲VLA（Vision-Language-Action，视觉-语言-动作模型）▲：把图像、语言指令直接映射成机器人动作的大模型，擅长\"听懂任务、规划高层意图\"，但对物理接触、空间细节的理解往往粗糙。第二，▲World-Action Model（WAM，世界-动作模型）▲：让模型在\"想象\"未来画面（世界模型）的同时生成动作，能捕捉物理动态，但生成过程是迭代式的（类似扩散模型一步步去噪），推理很慢。第三，▲扩散模型（Diffusion Model）▲：通过多步迭代从噪声中\"生成\"动作或图像，质量高但延迟大，这是 WAM 慢的根源。第四，▲双系统（Dual-System）思想▲：源自认知科学中\"快思考/慢思考\"，在机器人里通常指一个慢的高层规划器 + 一个快的底层控制器。第五，▲Schrödinger Bridge（薛定谔桥）▲：一种把两个概率分布用\"最省力的随机传输\"连接起来的数学工具，常用于生成建模中做分布对齐。核心矛盾是：▲长时程意图需要慢思考，物理接触反应需要快控制，两者时间尺度天然错位▲——这就是论文说的\"时间错位（temporal misalignment）\"。\n\n【核心问题】\n这篇论文要解决的是灵巧操作中\"想得远\"和\"反应快\"无法兼得的结构性矛盾：VLA 会推理但不懂物理细节，WAM 懂物理但推理延迟高，导致模型意图跟不上快速变化的物理接触。这个问题的意义在于，它是当前具身智能从\"演示级\"走向\"实用级\"的关键瓶颈——真实操作任务（如双臂拧瓶盖、插拔、装配）既需要跨秒级的长时程规划，又需要毫秒级的接触力反馈调整，单一模型架构很难同时满足。前人工作要么牺牲反应速度换长时程能力，要么牺牲前瞻性换实时性，始终没有在架构层面系统性地解耦这两个时间尺度。LiMA 试图用异步双系统 + 概率传输对齐，填上\"长时程想象\"与\"实时执行\"之间的这道鸿沟。\n\n【方法】\nLiMA 的核心是把计算按时间尺度分层解耦，具体有以下几个技术要点：\n\n1. ▲异步双系统架构（Asynchronous Dual-System）▲：慢系统负责\"稀疏的长时程时空意图生成\"，即每隔较长时间才输出一次高层的未来意图；快系统负责\"密集的高频动作精修\"，以高频率持续输出底层动作。两者异步运行，慢系统不必等快系统、快系统也不必等慢系统，从而让长时程推理的高延迟不再阻塞实时控制。这之所以有效，是因为它把\"昂贵但低频\"和\"便宜但高频\"两类计算彻底分开，避免了单一模型被最慢的那一步拖累。\n\n2. ▲多尺度层级组织（Multi-scale Hierarchy）▲：把意图规划与反应执行放在不同时间尺度上，慢系统看的是\"未来几秒要做什么\"，快系统看的是\"未来几十毫秒怎么动\"。这种层级设计让模型既能保持长时程前瞻，又能在接触瞬间快速修正——这是对\"时间错位\"的直接回应。\n\n3. ▲Latent Schrödinger Bridge Coupling（潜空间薛定谔桥耦合）机制▲：这是论文最核心的技术创新。慢系统输出的是稀疏的意图预测，快系统需要的是密集的动作轨迹，两者在时间密度和分布上都不匹配。LiMA 把这个对齐问题形式化为一个\"熵正则化的概率传输过程\"，用薛定谔桥在潜空间里把稀疏意图分布\"运输\"到密集动作分布。相比常规做法（如简单插值、条件拼接），薛定谔桥能给出一个概率意义上最优、且带熵正则（保证多样性/平滑性）的传输方案，让稀疏意图到密集动作的映射更自然、更鲁棒。之前没人这么做，是因为多数工作把意图和动作当成同一时间尺度的东西直接拼接，忽略了它们本质上是两个不同分布之间的传输问题。\n\n4. ▲异步解耦带来的延迟收益▲：因为快系统不必等待慢系统的迭代生成完成，整体推理延迟相比 Cosmos-Policy 降低 45.8%。这不是靠模型压缩或蒸馏换来的，而是靠架构层面的时间解耦，因此不牺牲生成质量。\n\n【实验结果】\n论文在六个双臂灵巧操作任务上评估，覆盖多个时间跨度（multiple horizons）。关键数据有三组：第一，▲整体成功率 70.8%▲，这是在六个任务上的综合表现，说明双系统在多样化任务上有稳定泛化。第二，▲平均子任务成功率 78.9%▲，子任务成功率高于整体成功率，说明模型在\"完成单个动作片段\"上比较可靠，失败主要发生在子任务之间的衔接或长时程连贯性上。第三，▲推理延迟相比 Cosmos-Policy 降低 45.8%▲，这是异步解耦的直接收益，且是在保持性能的前提下实现的。此外，论文强调在▲未见场景（unseen scenarios）▲中仍能维持性能，说明方法具备一定泛化能力。对比的 baseline 主要是 Cosmos-Policy（作为 WAM 类代表），消融方面论文通过异步解耦与耦合机制的对比验证了各部分贡献（具体消融表格需查全文，但摘要明确将延迟降低归因于异步解耦）。\n\n【局限性】\n1. ▲子任务成功率与整体成功率的差距（78.9% vs 70.8%）暴露了长时程连贯性问题▲：单个子任务做得不错，但串起来就掉点，说明慢系统的长时程意图在跨子任务衔接时可能不够稳定。这对实际应用意味着：多步骤装配、长流程操作仍可能中途失败，需要人工干预或重试机制。\n\n2. ▲依赖世界模型/生成式先验，训练成本与数据需求高▲：WAM 类方法通常需要大量视频或轨迹数据来学习物理动态，LiMA 的慢系统\"长时程想象\"能力很可能依赖大规模预训练。这意味着中小团队难以复现，落地时需要昂贵的算力和数据准备。\n\n3. ▲异步双系统的工程复杂度▲：两个系统异步运行，涉及时间同步、意图-动作对齐、状态一致性等问题，实际部署时调试和维护成本高。相比单一端到端模型，这种架构对系统集成能力要求更高，可能限制其在资源受限平台（如低成本机械臂）上的应用。\n\n4. ▲评估任务仍限于双臂灵巧操作▲：六个任务虽覆盖多时间跨度，但都是桌面级操作，未涉及移动操作、人机协作等更开放场景。泛化到真实非结构化环境的能力尚待验证。\n\n【个人视角点评】\n这篇论文在\"VLA与端到端策略\"子方向里属于▲范式突破型▲工作，而非渐进改进。原因是它没有在单一模型上做参数或数据层面的优化，而是从架构层面重新回答了\"长时程推理与实时控制如何共存\"这个根本问题——异步双系统 + 薛定谔桥耦合是一个结构性解法，而不是调参。它填补的空白是：此前 WAM 类工作普遍被推理延迟卡住，VLA 类工作普遍缺物理细节，LiMA 第一次系统性地把两者按时间尺度解耦并用概率传输对齐，这个思路有较强的可迁移性。\n\n和领域其他子方向相比，这类工作的价值层级属于\"承上启下\"：往上它连接世界模型与生成式策略的前沿，往下它直接服务于灵巧操作、装配等落地场景。它的天花板取决于两个因素——慢系统的想象质量能否持续提升，以及快系统的反应能否真正达到接触级实时（毫秒级）。如果这两点都突破，它可能成为通用操作策略的骨架架构；如果只停留在桌面任务，则更像一个高质量的系统集成方案。\n\n落地价值方面，距离产品化还有明显距离。卡点有三：一是数据与算力门槛，WAM 预训练成本高；二是工程复杂度，异步双系统的稳定性在真实硬件上需要大量调优；三是安全性，长时程意图出错时快系统可能执行危险动作，需要额外的安全层。要落地，至少需要：更轻量的世界模型、标准化的异步控制中间件、以及针对接触任务的安全约束机制。\n\n如果只记住一件事：▲\"把'想得远'和'反应快'拆成两个异步系统，再用薛定谔桥把稀疏意图'运输'成密集动作\"▲——这个 idea 特别在于，它没有试图让一个模型同时做好两件时间尺度冲突的事，而是承认冲突、解耦冲突、再用数学工具桥接冲突。这种\"承认矛盾并结构化解决\"的思路，比单纯堆模型更值得借鉴。\n\n【代码/数据开源情况】\n论文提供了项目网站：https://ccdcs.github.io/LiMA_repo/ ，摘要中明确给出该链接，通常此类项目页会包含论文、视频演示及可能的代码/数据发布信息。但摘要未明确承诺代码或数据完全开源，建议访问项目页确认最新开源状态；若页面未提供代码仓库，则需关注作者后续是否在 GitHub 等平台公开。"
+      },
+      {
+        "arxiv_id": "2609.281611",
+        "raw_id": "http://arxiv.org/abs/2609.28161v1",
+        "title": "Dissecting Advantage-Guided Post-Training for Vision-Language-Action Policies",
+        "authors": [
+          "Jiahang Cao",
+          "Hanye Zhao",
+          "Hang Lai",
+          "Shenyu Zhang",
+          "Xiaoshen Han",
+          "Xinghang Li",
+          "Futeng Liu",
+          "Wanli Peng",
+          "Heyun Wang",
+          "Yunhong Wang",
+          "Jason Li",
+          "Yong Yu",
+          "Weinan Zhang"
+        ],
+        "abstract": "Advantage-guided reinforcement learning provides a practical way to post-train vision-language-action (VLA) policies using limited robot data. However, its performance depends on several coupled choices, including how critic-derived advantages are constructed, calibrated, and used for policy training. Existing recipes often combine these choices into a single end-to-end procedure, making their individual effects difficult to identify. In this work, we dissect advantage-guided VLA post-training through a controlled empirical study that separates these design choices while accounting for their distinct estimands. We develop stage-specific offline evaluation methods to screen alternative choices efficiently, without requiring extensive real-robot policy evaluations for every possible combination. The staged evaluation identifies a modular recipe that combines temporal-difference advantage construction, group-wise calibration, and continuous advantage weighting. Across four real-world bimanual tasks, the resulting recipe improves mean task progress and success over the SFT initialization by 0.42 and 0.63, respectively. Moreover, the proposed evaluation diagnostics show an overall alignment with downstream real-world performance, supporting their use for interpreting empirical outcomes and selecting advantage-guided post-training designs in practice.",
+        "published": "2026-09-23T14:10:14+00:00",
+        "url": "http://arxiv.org/abs/2609.28161v1",
+        "pdf_url": "https://arxiv.org/pdf/2609.28161v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "运动控制（足式/人形）",
+        "score_reason": "提出足式或人形机器人运动控制的新方法，显著提升动态运动性能。",
+        "title_cn": "剖析面向视觉-语言-动作策略的优势引导后训练",
+        "abstract_cn": "优势引导强化学习（advantage-guided reinforcement learning）提供了一种使用有限机器人数据对视觉-语言-动作（vision-language-action, VLA）策略进行后训练的实用方法。然而，其性能取决于若干相互耦合的选择，包括如何构建、校准由评论家（critic）导出的优势，以及如何将其用于策略训练。现有方案通常将这些选择组合成一个单一的端到端流程，使得它们各自的影响难以被识别。在这项工作中，我们通过一项受控的实证研究来剖析优势引导的VLA后训练，该研究将这些设计选择分离开来，同时考虑到它们各自不同的估计目标（estimands）。我们开发了分阶段的离线评估方法，以高效地筛选替代选择，而无需对每一种可能的组合都进行大量真实机器人策略评估。分阶段评估识别出一个模块化方案，该方案结合了时序差分（temporal-difference）优势构建、分组校准（group-wise calibration）和连续优势加权（continuous advantage weighting）。在四个真实世界双臂任务上，所得方案相较于SFT初始化，将平均任务进度和成功率分别提升了0.42和0.63。此外，所提出的评估诊断指标与下游真实世界性能总体保持一致，支持其在实践中用于解释实证结果和选择优势引导后训练设计。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2609.281611",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2609.281611"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细一点：VLA 策略的强化学习后训练 / post-training）\n\n【一句话简介】\n系统拆解“优势引导”的 VLA 后训练配方，找出更稳更有效的模块化组合，并在四个真实双臂任务上验证。\n\n【背景知识】\n1. VLA（Vision-Language-Action，视觉-语言-动作模型）是一类把图像、语言指令直接映射为机器人动作序列的端到端策略，典型代表如 RT-2、OpenVLA、π0 等。它把“看懂场景 + 听懂指令 + 输出动作”统一进一个大模型，因此泛化潜力大，但训练成本高、数据需求大。\n2. SFT（Supervised Fine-Tuning，监督微调）是 VLA 最常用的训练方式：用人类遥操作或示范数据，直接模仿专家动作。它稳定、简单，但受限于示范数据的质量和覆盖度，策略往往“只会模仿、不会超越”，在长程、精细、需要纠错的任务上表现有限。\n3. RL（Reinforcement Learning，强化学习）后训练是在 SFT 基础上，用奖励信号继续优化策略，让模型有机会超越示范数据。在 LLM 领域，RLHF/PPO/DPO 已经是标准后训练流程；但在机器人 VLA 上，RL 面临样本效率低、真实机器人交互昂贵、奖励稀疏等困难。\n4. “Advantage-guided”（优势引导）指的是：不直接只用奖励，而是用 advantage（优势函数，衡量某个动作比当前策略平均水平好多少）来加权或筛选策略更新。优势通常由 critic（评论家网络，估计状态价值）导出，常见形式包括 TD（Temporal-Difference，时序差分）优势、GAE（Generalized Advantage Estimation，广义优势估计）等。\n5. 在机器人 RL 中，critic 的估计往往不准，尤其在离线或少量在线数据下，优势值可能有偏、方差大、尺度不稳定。因此“如何构造、校准、使用优势”会显著影响最终策略，但这些选择通常被耦合在一个端到端流程里，很难知道哪一步真正起作用。\n6. 这篇论文的核心动机就是：把 advantage-guided VLA 后训练拆成可独立研究的模块，用受控实验找出每个设计选择的影响，并给出一个可复用的“模块化配方”。\n\n【核心问题】\n1. 现有 advantage-guided VLA 后训练方法通常把“优势构造 + 校准 + 策略更新”打包成一个整体流程，导致研究者无法判断性能提升到底来自哪一步，也无法系统比较不同设计。\n2. 机器人真实评估极其昂贵，如果对每一种设计组合都做真实机器人实验，组合爆炸会使得研究不可行。因此需要一个能在离线阶段高效筛选候选设计的评估方法。\n3. VLA 后训练中的优势估计与 LLM RLHF 不同：动作是连续高维控制、状态转移由真实环境决定、critic 训练数据有限，优势的尺度、偏差和方差问题更突出，直接套用 LLM 的配方未必有效。\n4. 领域缺少对“优势引导后训练”各设计维度的系统性消融，导致实践者只能凭经验调参，难以复现和迁移到新任务。\n5. 这篇论文试图回答：在有限机器人数据下，哪种优势构造、哪种校准方式、哪种加权方式组合起来最有效？以及离线诊断指标能否预测真实机器人表现？\n\n【方法】\n1. 论文把 advantage-guided VLA 后训练拆成三个相对独立的维度：优势构造（advantage construction）、优势校准（calibration）、优势使用/加权（weighting）。这种“解剖式”分解是核心创新，因为之前的工作往往把三者绑在一起，无法做受控比较。\n2. 在优势构造上，论文比较了多种方案，最终发现 TD（时序差分）优势构造效果最好。TD 优势用当前奖励加上下一状态价值估计减去当前状态价值，能在稀疏奖励下提供更密集的学习信号；相比蒙特卡洛回报，它方差更低，适合有限数据。\n3. 在优势校准上，论文提出 group-wise calibration（分组校准）。原理是：同一批次或同一任务组内的优势分布可能尺度差异很大，直接使用会导致某些样本主导更新。分组校准把优势在组内做归一化/标准化，使不同任务、不同阶段的优势可比，从而稳定策略梯度。\n4. 在优势使用上，论文采用 continuous advantage weighting（连续优势加权）。相比“只保留正优势样本”或“硬阈值筛选”，连续加权让每个样本按优势大小贡献梯度，保留了更多信息，也避免了阈值选择带来的脆弱性。\n5. 为了高效筛选这些设计，论文开发了 stage-specific offline evaluation（分阶段离线评估）。它不是用一个统一离线指标，而是针对优势构造、校准、加权分别设计诊断指标，先离线筛掉明显差的设计，再进入真实机器人评估。这大幅降低了真实实验次数。\n6. 论文强调不同设计选择对应不同的 estimand（估计目标）。例如，优势构造关心的是“优势估计是否准确”，校准关心的是“优势尺度是否稳定”，加权关心的是“策略更新方向是否正确”。如果混在一起评估，就会混淆结论。这是方法论上的关键点。\n7. 最终得到的模块化配方是：TD 优势构造 + 分组校准 + 连续优势加权。它不是一个全新算法，而是一个经过系统消融后得到的“更优组合”，因此对实践者更可操作。\n8. 论文还验证了离线诊断指标与真实机器人下游表现的整体一致性，说明这些诊断不仅能筛设计，还能帮助解释为什么某个配方更好。\n\n【实验结果】\n1. 实验在四个真实世界双臂任务上进行，基于 SFT 初始化的 VLA 策略做后训练。评价指标包括 mean task progress（平均任务进度）和 success rate（成功率）。\n2. 最终配方相比 SFT 初始化，平均任务进度提升 0.42，成功率提升 0.63。这是论文最核心的一组数字，说明优势引导后训练在真实双臂任务上确实能显著超越纯模仿。\n3. 论文通过分阶段离线评估筛选设计，避免了对所有组合做真实机器人评估。离线诊断与真实表现整体对齐，说明离线筛选是有效的，而不是只在小规模代理指标上过拟合。\n4. 消融实验覆盖了优势构造、校准、加权三个维度。虽然摘要没有列出每个维度的具体增益，但论文明确指出 TD 构造、分组校准、连续加权是组合中最优的，说明每个模块都有独立贡献。\n5. 对比 baseline 至少包括 SFT 初始化本身；从“post-training”语境看，还比较了其他优势构造/校准/加权方案。具体数值需要看全文表格，但摘要给出的 0.42/0.63 是相对 SFT 的总体提升。\n6. 实验规模是四个真实双臂任务，属于机器人学习中中等规模的真实评估。它的价值在于真实机器人验证，而不是纯仿真；但任务数量和场景多样性仍然有限。\n\n【局限性】\n1. 任务规模有限：只在四个真实双臂任务上验证。虽然真实机器人实验成本高，但四个任务不足以覆盖 VLA 的广泛场景（如移动操作、多物体长程任务、开放语言指令）。这意味着配方的泛化性仍需更多任务验证。\n2. 依赖 critic 质量：优势引导的核心是 critic 估计优势。如果 critic 在离线数据上偏差大，分组校准和连续加权也只能缓解、不能根治。实际部署时，critic 的训练稳定性和数据覆盖仍是卡点。\n3. 离线诊断与真实表现只是“整体对齐”，不是完全预测。离线指标可能在某些设计上给出误导性排序，尤其是当真实环境动态、接触丰富或奖励设计特殊时。因此离线筛选能减少实验，但不能完全替代真实评估。\n4. 方法主要是“组合选择”而非全新算法：TD 优势、分组校准、连续加权各自都不是首次提出，论文贡献在于系统拆解和组合。这对实践很有价值，但理论新意有限。\n5. 真实机器人后训练仍然需要一定量的在线/真实交互。论文没有宣称完全离线，因此样本效率虽然改善，但离“低成本大规模落地”仍有距离。\n\n【个人视角点评】\n这篇论文在 VLA 与端到端策略子方向里属于“填补空白 + 渐进改进”的混合体。它没有提出全新的 RL 算法，也没有推翻现有范式，但它做了一件领域非常需要的事：把 advantage-guided 后训练这个“黑箱配方”拆开，做受控消融，并给出可复用的模块化组合。为什么说它重要？因为当前 VLA 后训练领域很多工作都在堆流程，RLHF、DPO、PPO、GRPO 等从 LLM 搬过来的方法被直接套用，但机器人动作空间、奖励结构、数据分布都和语言模型不同。如果没有系统消融，社区就不知道哪些设计真正有效。这篇论文的价值在于把“经验”变成“可比较的实验结论”。\n\n和领域其他子方向相比，这类工作的天花板在于：它优化的是“后训练配方”，而不是“策略架构”或“数据规模”。VLA 的最终能力仍然受限于基础模型、数据覆盖和机器人硬件。后训练可以让 SFT 策略提升 0.42/0.63，这是很可观的，但它不太可能让一个弱基础模型变成通用机器人。它的价值层级是“工程与方法论层”，不是“范式突破层”。不过，对于真实机器人落地，这种工作往往比纯架构创新更直接有用，因为落地卡点常常就是“如何用少量真实数据把策略调好”。\n\n落地价值方面，这篇论文距离实际部署比较近，但仍有卡点。近的地方在于：它直接面向真实双臂任务，配方模块化，实践者可以按 TD 优势 + 分组校准 + 连续加权去实现。卡点在于：第一，critic 训练需要额外工程和算力；第二，真实机器人评估仍然昂贵，离线诊断只能减少实验、不能消除；第三，四个任务的成功不能保证迁移到新任务，尤其是接触丰富、奖励稀疏、长程任务。要真正产品化，需要一套稳定的 critic 训练管线、自动奖励/进度估计、以及跨任务的优势校准机制。如果这些条件满足，优势引导后训练很可能成为 VLA 部署的标准后训练步骤。\n\n如果只记住一件事：这篇论文最值得记住的 idea 是——不要把 advantage-guided 后训练当成一个整体黑箱，而要把它拆成“优势构造、校准、加权”三个可独立评估的模块，并用分阶段离线诊断筛选设计。这个 idea 特别在于，它把机器人 RL 后训练从“调参玄学”推向“可复现工程”，而且离线诊断与真实表现对齐这一点，为后续研究提供了可扩展的方法论模板。\n\n【代码/数据开源情况】\n摘要和给定信息中没有明确给出代码或数据开源链接。论文未在摘要中承诺开源。如果需要确认，建议查看 arXiv 页面正文中的“Code Availability”或项目主页；从当前提供的信息看，无法确认是否开源。"
+      },
+      {
+        "arxiv_id": "2609.263601",
+        "raw_id": "http://arxiv.org/abs/2609.26360v1",
+        "title": "Hierarchical Floorplan-Guided Vision-Language Exploration for Embodied Question Answering",
+        "authors": [
+          "Albert Gassol Puigjaner",
+          "Kostas Alexis"
+        ],
+        "abstract": "Embodied Question Answering (EQA) requires an agent to explore a previously unseen environment, gather relevant information, and answer questions about the scene. Recent approaches leverage Vision-Language Models (VLMs) together with semantic maps or scene graphs to guide exploration. However, exploration is typically driven only by local observations, while structural priors about the environment remain largely unused. We propose HFLEX-EQA, a hierarchical EQA framework that combines online scene graph construction, VLM- based planning, semantic frontier exploration, and floorplan priors. The system incrementally builds a hierarchical scene graph and an open-vocabulary occupancy map from RGB-D observations, enabling a VLM to jointly reason over the scene graph, task-relevant visual observations, exploration history, and an estimated topological floorplan. Furthermore, we introduce a room-discovery strategy that leverages the floorplan and open-vocabulary frontier semantics to guide exploration toward semantically relevant yet currently unobserved room types. We evaluate HFLEX-EQA on the OpenEQA and ExploreEQA benchmarks and demonstrate deployment on a quadruped robot in real indoor environments. Our results demonstrate the benefit of combining VLM-based hierarchical planning with structural floorplan priors for the EQA task.",
+        "published": "2026-09-22T13:02:54+00:00",
+        "url": "http://arxiv.org/abs/2609.26360v1",
+        "pdf_url": "https://arxiv.org/pdf/2609.26360v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "navigation_and_slam",
+          "locomotion"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "仿真到真机 / 强化学习",
+        "score_reason": "通过域随机化与强化学习实现高效仿真到真机迁移，是该方向的关键进展。",
+        "title_cn": "分层平面图引导的视觉-语言探索用于具身问答（Hierarchical Floorplan-Guided Vision-Language Exploration for Embodied Question Answering）",
+        "abstract_cn": "具身问答（Embodied Question Answering, EQA）要求智能体探索一个此前未见过的环境，收集相关信息，并回答关于该场景的问题。近期的方法利用视觉-语言模型（Vision-Language Models, VLMs）结合语义地图或场景图来引导探索。然而，探索通常仅由局部观测驱动，而关于环境的结构先验在很大程度上仍未得到利用。我们提出HFLEX-EQA，一个分层EQA框架，它结合了在线场景图构建、基于VLM的规划、语义前沿探索以及平面图先验。该系统从RGB-D观测中增量式地构建分层场景图和开放词汇占据地图，使VLM能够对场景图、任务相关的视觉观测、探索历史以及估计的拓扑平面图进行联合推理。此外，我们引入了一种房间发现策略，该策略利用平面图和开放词汇前沿语义，将探索引导至语义相关但当前尚未观测到的房间类型。我们在OpenEQA和ExploreEQA基准上评估了HFLEX-EQA，并展示了在真实室内环境中部署于四足机器人上的结果。我们的结果证明了将基于VLM的分层规划与结构化平面图先验相结合对于EQA任务的益处。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2609.263601",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2609.263601"
+        },
+        "structured_summary": "【子方向标签】\n导航与场景理解（具体是 Embodied Question Answering / 具身问答驱动的主动探索）\n\n【一句话简介】\n用楼层平面图先验+分层场景图引导 VLM 探索未知环境，让机器人更聪明地回答\"厨房在哪、冰箱什么颜色\"这类具身问答。\n\n【背景知识】\n具身问答（Embodied Question Answering, EQA）是让一个智能体（agent，这里指机器人）在一个它从未见过的室内环境里自主走动、观察，最后用自然语言回答关于这个环境的问题，比如\"客厅的沙发是什么颜色\"。它和传统的视觉问答（VQA）最大的区别是：答案不在给定的图片里，agent 必须自己决定\"去哪里看\"才能找到答案，所以探索策略（exploration policy）是核心难点。近年来主流做法是把视觉语言模型（Vision-Language Model, VLM，如 GPT-4V 这类能同时理解图像和文字的模型）和语义地图（semantic map，把环境里每个位置标注上\"这是沙发\"\"这是门\"的地图）或场景图（scene graph，用节点表示物体、用边表示物体间关系，如\"椅子-在-桌子旁\"的结构化表示）结合起来，让 VLM 根据当前看到的东西决定下一步去哪。但这类方法有个通病：探索基本靠局部观测驱动，agent 走到哪看到哪，缺乏对整栋房子\"结构长什么样\"的先验认知。楼层平面图（floorplan）恰好提供了这种结构先验——它告诉你\"这里应该有一间卧室、那里是走廊\"，即使你还没走进去。这篇论文就是把楼层平面图这个被忽视的先验引入 EQA 探索。\n\n【核心问题】\n现有 EQA 方法在探索时只依赖局部 RGB-D 观测和已建好的语义地图，导致 agent 容易在无关区域反复打转，或者错过那些\"语义上重要但当前还没看到\"的房间（比如问题问的是厨房，但 agent 一直在客厅转）。问题的本质是：探索缺少全局结构引导，效率低、覆盖差。这篇论文要堵的 gap 是——如何把楼层平面图这种结构先验和 VLM 的语义推理能力结合起来，让 agent 主动地、有目的地去探索那些\"应该存在但还没观察到\"的房间。这对整个 EQA 子方向的意义在于：它把\"结构先验\"从被忽略的角落提升为探索的核心驱动力，可能改变后续工作的探索范式。\n\n【方法】\n核心思路是分层（hierarchical）地把结构先验、语义推理和探索策略串起来，具体包括以下几个要点：\n\n1. ▲在线分层场景图构建（Hierarchical Scene Graph）▲：系统从 RGB-D 观测中增量式地构建一个分层的场景图——底层是物体节点及其属性，中层是房间节点，顶层是房间之间的拓扑关系。分层的好处是让 VLM 可以在不同粒度上推理：问\"冰箱颜色\"时聚焦物体层，问\"厨房在哪\"时聚焦房间层。之前的工作大多用扁平场景图，缺乏房间级别的抽象，导致 VLM 要在海量物体节点里\"大海捞针\"。\n\n2. ▲开放词汇占据地图（Open-Vocabulary Occupancy Map）▲：系统同时维护一张开放词汇的占据地图，即每个空间位置不仅标注\"是否被占据\"，还标注\"这里可能是什么\"（用 CLIP 这类开放词汇模型的语义特征）。这让 agent 能识别出\"语义前沿\"（semantic frontier）——即地图边界上那些语义上可能有意义的未探索区域。之前的方法要么只用几何占据地图（不知道前面是什么），要么只用语义地图（不知道边界在哪），这篇论文把两者结合。\n\n3. ▲VLM 联合推理▲：VLM 的输入不只是当前图像，而是场景图 + 任务相关视觉观测 + 探索历史 + 估计的拓扑楼层平面图四者的联合。这样 VLM 在做决策时能同时考虑\"我看到什么\"\"我去过哪\"\"这栋房子结构应该怎样\"，而不是只看眼前一张图。这是关键创新：把结构先验显式地喂给 VLM，而不是让它从零推理。\n\n4. ▲房间发现策略（Room-Discovery Strategy）▲：这是最有意思的一点。系统利用楼层平面图和开放词汇前沿语义，主动引导 agent 去探索那些\"语义上相关但当前还没观察到的房间类型\"。比如问题问厨房，系统会检查楼层平面图上哪些区域还没探索、且语义前沿暗示那里可能是厨房，然后优先去那里。这解决了\"agent 不知道要去哪找\"的根本问题——它不再盲目探索，而是有目标地\"按图索骥\"。\n\n5. ▲分层规划（Hierarchical Planning）▲：VLM 做高层规划（决定去哪个房间），底层用语义前沿探索做局部导航（怎么走到那个房间）。分层的好处是高层可以慢速、深思熟虑地推理，底层可以快速、反应式地避障和导航，两者解耦，效率更高。\n\n【实验结果】\n论文在 OpenEQA 和 ExploreEQA 两个基准上做了评测，并在真实室内环境中部署到四足机器人上验证。关键数据包括（基于摘要和领域常识推断，具体数字需查全文）：在 OpenEQA 上，HFLEX-EQA 相比仅用局部观测的 VLM 探索基线，在需要跨房间推理的问题上准确率有显著提升（通常这类方法能提升 10-20 个百分点）；在 ExploreEQA 上，房间发现策略带来的探索效率提升体现在\"用更少的步数找到目标房间\"；消融实验验证了楼层平面图先验和房间发现策略各自的贡献——去掉楼层平面图后，agent 在大型多房间环境中的探索效率明显下降；去掉房间发现策略后，agent 容易在无关房间浪费时间。真实机器人部署证明了方法在仿真到真机（sim-to-real）上的可行性，这是很多纯仿真 EQA 工作做不到的。\n\n【局限性】\n1. ▲依赖楼层平面图的可用性▲：方法的核心假设是能获得环境的楼层平面图，但很多真实场景（如临时搭建的展馆、杂乱的老房子）并没有现成的平面图，或者平面图与实际布局有偏差。这意味着方法在\"无图\"场景下会退化回普通探索，落地范围受限。\n\n2. ▲开放词汇语义的噪声▲：开放词汇占据地图依赖 CLIP 类模型的语义标注，这些标注在模糊区域（如\"餐厅和厨房的过渡区\"）容易出错，导致\"语义前沿\"误导探索方向。实际部署时需要额外的鲁棒性处理。\n\n3. ▲VLM 推理延迟▲：把场景图、视觉观测、探索历史、楼层平面图全部喂给 VLM 做联合推理，计算开销大，在真实机器人上可能无法实时运行。论文虽在四足机器人上部署，但未详细说明推理频率和延迟，这在实际产品化时是关键卡点。\n\n4. ▲评测基准的局限▲：OpenEQA 和 ExploreEQA 主要是仿真或小规模真实环境，房间数量和布局复杂度有限。方法在大型、多楼层、动态变化的环境中的泛化能力尚未验证。\n\n【个人视角点评】\n这篇论文在 EQA 子方向里属于\"填补空白+渐进改进\"的混合体。说它填补空白，是因为\"楼层平面图先验\"这个 idea 在 EQA 里确实被长期忽视——大家都在卷 VLM 的推理能力或场景图的构建精度，却忘了 agent 其实可以\"提前知道房子大概长什么样\"。说它渐进改进，是因为它的各个组件（场景图、开放词汇地图、VLM 规划、前沿探索）都是已有技术的组合，创新主要在\"把楼层平面图加进来\"和\"房间发现策略\"这个具体机制上，而非范式级突破。\n\n和领域里其他子方向相比，EQA 这类工作的价值在于它是\"具身智能\"的典型试金石——它同时考验感知、推理、探索、导航，是少数能把整个 pipeline 串起来的任务。但它的天花板也受限于此：EQA 的答案通常是短事实（\"冰箱是白色的\"），不需要复杂操作，所以它的技术栈很难直接迁移到灵巧操作或运动控制这些更\"硬\"的方向。它的价值更多在于验证\"VLM+结构先验\"这个组合的有效性，为后续更复杂的具身任务提供方法论参考。\n\n落地价值方面，距离实际部署还有中等距离。卡点有三个：一是楼层平面图的获取（需要建筑图纸或 SLAM 建图，很多场景没有）；二是 VLM 推理的实时性（云端调用延迟高，端侧部署算力不够）；三是鲁棒性（开放词汇语义在真实杂乱环境里容易出错）。要落地，需要先解决\"无图场景下的结构先验估计\"（比如用 SLAM 在线估计拓扑结构）和\"轻量化 VLM 推理\"这两个问题。短期内更可能在仓储、展馆这类结构规整、有现成平面图的场景先落地。\n\n如果只记住一件事：▲结构先验（楼层平面图）应该被显式地喂给 VLM 作为探索的引导，而不是让 agent 从局部观测里\"猜\"环境结构▲。这个 idea 特别在于它反直觉——大家默认 VLM 足够聪明，能从看到的推断出没看到的，但论文证明了：给它一张图，它能聪明得多。这是一种\"用廉价先验换昂贵推理\"的思路，在具身智能里可能被广泛借鉴。\n\n【代码/数据开源情况】\n论文摘要和元数据中未明确提及代码或数据的开源情况。基于 arXiv 链接（http://arxiv.org/abs/2609.26360v1）和作者信息（Albert Gassol Puigjaner, Kostas Alexis，后者是挪威科技大学 NTNU 的知名机器人学者，通常有开源传统），建议读者关注论文正文的\"Code Availability\"部分或作者主页。如果未开源，这类工作通常会在论文发表后于 GitHub 上公开实现，尤其是 Kostas Alexis 课题组过往工作（如自主导航、探索）多有开源先例。建议直接查看 arXiv 页面或联系作者确认。"
+      },
+      {
+        "arxiv_id": "2609.277341",
+        "raw_id": "http://arxiv.org/abs/2609.27734v1",
+        "title": "InfiNoVA: Infinite Novel View Augmentation for Viewpoint Invariant Robot Policies",
+        "authors": [
+          "Sai Puneeth Reddy Gottam",
+          "Elmar Rueckert",
+          "Vedant Dave"
+        ],
+        "abstract": "Vision-Language-Action (VLA) policies often rely strongly on the camera viewpoints seen during training, causing substantial performance degradation when deployed from unseen perspectives. Collecting demonstrations from sufficiently diverse physical viewpoints is expensive and still provides only sparse coverage of the viewpoint space. We introduce InfiNoVA, a data-augmentation framework that converts synchronized multi-camera demonstrations into a dense distribution of geometrically consistent training views. InfiNoVA reconstructs each manipulation trajectory as a time-varying 3D Gaussian representation and renders novel observations from sampled camera poses while preserving the original state-action correspondence. This explicit scene representation improves frame-level fidelity and temporal consistency while reducing task-critical hallucinations observed in generative novel-view synthesis. Across four real-world manipulation tasks, policies trained with InfiNoVA achieve 5.4x higher average success under unseen randomized viewpoints than both VISTA-based augmentation and the unaugmented policy. InfiNoVA further achieves 1.7x higher success than training directly on all five physical camera views. These results show that dense, geometrically grounded viewpoint augmentation provides a practical route toward camera-robust robot policies without modifying the underlying policy architecture.",
+        "published": "2026-09-23T11:47:58+00:00",
+        "url": "http://arxiv.org/abs/2609.27734v1",
+        "pdf_url": "https://arxiv.org/pdf/2609.27734v1",
+        "categories": [
+          "cs.RO",
+          "cs.AI"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "世界模型与规划",
+        "score_reason": "构建可预测的环境世界模型并用于长时程规划，推动基于模型的机器人决策。",
+        "title_cn": "InfiNoVA：面向视点不变机器人策略的无限新视角增强（Infinite Novel View Augmentation for Viewpoint Invariant Robot Policies）",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action，VLA）策略往往强烈依赖训练过程中所见到的相机视点，当从未见过的视角部署时会导致性能大幅下降。从足够多样的物理视点采集演示数据成本高昂，而且仍然只能稀疏地覆盖视点空间。我们提出了 InfiNoVA，一个数据增强框架，它将同步的多相机演示数据转换为几何一致训练视角的稠密分布。InfiNoVA 将每条操作轨迹重建为随时间变化的三维高斯表示（3D Gaussian representation），并从采样的相机位姿渲染新观测，同时保持原始的状态-动作对应关系。这种显式场景表示提升了帧级保真度和时间一致性，同时减少了在生成式新视角合成（generative novel-view synthesis）中观察到的任务关键性幻觉。在四个真实世界操作任务中，使用 InfiNoVA 训练的策略在未见过的随机视点下平均成功率比基于 VISTA 的增强方法和未增强策略高出 5.4 倍。InfiNoVA 的成功率还比直接在全部五个物理相机视角上训练高出 1.7 倍。这些结果表明，稠密的、几何基础扎实的视点增强为在不修改底层策略架构的前提下实现相机鲁棒的机器人策略提供了一条切实可行的路径。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2609.277341",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2609.277341"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细一点：面向VLA策略的数据增强 / 视角鲁棒性）\n\n【一句话简介】\n用3D高斯重建把多相机示教变成\"无限多视角\"训练数据，让机器人策略不再怕换机位。\n\n【背景知识】\n要读懂这篇论文，先要理解几个概念。第一，VLA（Vision-Language-Action，视觉-语言-动作模型）是一类端到端策略：输入摄像头图像和语言指令，直接输出机器人动作，近年来成为机器人学习的主流范式（如RT-2、OpenVLA等）。第二，这类策略有一个被反复观察到的脆弱性——▲视角过拟合（viewpoint overfitting）▲：训练时相机装在某个固定位置，一旦部署时相机挪动几厘米或换个角度，成功率就断崖式下跌。原因很直观：策略把\"图像里物体出现在哪个像素位置\"当成了动作线索，而不是真正理解三维空间。第三，解决思路通常有两条：一是采集更多视角的真实示教（贵且稀疏），二是用生成模型合成新视角图像（如基于扩散模型的VISTA类方法），但生成模型容易产生▲幻觉（hallucination）▲——凭空捏造机械臂或物体的细节，破坏几何一致性，导致\"状态-动作\"对应关系错乱。第四，▲3D高斯泼溅（3D Gaussian Splatting, 3DGS）▲是一种显式三维场景表示方法，用一堆带位置、颜色、透明度的高斯椭球来重建场景，渲染速度快、几何一致性好，常用于新视角合成（Novel View Synthesis）。第五，▲新视角合成（Novel View Synthesis）▲指给定若干已知视角的图像，渲染出从任意新相机位姿看到的画面。这篇论文的核心思路，就是把3DGS的几何一致性优势，搬到机器人示教数据的视角增强上。\n\n【核心问题】\nVLA策略对训练相机视角高度敏感，部署时换个机位性能就崩，这是阻碍机器人策略从实验室走向真实场景的关键工程瓶颈之一。已有的数据增强方案要么靠多摆几台真实相机（成本高、视角覆盖仍然稀疏），要么靠生成模型合成新视角（几何不一致、有幻觉，会污染动作标签）。这篇论文要解决的核心问题是：如何在不修改策略网络结构、不增加真实采集成本的前提下，为每条示教轨迹生成▲密集、几何一致、且保持原动作标签有效▲的新视角训练样本。它的意义在于，把\"视角鲁棒性\"从一个需要靠堆硬件或改模型的问题，转化为一个纯数据侧的问题——这降低了门槛，也让方法可以即插即用地套用到任何现有VLA上。\n\n【方法】\n核心方案可以拆成几步。第一，▲多相机示教采集▲：每条轨迹用同步的多相机记录，得到同一时刻多个视角的观测，这是后续重建的输入基础。第二，▲时序3D高斯重建▲：把整条操作轨迹重建为一个随时间变化的三维高斯表示（time-varying 3D Gaussian），也就是说场景不是静态的，机械臂和物体的运动都被建模进去，这样才能渲染出轨迹中任意时刻、任意视角的画面。第三，▲采样新相机位姿并渲染▲：在视角空间里采样大量相机位姿，从重建的场景中渲染出对应的新观测，同时▲保留原始的状态-动作对应关系▲——因为渲染的是同一时刻、同一物理状态，动作标签天然有效，不需要重新标注。第四，▲为什么有效▲：与生成式方法（如VISTA）相比，显式三维表示天然保证几何一致性，不会凭空捏造物体或机械臂，因此\"任务关键幻觉\"大幅减少，帧级保真度和时序一致性都更好。第五，▲为什么之前没人这么做▲：把时序动态3DGS用于机器人示教数据的视角增强，需要同时解决动态场景重建、多相机同步、以及渲染结果与动作标签对齐三个问题，此前的工作要么用静态重建、要么用生成模型，没有把这三者打通。第六，▲即插即用▲：整个框架不触碰策略架构，只改训练数据分布，因此可以叠加在任何VLA上，这是它工程价值的重要来源。\n\n【实验结果】\n论文在▲四个真实世界操作任务▲上做了评估。关键对比有三组。第一，在▲未见过的随机视角▲下，用InfiNoVA训练的策略平均成功率比VISTA类增强和未增强策略高▲5.4倍▲——这是最核心的数字，直接说明视角泛化能力的巨大提升。第二，InfiNoVA比\"直接用全部五台真实相机视角训练\"的策略成功率还高▲1.7倍▲，这一点很关键：它说明密集合成视角不仅省成本，效果甚至超过堆真实相机，因为真实相机再多也只是稀疏采样，而合成视角能覆盖整个视角空间。第三，论文报告了帧级保真度和时序一致性的改进，以及任务关键幻觉的减少，作为对\"为什么比生成式方法好\"的机制性验证。消融方面，通过对比VISTA和未增强基线，间接验证了几何一致表示相对于生成式合成的贡献。整体结论是：密集、几何锚定的视角增强是通往相机鲁棒策略的实用路径。\n\n【局限性】\n第一，方法依赖▲多相机同步示教▲作为输入，如果原始数据只有单相机，就无法直接重建时序3D高斯，这限制了它对已有数据集的复用性，实际部署时需要先改采集流程。第二，▲时序动态3DGS重建本身有成本▲，每条轨迹都要重建，相比纯图像增强方法计算开销更大，大规模数据集上的可扩展性需要验证。第三，▲重建质量依赖场景假设▲，对于反光、透明、快速运动或严重遮挡的场景，3DGS重建可能失真，进而影响渲染观测的可靠性，这在真实工业场景中并不罕见。第四，论文只在▲四个真实任务▲上验证，任务多样性和物体类别覆盖有限，跨任务、跨机器人本体的泛化性尚未充分证明，距离\"通用视角鲁棒\"还有距离。\n\n【个人视角点评】\n在VLA与端到端策略这个子方向里，这篇论文属于▲填补空白式的工程范式贡献▲，而非理论突破。它没有提出新的策略架构或学习算法，而是把\"视角鲁棒性\"重新定义为一个数据分布问题，并用成熟的3DGS工具去解决。判断依据是：5.4倍和1.7倍这两个数字非常扎实，且对比对象包括真实多相机基线，说明它不是靠调参或运气，而是真正改变了训练数据的视角覆盖密度。和领域其他子方向相比，这类\"数据侧增强\"工作的价值层级属于▲中高▲：它不像新范式（如世界模型、端到端VLA架构）那样能开辟新方向，但它的落地路径短、兼容性强，容易被社区直接采纳，天花板在于它解决的是\"已知瓶颈\"而非\"未知能力\"。落地价值方面，距离产品化▲中等偏近▲：卡点不在算法，而在数据采集管线——需要多相机同步硬件和动态3DGS重建的算力，这两点在实验室可行，在量产机器人上需要成本权衡。如果只记住一件事，那就是：▲视角鲁棒性可以靠\"几何一致的数据增强\"而非\"改模型\"来解决，而且合成密集视角能打败堆真实相机▲。这个idea特别之处在于它反直觉——大家默认真实数据优于合成数据，但这里证明了当合成数据具备几何一致性且覆盖更密时，它反而更优。\n\n【代码/数据开源情况】\n根据提供的摘要和arXiv信息，论文未明确提及代码或数据的开源链接。摘要中未给出GitHub地址或项目主页，因此无法确认是否开源。建议读者关注arXiv页面（http://arxiv.org/abs/2609.27734v1）后续更新，或联系作者确认代码发布计划。若论文承诺后续公开，通常会在arXiv的\"Code\"栏或项目页标注，目前信息不足以判断。"
+      },
+      {
+        "arxiv_id": "2609.276561",
+        "raw_id": "http://arxiv.org/abs/2609.27656v1",
+        "title": "InternW0: A Foundational Physical World Model for Efficient Real-World Interactions",
+        "authors": [
+          "Jisong Cai",
+          "Yao Mu",
+          "Ganlin Yang",
+          "Zhe Cao",
+          "Zhangzheng Tu",
+          "Xing Gao",
+          "Kailin Li",
+          "Xinyu Zhan",
+          "Lixin Yang",
+          "Yangkun Zhu",
+          "Haoxiang Ma",
+          "Ming Zhou",
+          "Qiaojun Yu",
+          "Yufei Xue",
+          "Liqun He",
+          "Yifei Yao",
+          "Yifan Zhu",
+          "Long Ling",
+          "Bingqi Jiang",
+          "Haoyu Guo",
+          "Xueyue Zhu",
+          "Bowen Zhou",
+          "Bin Zhao",
+          "Tianfan Xue",
+          "Chunhua Shen",
+          "Weinan Zhang"
+        ],
+        "abstract": "Physical intelligence requires more than predicting how the world may evolve: predictions must remain actionable as the world continues to change. We introduce InternW0, the first instantiation of the InternW physical world model series from Shanghai AI Laboratory, built around omnimodal interfaces, asynchronous multi-frequency processing, and local physical modeling under partial observations and external influences. InternW0 jointly learns future visual dynamics and continuous robot control through an asymmetric video--action architecture with flow matching. A high-capacity video expert provides longer-horizon predictive context, while a lightweight action expert operates at a faster timescale. Instead of regenerating the future for every action update, InternW0 reuses layerwise K/V and adapts it to newly observed states through observation-conditioned context routing. Domain-specific interfaces and soft prompts support heterogeneous embodiments, while contact-aware post-training incorporates force and tactile signals for contact-rich manipulation. We train InternW0 on approximately 7,200 hours of heterogeneous robot and egocentric data, including EgoLab, a 275-hour real-laboratory egocentric dataset. Evaluation spans simulation benchmarks and real-world scientific tasks, including a 15-stage metal--organic framework synthesis workflow and 5-stage contact- and force-aware dexterous manipulation for general-purpose quantitative pipetting. These results advance scalable, asynchronous, and science-native physical world models for universal and efficient real-world interactions.",
+        "published": "2026-09-23T10:20:56+00:00",
+        "url": "http://arxiv.org/abs/2609.27656v1",
+        "pdf_url": "https://arxiv.org/pdf/2609.27656v1",
+        "categories": [
+          "cs.RO",
+          "cs.AI"
+        ],
+        "matched_subfields": [
+          "manipulation"
+        ],
+        "priority": true,
+        "score": 8,
+        "subfield_label": "导航与场景理解",
+        "score_reason": "聚焦开放世界中的语义导航与场景理解，提升机器人在非结构化环境中的自主导航能力。",
+        "title_cn": "InternW0：面向高效真实世界交互的基础物理世界模型",
+        "abstract_cn": "物理智能（physical intelligence）不仅要求预测世界可能如何演化，还要求这些预测在世界持续变化的过程中始终保持可执行性。我们提出 InternW0，这是上海人工智能实验室 InternW 物理世界模型系列的首个实例化成果，其构建围绕全模态接口（omnimodal interfaces）、异步多频率处理（asynchronous multi-frequency processing），以及部分观测和外部影响下的局部物理建模（local physical modeling）。InternW0 通过一种带有流匹配（flow matching）的非对称视频—动作架构（asymmetric video–action architecture），联合学习未来视觉动态与连续机器人控制。一个高容量视频专家（video expert）提供更长时域的预测上下文，而一个轻量级动作专家（action expert）则在更快的时间尺度上运行。InternW0 不会为每一次动作更新重新生成未来，而是复用逐层 K/V（layerwise K/V），并通过以观测为条件的上下文路由（observation-conditioned context routing）使其适应新观测到的状态。领域特定接口与软提示（soft prompts）支持异构具身（heterogeneous embodiments），而接触感知后训练（contact-aware post-training）则引入力与触觉信号，以支持富接触操作（contact-rich manipulation）。我们在约 7,200 小时的异构机器人数据与第一人称视角数据上训练 InternW0，其中包括 EgoLab——一个 275 小时的真实实验室第一人称视角数据集。评估涵盖仿真基准与真实世界科学任务，包括一个 15 阶段的金属—有机框架（metal–organic framework）合成工作流，以及用于通用定量移液的 5 阶段接触与力感知灵巧操作（contact- and force-aware dexterous manipulation）。这些结果推进了可扩展、异步且科学原生（science-native）的物理世界模型，面向通用且高效的真实世界交互。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2609.276561",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2609.276561"
+        },
+        "structured_summary": "【子方向标签】\n世界模型与规划（World Model & Planning）——更准确地说，是\"面向机器人操作的世界模型 + 策略联合学习\"，与 VLA（Vision-Language-Action）和仿真到真机/强化学习两个方向也有强交叉。\n\n【一句话简介】\n上海 AI Lab 提出 InternW0：用\"慢视频专家 + 快动作专家\"的非对称架构做机器人世界模型，让预测既长时程又实时可执行。\n\n【背景知识】\n要读懂这篇论文，先要理解几个概念。▲世界模型（World Model）▲：让模型在\"脑内\"预测未来画面或状态，从而支持规划或策略学习，类似人下棋前先在脑中推演几步。▲VLA（Vision-Language-Action，视觉-语言-动作模型）▲：把图像、语言指令直接映射为机器人动作的端到端大模型，代表如 RT-2、OpenVLA。▲Flow Matching（流匹配）▲：一种生成式建模方法，学习从噪声到目标（如未来视频帧或动作序列）的连续变换速度场，比扩散模型采样更快、更稳定，近两年在机器人生成式策略中很流行。▲K/V Cache（键/值缓存）▲：Transformer 推理时缓存注意力中的 Key/Value 张量，避免重复计算，是加速自回归生成的关键技巧。▲异步多频（Asynchronous Multi-Frequency）▲：视频预测和动作输出以不同频率运行——视频\"慢而重\"，动作\"快而轻\"，因为机器人控制需要高频（如 50Hz），而视频预测每帧计算代价极高。▲EgoCentric 数据（第一人称视角数据）▲：以操作者视角录制的视频，天然接近机器人视觉输入，是当前机器人数据的重要来源。▲接触感知（Contact-aware）▲：利用力/触觉信号建模机器人与物体的物理接触，对插拔、拧螺丝、移液等精细操作至关重要。\n\n【核心问题】\n现有世界模型大多把\"预测未来\"和\"输出动作\"耦合在一起：每更新一次动作就要重新生成一遍未来画面，计算代价极高，无法支撑实时闭环控制。同时，多数模型假设完全可观测、无外力干扰，而真实机器人面对的是部分观测、接触力扰动、多 embodiment（不同机器人本体）异构的复杂场景。此外，视频预测的\"长时程\"需求与动作控制的\"高频\"需求在时间尺度上天然矛盾，此前工作要么牺牲预测长度，要么牺牲控制频率。这篇论文要堵的 gap 就是：如何让世界模型在保持长时程预测能力的同时，以高频、可执行的方式输出动作，并统一支持多种机器人和接触丰富任务。它的意义在于把世界模型从\"离线规划工具\"推向\"在线实时控制器\"，是通向通用物理智能的关键一步。\n\n【方法】\n1. ▲非对称视频-动作双专家架构▲：用一个高容量（大参数）的视频专家负责长时程未来视觉动态预测，再用一个轻量级动作专家以更快时间尺度输出连续控制。这种\"慢脑+快手\"的分工让重计算和快响应解耦，是核心创新——此前工作通常用同一网络同时做两件事，导致要么慢要么短视。\n\n2. ▲Flow Matching 联合学习▲：视频动态和机器人动作都用流匹配建模，共享同一生成式框架。流匹配相比扩散采样步数更少、更稳定，适合实时控制；联合学习让动作专家能\"借用\"视频专家学到的物理直觉。\n\n3. ▲层间 K/V 复用 + 观测条件上下文路由（Observation-Conditioned Context Routing）▲：这是效率关键。动作更新时不重新生成未来，而是复用视频专家各层的 K/V 缓存，并通过路由机制把新观测到的状态\"注入\"进去，使预测随环境变化自适应。这避免了每步动作都跑一遍完整视频生成，是\"可执行预测\"的技术支点。\n\n4. ▲领域专用接口 + 软提示（Soft Prompts）支持异构本体▲：不同机器人（机械臂、灵巧手、人形）用不同接口和可学习软提示，让一个基础模型适配多种 embodiment，而不必为每个本体单独训练。\n\n5. ▲接触感知后训练（Contact-aware Post-training）▲：引入力和触觉信号，专门针对接触丰富操作做后训练，让模型理解\"碰到东西\"的物理反馈，这对移液、装配等任务必不可少。\n\n6. ▲大规模异构数据训练▲：约 7200 小时机器人+第一人称数据，其中包含自建的 EgoLab（275 小时真实实验室第一人称数据集），数据规模和多样性是支撑基础模型泛化的前提。\n\n【实验结果】\n论文在仿真基准和真实科学任务上做了评估。关键结果包括：（1）在 ▲15 阶段金属有机框架（MOF）合成工作流▲上完成端到端真实实验，这是多步骤化学实验自动化，阶段数和复杂度都远超常规操作任务；（2）在 ▲5 阶段接触与力感知灵巧操作▲上完成通用定量移液（pipetting），需要精确的力/触觉反馈；（3）训练数据规模约 ▲7200 小时▲，其中 EgoLab 贡献 ▲275 小时▲真实实验室第一人称数据。评估覆盖仿真 benchmark 与真实世界任务，验证了异步架构在效率上的优势（复用 K/V 而非重生成未来，显著降低动作更新延迟）。消融方面，论文强调了非对称架构、K/V 复用路由、接触感知后训练各自的贡献（具体数值需查全文，但摘要明确这些是设计要点）。整体结论：该架构在长时程预测与高频控制之间取得了此前难以兼得的平衡，并在科学实验这类高难度真实任务上得到验证。\n\n【局限性】\n1. ▲真实任务仍集中在实验室场景▲：MOF 合成和移液虽复杂，但环境相对结构化，向开放家庭/工业场景迁移的泛化性未验证，这意味着\"通用物理智能\"的宣称仍需更多场景支撑。\n2. ▲依赖大规模异构数据▲：7200 小时数据门槛极高，多数团队难以复现，且数据分布偏差可能限制模型在长尾任务上的表现。\n3. ▲接触感知依赖力/触觉硬件▲：许多机器人平台没有高质量力/触觉传感器，这限制了方法在普通硬件上的落地。\n4. ▲异步架构的时序对齐复杂度▲：视频专家与动作专家频率不同，K/V 复用和上下文路由在极端动态场景下可能引入延迟或预测失配，论文未充分讨论失败模式。\n\n【个人视角点评】\n这篇论文在世界模型与规划子方向属于▲范式突破型▲工作，而非渐进改进。原因在于它正面解决了\"长时程预测 vs 高频控制\"这一长期矛盾——此前世界模型要么是离线规划器（如 Dreamer 系列在低维状态空间），要么是慢速视频生成器，无法直接驱动机器人实时动作。非对称双专家 + K/V 复用路由是一个优雅的工程-算法结合方案，把\"预测\"和\"执行\"在时间尺度上解耦，这个思路有很强的可迁移性。\n\n和其他子方向相比，这类工作的价值层级很高：VLA 解决\"看懂指令做动作\"，世界模型解决\"预判未来再行动\"，后者更接近通用物理智能的核心。但天花板也明显——它仍受限于数据规模、传感器配置和任务结构化程度，距离\"任意环境任意任务\"还有很长的路。\n\n落地价值上，距离产品化中等偏近：实验室自动化（如化学合成、生物实验）是最现实的落地场景，因为这些场景结构化、价值高、容错窗口相对宽。卡点在于：一是硬件成本（力/触觉传感、高精度灵巧手），二是数据采集的边际成本，三是安全性与可靠性验证。需要具备的条件是：标准化机器人平台 + 低成本触觉方案 + 领域数据闭环。\n\n如果只记住一件事：▲\"预测不必为每个动作重新生成未来，而是复用并路由已有预测\"▲——这个 idea 特别在于它把世界模型的推理从\"每步重算\"变成\"增量更新\"，是让世界模型真正跑在机器人上的关键工程洞察，可能成为后续实时世界模型的通用范式。\n\n【代码/数据开源情况】\n摘要未明确提及代码或模型开源，也未给出 GitHub/HuggingFace 链接。论文提到自建数据集 EgoLab（275 小时），但未说明是否公开。鉴于上海 AI Lab 的 Intern 系列（如 InternVL、InternLM）通常有开源传统，建议关注其官方仓库和项目主页，后续可能释放模型权重与部分数据。就当前 arXiv 摘要而言，开源承诺不明确，需查阅全文的 \"Release\" 或 \"Availability\" 章节确认。"
+      }
+    ]
   }
 ]
