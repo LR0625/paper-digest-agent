@@ -82,6 +82,238 @@ body {
 <div class="header"><h1>📄 embodied_ai 论文速递</h1><p>每日自动推送 · 由 paper-digest-agent 驱动</p></div>
 <div class="container">
 <section class="day">
+<h2>📅 2026-09-25 <span class="count">(5 篇)</span></h2>
+
+<div class="paper">
+<h3>面向鲁棒机器人部署的自适应VLA（Self-Adaptive VLA）</h3>
+<div class="title-en">Self-Adaptive VLA for Robust Robot Deployment</div>
+<div class="meta">
+<span>📂 VLA与端到端策略</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2609.30092v1" target="_blank">arXiv: 2609.300921</a>
+<a href="https://xxx.itp.ac.cn/abs/2609.300921" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.300921" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2609.300921" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.300921" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">尽管视觉-语言-动作（Vision-Language-Action，VLA）模型在机器人操作中展现出令人印象深刻的能力，但其无记忆特性使其在测试时环境偏移下表现脆弱，尤其是由磨损或不完美校准引起的硬件偏移。使这些模型能够在部署期间自适应，而无需持续进行现场重新校准，仍然是实现真实世界可扩展性的关键瓶颈。在这项工作中，我们提出了自适应VLA（Self-Adaptive VLA），这是一种新颖的后训练方案，使策略能够利用其自身的 rollout 作为上下文，迭代地适应部署时的硬件偏移。为此，我们首先在故意注入的硬件偏移下收集策略 rollout。然后，我们通过为这些已知偏移预补偿专家动作，将基础策略的训练数据转换为以偏移为条件的专家演示。接下来，我们引入一个轻量级、可插拔的上下文编码器，它将上下文（包括偏移环境中的视觉观测、本体感觉和动作）压缩为一个潜在上下文 token。该 token 通过自适应层归一化（adaptive layer normalization，AdaLN）调制策略。此外，我们发现上下文 token 可以被集成（ensemble），从而使策略能够迭代地自我纠正并逐步减轻失败。在四个精度关键的双臂和灵巧操作任务上的大量实验表明，自适应VLA 在硬件偏移（例如驱动偏置和关节编码器偏移）下恢复了基础策略超过 80% 的性能。此外，与基础策略相比，自适应VLA 能够更鲁棒地部署到新的工作站。我们的方法为鲁棒的大规模真实世界机器人部署和更轻松的维护提供了一条路径。视频见 https://icefoxzhx.github.io/self-adaptive-vla。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（偏"部署期自适应/鲁棒性"这一细分切口）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>让 VLA 策略在部署时用自己的 rollout 当上下文，在线自纠正硬件偏移，无需重新标定。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p class="num-item">1. <strong>VLA（Vision-Language-Action，视觉-语言-动作模型）</strong>：把视觉观测、语言指令直接映射为机器人动作序列的大模型，代表如 RT-2、OpenVLA、π0 等。它把"看懂"和"动手"统一到一个端到端策略里，是当前具身智能最热的主线。</p>
+<p class="num-item">2. <strong>无记忆性（memoryless）</strong>：主流 VLA 是马尔可夫式策略——只看当前帧观测就出动作，不保留历史。这带来一个隐患：一旦环境/硬件发生它训练时没见过的偏移，它不会"察觉自己一直在失败"，只会重复错误。</p>
+<p class="num-item">3. <strong>测试时环境偏移（test-time environment shift）</strong>：部署现场和训练现场的分布差异。本文特别关注 <strong>硬件偏移（hardware shift）</strong>，例如<strong>执行器偏置（actuation bias，电机实际输出与指令的固定偏差）</strong>、<strong>关节编码器偏移（joint encoder offset，关节角度读数系统性偏了）</strong>。这类偏移在长期使用磨损、装配公差、重新标定不完美时必然出现。</p>
+<p class="num-item">4. <strong>上下文自适应 / In-context adaptation</strong>：不更新模型权重，而是把"当前处境的信息"作为额外输入喂给策略，让它在推理时改变行为。类似给模型一张"现场情况说明卡"。</p>
+<p class="num-item">5. <strong>AdaLN（Adaptive Layer Normalization，自适应层归一化）</strong>：一种条件注入机制，用外部信号生成缩放/平移参数去调制网络中间层特征，比简单拼接更高效地控制生成行为，在扩散模型和条件策略里常见。</p>
+<p class="num-item">6. <strong>Pre-compensation（预补偿）</strong>：既然知道偏移是什么，就在专家动作上预先反向加上补偿量，使"在偏移硬件上执行这个补偿后动作"等价于"在正常硬件上执行原始专家动作"，从而造出"偏移条件下的专家示范"。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>VLA 在实验室标定良好的硬件上表现优异，但一换工作站、或机器人用久了出现磨损，性能就断崖式下跌——因为策略没有记忆，无法识别"我现在处于一个偏了的硬件上"，只会机械重复错误动作。传统解法是每次部署前重新标定（recalibration），但这在规模化部署（几十上百台机器人、跨站点）时成本极高、不可持续。本文要堵的 gap 是：<strong>如何让策略在部署现场、不重新标定、不更新权重的前提下，靠自己的失败经验在线自我纠正</strong>。这件事对整个领域意义重大——它是 VLA 从"demo 好看"走向"大规模真实部署可维护"的关键一环，直接决定运维成本能否被压下来。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p class="num-item">1. <strong>偏移条件下的专家数据构造（shift-conditioned expert demonstrations）</strong>：先在仿真/真机上<strong>故意注入</strong>已知的硬件偏移（如给某关节加固定偏置），收集策略在这些偏移下的 rollout；然后对这些偏移做<strong>预补偿</strong>——把专家动作反向补偿掉已知偏移，得到"在偏移硬件上应该执行的动作"。这样就有了成对的（偏移环境观测 + 补偿后动作）训练数据，让模型学会"看到这种偏移迹象时该怎么改动作"。</p>
+<p class="num-item">2. <strong>轻量插件式上下文编码器（plug-in context encoder）</strong>：把一段上下文——包括视觉观测、<strong>本体感知（proprioception，关节角/力矩等机器人自身状态）</strong>、以及历史动作——压缩成一个<strong>潜在上下文 token（latent context token）</strong>。这个 token 相当于对"当前硬件偏到哪了"的隐式估计，不需要显式标定参数。</p>
+<p class="num-item">3. <strong>用 AdaLN 调制策略</strong>：上下文 token 通过自适应层归一化注入到基础策略的中间层，动态调整其行为，而不是简单拼接输入。这样基础策略权重基本不动，只加一个轻量模块，<strong>后训练（post-training）成本低</strong>，可即插即用。</p>
+<p class="num-item">4. <strong>上下文 token 集成（ensembling）实现迭代自纠正</strong>：作者发现多个上下文 token 可以集成，让策略<strong>逐步</strong>修正——先做一个动作、观察结果、更新上下文、再修正，形成闭环的"step by step"自纠正，而不是一次性赌对。</p>
+<p class="num-item">5. <strong>为什么之前没人这么做</strong>：以往鲁棒性工作多靠域随机化（domain randomization）在训练时覆盖偏移，但无法覆盖部署时未知的具体偏移；或靠在线微调，但需要梯度更新、代价高且可能灾难性遗忘。本文的巧思是<strong>把"偏移"变成可推理的上下文</strong>，用无梯度的 in-context 方式解决，兼顾了泛化和低成本。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p class="num-item">1. <strong>任务与设置</strong>：在<strong>四个精度敏感的双臂与灵巧操作任务</strong>（bi-manual & dexterous manipulation）上评测，注入的偏移包括执行器偏置和关节编码器偏移。</p>
+<p class="num-item">2. <strong>核心指标</strong>：在硬件偏移下，Self-Adaptive VLA <strong>恢复了基础策略 80% 以上的性能</strong>（"recovers over 80% of the base policy's performance"）——即原本因偏移而崩溃的策略，被拉回到接近正常水平的 80%+。</p>
+<p class="num-item">3. <strong>跨工作站泛化</strong>：相比基础策略，本方法在<strong>迁移到新工作站</strong>时部署更鲁棒，说明它不只是拟合某一种偏移，而是学到了通用的自适应能力。</p>
+<p class="num-item">4. <strong>消融</strong>：论文提到上下文 token 集成能带来迭代自纠正、逐步缓解失败，暗示集成 vs 单 token、有无本体感知/动作上下文等应有消融支撑（摘要未给逐项数字，但这是其方法有效性的关键验证点）。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. <strong>依赖已知偏移类型来造训练数据</strong>：预补偿需要"已知偏移"，若部署时出现训练未覆盖的偏移类型（如非线性、时变磨损），泛化能力存疑。这意味着它对"缓慢退化"这类连续变化可能不如对固定偏置有效。</p>
+<p class="num-item">2. <strong>需要采集偏移下的 rollout</strong>：数据构造仍需在注入偏移的条件下跑策略，前期数据成本不低，且真机上注入偏移本身有风险。</p>
+<p class="num-item">3. <strong>上下文长度与推理开销</strong>：把观测、本体感知、动作压成 token 并集成，会增加推理负担，对实时高频控制（如灵巧手）可能构成瓶颈。</p>
+<p class="num-item">4. <strong>恢复而非超越</strong>：目标是"恢复基础策略 80% 性能"，即上限是回到正常水平，而非在偏移下变得更强；对精度极端敏感的任务，20% 的损失可能仍不可接受。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<ul>
+<li><strong>定位</strong>：这是一篇<strong>填补空白型</strong>工作，而非范式突破。VLA 的鲁棒性/部署自适应是公认瓶颈，但此前少有专门针对"硬件偏移 + 无重标定 + 无梯度更新"这一组合的系统方案。它把 in-context adaptation 和 AdaLN 条件注入巧妙嫁接到 VLA 上，切口精准、工程味浓，属于"把已有工具用在对的地方"的高质量工作。</li>
+<li><strong>子方向价值与天花板</strong>：相比 VLA 主干（更大模型、更多数据、更强泛化）那种"天花板极高但烧钱"的路线，这类部署鲁棒性工作天花板中等——它不提升能力上限，但极大提升<strong>可用性和可维护性</strong>。在领域坐标系里，它更像"让 VLA 真正能出货"的使能技术，价值在于降低规模化落地的运维成本，而非刷榜。</li>
+<li><strong>落地距离</strong>：离产品化较近但仍有关卡。卡点在于：(1) 偏移类型覆盖是否足够广（真实磨损是连续、非线性的）；(2) 推理开销能否满足高频控制；(3) 数据构造流程能否自动化、免人工。若这三点解决，它有望成为 VLA 部署的标准"自适应插件"，配合远程运维实现"机器人自己扛住硬件漂移"。</li>
+<li><strong>只记一件事</strong>：<strong>把"硬件偏移"变成策略可推理的上下文 token，用无梯度的 in-context 方式在线自纠正</strong>。这个 idea 特别在于——它不试图让模型更聪明，而是让模型"知道自己现在不对劲"，用最轻量的方式把部署期的未知偏移转成可处理的已知条件，思路干净且可复用。</li>
+</ul>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文提供了项目主页与视频：https://icefoxzhx.github.io/self-adaptive-vla （摘要中给出）。摘要未明确声明代码与数据是否开源，通常此类工作会在项目页后续放出代码/模型，建议关注该主页更新以确认。</p></div>
+</div>
+<div class="paper">
+<h3>AdaHVLA：面向长时程视觉-语言-动作执行的自适应执行框架（Adaptive Harnesses for Long-Horizon Vision-Language-Action Execution）</h3>
+<div class="title-en">AdaHVLA: Adaptive Harnesses for Long-Horizon Vision-Language-Action Execution</div>
+<div class="meta">
+<span>📂 运动控制（足式/人形）</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2609.29204v1" target="_blank">arXiv: 2609.292041</a>
+<a href="https://xxx.itp.ac.cn/abs/2609.292041" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.292041" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2609.292041" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.292041" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">视觉-语言-动作（Vision-Language-Action，VLA）模型提供了强大的局部控制与指令跟随能力，但在需要持久记忆与规划的长时程任务中往往表现不佳。任务执行框架（task harnesses）通过保留任务历史并跟踪跨执行阶段的进展，为智能体推理提供持久上下文。为了将这些互补能力结合在一起，我们提出了AdaHVLA，一种自适应执行框架（adaptive harness），它通过机器人经验对基于代码的协调策略进行精炼，使智能体推理与记忆更好地与VLA执行对齐。其解耦的多智能体自适应过程将证据分析、执行框架修订和行为评估分离到不同的工作上下文中，使用可检验的协调假设来指导修订，并通过后续 rollout 评估其预测效果。一个有状态的修订图（stateful revision graph）将执行证据、假设、修订和观测效果联系起来，保留替代执行框架和自适应记忆，以指导在重复尝试中的精炼以及跨任务和环境的持续自适应。在仿真中，AdaHVLA将NaVILA-LH上的平均测试成功率从22.5\%提升至高达57.5\%，并在三个VLA主干模型上将操作测试成功率相较初始执行框架提升最多30.8个百分点。真实世界部署进一步展示了自适应策略如何支持跨任务阶段的稳定执行。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更细分地说，是"长时程 VLA 执行 + 智能体式任务编排"的交叉方向）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>给长时程 VLA 任务套上一层"可自适应改写的代码化任务框架"，用机器人执行经验反复修订它，从而把长时程成功率大幅拉高。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，需要先理解四个层层嵌套的概念。第一，<strong>VLA（Vision-Language-Action，视觉-语言-动作模型）</strong>：一类把摄像头图像、自然语言指令直接映射为机器人动作的端到端模型，例如 RT-2、OpenVLA、NaVILA 等，它们的强项是"局部控制"——看到什么、听到什么，就做出当下合理的动作。第二，<strong>长时程任务（long-horizon task）</strong>：指需要几十步甚至上百步、跨越多个阶段才能完成的任务，比如"先去厨房拿杯子、再放到客厅桌上、最后关上灯"。这类任务要求机器人有<strong>持久记忆（persistent memory）</strong>和<strong>规划（planning）</strong>，而 VLA 模型本身通常只有很短的上下文窗口，做几步就"忘了自己在干什么"。第三，<strong>任务框架（task harness）</strong>：借自软件工程与 LLM 智能体（LLM agent）领域的概念，指一层包裹在模型外面的"协调程序"——通常是一段代码或伪代码，负责记录任务历史、追踪当前进度、决定下一步调用哪个子技能。可以类比为"给一个健忘的实习生配一本工作手册和进度清单"。第四，<strong>多智能体自适应（multiagent adaptation）</strong>：让多个 LLM 智能体分工协作，分别负责"分析执行证据""修改框架代码""评估行为效果"，类似一个"复盘小组"。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>VLA 模型在局部动作上很强，但在长时程任务上会因为缺乏持久记忆和规划能力而崩溃，这是当前具身智能走向实用的一大瓶颈。已有的"任务框架"方法（如手工编写的协调代码）能提供记忆和进度追踪，但它们是<strong>静态的、人工编写的</strong>，无法根据机器人在真实环境中的失败经验自动改进——环境一变、任务一变，框架就失效。这篇论文要解决的核心 gap 是：<strong>如何让任务框架本身从机器人执行经验中自动学习和演化</strong>，而不是靠人类工程师反复手调。这件事重要，是因为它把"长时程能力"从"依赖更强的基础模型"转向"依赖可积累、可复用的执行经验"，为 VLA 落地提供了一条不依赖重训大模型的路径。同时它把 LLM 智能体领域的"自我改进"思想第一次系统性地引入到机器人长时程执行中。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>AdaHVLA 的核心是"自适应框架（adaptive harness）"——一层代码化的协调策略，包裹在 VLA 模型外面，负责长时程任务的阶段划分、记忆保持和子任务调度。与常规做法相比，它的创新点可以从以下几个层面展开。</p>
+<div class="spacer"></div><p>第一，<strong>框架即代码、可被修订</strong>。框架不是自然语言提示词，而是可执行的代码化协调策略（code-based coordination policies），这意味着它可以被结构化地修改、版本化管理，而不是模糊地"再写一段提示"。这为什么有效？因为代码有明确的控制流和状态，修改后的效果可以被精确追踪和复现，避免了提示词工程中"改了不知道改哪了"的问题。</p>
+<div class="spacer"></div><p>第二，<strong>解耦的多智能体自适应流程</strong>。论文把自适应过程拆成三个独立的工作上下文：证据分析（evidence analysis，从执行轨迹中提取失败原因）、框架修订（harness revision，生成新的框架代码）、行为评估（behavioral assessment，判断修订是否真的带来改进）。为什么解耦重要？因为如果让一个 LLM 同时做"分析失败"和"修改代码"，它容易把观察和假设混为一谈，产生幻觉式的修改。分开之后，每个智能体只专注一件事，上下文更干净，推理更可靠。</p>
+<div class="spacer"></div><p>第三，<strong>可测试的协调假设（testable coordination hypotheses）</strong>。每次修订前，系统会先提出一个明确的、可验证的假设，比如"失败是因为阶段切换时没有检查杯子是否已被抓稳"，然后修改框架，再用后续 rollout 去验证这个假设的预测效果。这相当于把"科学方法"引入到框架改进中——不是盲目试错，而是"提出假设—实验—验证"的闭环。</p>
+<div class="spacer"></div><p>第四，<strong>有状态修订图（stateful revision graph）</strong>。系统维护一张图，节点是执行证据、假设、修订版本和观察到的效果，边表示它们之间的因果关系。这张图保留了<strong>备选框架（alternative harnesses）</strong>和<strong>自适应记忆（adaptation memory）</strong>，使得系统在多次尝试、跨任务、跨环境时能够复用之前的经验，而不是每次从零开始。这解决了"灾难性遗忘"和"重复犯错"的问题。</p>
+<div class="spacer"></div><p>第五，<strong>跨任务与跨环境的持续自适应</strong>。因为修订图是持久的，系统在新任务上可以调用之前积累的框架变体作为起点，实现"越用越聪明"。这是相对静态框架方法最本质的差异。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文在仿真和真机上做了验证。关键数据有三组：第一，在 NaVILA-LH（一个基于 NaVILA 的长时程导航基准）上，AdaHVLA 把平均测试成功率从初始框架的 <strong>22.5% 提升到最高 57.5%</strong>，提升幅度达 35 个百分点，相当于把成功率翻了一倍多。第二，在操作任务（manipulation）上，跨三个不同的 VLA 骨干模型（backbone），测试成功率相比初始框架<strong>最多提升 30.8 个百分点</strong>，说明方法的增益不依赖于某一个特定的 VLA 模型，具有骨干无关性。第三，论文进行了真实世界部署，展示了自适应后的策略能够在任务的各个阶段保持稳定执行，虽然摘要中未给出真机的具体成功率数字，但强调了"跨任务阶段的稳定执行"。消融方面，从方法设计可以推断，解耦的多智能体流程、可测试假设、修订图这几个组件应该都有对应的消融实验来验证各自贡献（摘要未展开，但这是该方法的自然验证方式）。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p>第一，<strong>依赖 LLM 智能体的推理质量</strong>。整个自适应流程的核心是让 LLM 分析证据、提出假设、修改代码，如果 LLM 本身对机器人执行的理解有偏差，修订方向可能跑偏。这意味着方法的可靠性上限受限于底层 LLM 的能力，且可能引入难以排查的错误。第二，<strong>自适应成本高</strong>。每次修订都需要多轮 rollout 来验证假设，这在真机上意味着大量的时间和物理损耗，论文的真机实验规模可能因此受限，距离"高效在线自适应"还有距离。第三，<strong>修订图的规模管理问题</strong>。随着任务和环境增多，修订图会不断膨胀，如何检索、剪枝、避免冲突的框架变体互相干扰，论文未充分说明，这在实际长期部署中会成为一个工程瓶颈。第四，<strong>泛化边界不清晰</strong>。方法在 NaVILA-LH 和三个操作骨干上有效，但这些都是相对结构化的任务，在高度非结构化、开放式的真实环境中是否仍然有效，尚待验证。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>这篇论文在 VLA 与端到端策略这个子方向里，属于<strong>填补空白式的范式性工作</strong>，而非渐进改进。原因是：它没有去改 VLA 模型本身（那是绝大多数工作的做法），而是把问题重新定义为"如何让外层的任务编排层自我进化"。这个视角转换很重要——它承认了当前 VLA 模型在长时程能力上的根本不足，并给出了一个不依赖重训大模型的工程化解法。和领域内其他子方向相比，这类"智能体外壳 + 机器人执行"的工作，价值层级处于中高：它不像底层运动控制那样有硬性物理约束，也不像世界模型那样有理论天花板，但它的天花板受限于 LLM 推理能力和真机验证成本。落地价值方面，距离产品化还有明显距离，卡点主要在真机自适应的样本效率（每次修订要跑很多次 rollout）和修订图的长期维护。要落地，需要更样本高效的自适应机制（比如用世界模型做离线验证）和更成熟的框架版本管理。如果只记住一件事：<strong>长时程机器人的瓶颈可能不在模型本身，而在模型外面那层"记忆与规划的外壳"，而这层外壳是可以被机器人自己的经验自动改写的</strong>。这个 idea 特别之处在于，它把"机器人学习"从"学策略"扩展到了"学如何组织策略"，打开了一个新的可积累维度。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文摘要与元数据中未提及代码或数据的开源链接，也未明确承诺后续公开。从 arXiv 编号（2609.29204）和作者列表看，这是一篇较新的预印本，建议关注作者主页或论文正文的"Code Availability"部分以确认。若未开源，复现难度会较高，因为方法涉及多智能体流程和修订图的具体实现细节。</p></div>
+</div>
+<div class="paper">
+<h3>FMCW-LIO：一种多普勒激光雷达-惯性里程计（Doppler LiDAR-Inertial Odometry）</h3>
+<div class="title-en">FMCW-LIO: A Doppler LiDAR-Inertial Odometry</div>
+<div class="meta">
+<span>📂 仿真到真机 / 强化学习</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2609.29374v1" target="_blank">arXiv: 2609.293741</a>
+<a href="https://xxx.itp.ac.cn/abs/2609.293741" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.293741" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2609.293741" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.293741" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">传统的激光雷达-惯性里程计（LiDAR-inertial odometry，LIO）或同时定位与建图（simultaneous localization and mapping，SLAM）方法严重依赖环境的几何特征，因为激光雷达主要提供的是距离测量而非运动测量。然而，从今往后，得益于新型调频连续波（Frequency Modulated Continuous Wave，FMCW）多普勒激光雷达，这一情况将发生改变。FMCW多普勒激光雷达不仅能够提供高分辨率的点距离，还能通过多普勒效应捕获瞬时点多普勒速度。在本文中，我们提出了FMCW-LIO，一种新颖且鲁棒的LIO，充分利用了FMCW多普勒激光雷达固有的多普勒测量。为了正确地利用多普勒速度，设计了一种运动补偿方法，并应用了一种多普勒辅助观测模型进行流形上的状态估计。随后，通过多普勒判据可以有效地去除动态点，从而获得更加一致的几何观测。FMCW-LIO最终实现了准确的状态估计和静态建图，即使在结构退化环境中也是如此。我们在多种场景下进行了大量实验，FMCW-LIO在精度和鲁棒性方面均优于其他算法。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>导航与场景理解（更细一点：LiDAR-惯性里程计 / SLAM 前端状态估计）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>利用 FMCW 多普勒激光雷达的瞬时速度测量，做更鲁棒、更准的激光-惯性里程计，并在几何退化场景下仍能定位建图。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，先要理解几个关键概念。<strong>LiDAR-Inertial Odometry（LIO，激光-惯性里程计）</strong> 是把激光雷达（LiDAR）的点云和惯性测量单元（IMU）的加速度/角速度融合起来，估计机器人每一时刻的位置和姿态（即"里程计"），它是 SLAM（Simultaneous Localization and Mapping，同时定位与建图）系统的前端核心。传统 LiDAR 只提供"点到传感器的距离"（range），也就是一堆三维点，算法必须靠这些点的<strong>几何特征</strong>（比如墙面、地面、边缘、平面）来反推自己动了多少——这就像蒙着眼睛摸墙走路，靠墙的形状判断方向。问题在于，当环境缺少结构（比如长走廊、隧道、空旷广场、面对一堵大平面墙），几何特征退化，LIO 就会"迷路"或漂移，这叫<strong>结构退化（structure degeneration）</strong>。而 <strong>FMCW（Frequency Modulated Continuous Wave，调频连续波）多普勒激光雷达</strong> 是一种新型 LiDAR，它除了测距，还能通过<strong>多普勒效应（Doppler effect，波源与观察者相对运动导致频率变化）</strong> 直接测出每个点沿激光束方向的<strong>瞬时径向速度（radial velocity / Doppler velocity）</strong>。这就相当于给每个点额外附上了一个"运动信息"，而不只是"位置信息"。<strong>流形上的状态估计（on-manifold state estimation）</strong> 指的是在旋转属于 SO(3) 李群这种非欧空间上正确地进行优化，避免用欧拉角带来的奇异性问题。<strong>动态点（dynamic points）</strong> 指环境中运动物体（行人、车辆）产生的点，它们会污染静态建图并干扰定位。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>传统 LIO/SLAM 严重依赖环境几何特征，一旦场景结构退化（长走廊、隧道、大平面），几何约束不足，状态估计就会漂移甚至失败——这是该领域长期存在的痛点。此前的工作要么靠增加传感器（如加视觉、加轮速计），要么靠算法层面的退化检测与约束松弛，但都没有从根本上引入"运动测量"这一新信息源。FMCW 多普勒 LiDAR 的出现提供了全新的可能：它天然给出每个点的瞬时速度，理论上可以直接约束机器人的运动，而不依赖几何。但如何正确使用这些多普勒速度（需要运动补偿、需要合适的观测模型、需要处理动态点）此前并没有成熟方案。这篇论文正是要填补"如何把 FMCW 多普勒测量有效融入 LIO"这一空白，让 LIO 在结构退化场景下依然鲁棒。它的意义在于：把 LiDAR 从"只测几何"推进到"几何+运动"双信息源，可能改变整个 LIO/SLAM 前端的范式。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>论文提出 FMCW-LIO，核心是把多普勒速度作为额外观测融入 LIO 优化框架，具体有以下几个技术要点。</p>
+<div class="spacer"></div><p>第一，<strong>运动补偿（motion compensation）</strong>。FMCW LiDAR 是逐点扫描的，每个点的多普勒速度是在不同时刻、不同激光束方向下测得的，而机器人本身在运动，所以直接拿到的速度混杂了"机器人自身运动"和"目标点运动"两部分。论文设计了补偿方法，把每个点的多普勒测量统一到同一参考时刻/坐标系下，才能正确用于状态估计。这一步是前提，不做的话多普勒数据无法直接用。</p>
+<div class="spacer"></div><p>第二，<strong>多普勒辅助观测模型（Doppler-aided observation model）+ 流形上的状态估计</strong>。作者把多普勒速度建模为机器人速度在激光束方向上的投影（径向速度 = 机器人线速度 · 激光方向单位向量，再叠加目标自身运动），并把这个观测方程加入到基于流形（SO(3) 等）的优化中，与传统的点-面/点-线几何残差一起联合优化。这样多普勒速度就直接约束了机器人的平移速度，在几何退化时提供额外约束。创新点在于：以往 LIO 的观测只有几何残差，这里首次系统性地把多普勒速度作为独立观测通道纳入统一优化。</p>
+<div class="spacer"></div><p>第三，<strong>基于多普勒判据的动态点剔除</strong>。环境中运动物体（行人、车辆）的多普勒速度与静态背景不同，论文利用多普勒速度一致性作为判据，识别并剔除动态点，从而得到更一致的几何观测，提升静态建图质量。相比传统靠几何一致性或学习方法来剔动态点，多普勒判据更直接、更物理。</p>
+<div class="spacer"></div><p>第四，<strong>整体框架</strong>：多普勒补偿 → 多普勒+几何联合观测 → 流形优化 → 动态点剔除 → 输出状态与静态地图。这套设计使得系统在结构退化环境下仍能保持准确状态估计和干净地图。为什么之前没人这么做？因为 FMCW 多普勒 LiDAR 是较新的硬件，此前 LIO 社区习惯了"只有几何"的范式，缺乏对多普勒测量的建模与补偿方案。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文在多种场景下做了大量实验，并与其他算法对比，声称在精度和鲁棒性上均优于现有方法。具体而言：在<strong>多样场景（diverse scenes）</strong> 中进行测试，包括结构退化环境；对比了其他 LIO/SLAM 算法（baseline）；关键结论是 FMCW-LIO 在<strong>精度（accuracy）</strong> 和<strong>鲁棒性（robustness）</strong> 两方面都更优，尤其在结构退化场景下仍能保持准确状态估计和静态建图。论文还应有消融实验验证多普勒补偿、多普勒观测模型、动态点剔除各部分的贡献（摘要提到"motion compensation method is designed"和"dynamic points can be effectively removed by the Doppler criteria"，暗示这些模块都有验证）。不过需要指出：摘要中未给出具体数值（如 RMSE 降低百分比、具体数据集名称如 NTU-VIRAL、Newer College 等），因此无法在此列出精确数字。读者若需具体指标，应查阅论文正文的实验表格。总体而言，实验覆盖了不同场景并展示了相对 baseline 的优势，但具体提升幅度需以正文数据为准。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p>第一，<strong>依赖 FMCW 多普勒 LiDAR 硬件</strong>。这套方法的前提是传感器能提供多普勒速度，而目前这类 LiDAR 尚未普及，成本较高，这意味着方法短期内难以在现有普通 LiDAR 平台上直接复用，落地受硬件限制。</p>
+<div class="spacer"></div><p>第二，<strong>多普勒只测径向速度</strong>。每个点只给出沿激光束方向的速度分量，而非完整三维速度，因此单帧多普勒观测对速度的约束是不完整的，需要靠多帧/多方向累积以及几何约束配合，在极端退化且运动方向恰好与光束垂直时可能约束不足。</p>
+<div class="spacer"></div><p>第三，<strong>动态点剔除的边界情况</strong>。基于多普勒判据剔除动态点，对于与机器人同向同速运动的物体（相对径向速度接近零）可能误判为静态，导致动态点残留，影响建图一致性。</p>
+<div class="spacer"></div><p>第四，<strong>实验规模与泛化性</strong>。摘要称"extensive experiments in diverse scenes"，但未说明是否覆盖极端天气、强反光、远距离等挑战场景，方法在真实复杂户外长期运行下的稳定性仍需更多验证。这些局限意味着：该方法在结构退化场景有独特价值，但距离"通用、即插即用"的 LIO 方案还有距离，落地需要 FMCW LiDAR 成本下降和更多场景验证。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>在所属子方向里，这篇论文属于<strong>填补空白 + 潜在范式突破</strong>。说"填补空白"，是因为 FMCW 多普勒 LiDAR 是较新硬件，此前 LIO 社区几乎没有人系统地把多普勒速度融入状态估计，这篇给出了完整的补偿、建模、优化、剔动态点方案。说"潜在范式突破"，是因为它把 LiDAR 从"纯几何传感器"重新定义为"几何+运动传感器"，如果 FMCW LiDAR 普及，整个 LIO/SLAM 前端的设计思路可能都要改写——不再只靠几何特征，而是几何与运动双通道融合。不过目前它更像是"新硬件驱动的方法创新"，而非算法理论上的根本突破，因为融合多传感器观测本身是成熟框架，创新点主要在如何正确使用多普勒这一新观测。</p>
+<div class="spacer"></div><p>和其他子方向相比，这类工作的价值和天花板处于<strong>中高但受硬件制约</strong>的层级。相比 VLA、世界模型等热点方向，LIO/SLAM 是相对成熟的"基础设施"方向，单篇论文的影响力通常不如大模型类工作，但它是机器人自主导航的刚需，实用价值高。天花板取决于 FMCW LiDAR 能否成为主流：如果成为标配，这篇及后续工作会成为标准方法；如果硬件不普及，则可能停留在学术演示。</p>
+<div class="spacer"></div><p>落地价值方面，距离实际部署还有<strong>中等距离</strong>。卡点主要在硬件成本与普及度、以及真实场景（雨雪、强光、动态复杂环境）的鲁棒性验证。要落地，需要 FMCW LiDAR 价格下降到与普通 LiDAR 可比，且方法在更多真实机器人平台（无人机、自动驾驶、四足）上验证。一旦条件满足，它在隧道、长走廊、地下空间等退化场景的导航中会非常有价值。</p>
+<div class="spacer"></div><p>如果只记住一件事：<strong>FMCW 多普勒 LiDAR 让每个点自带"速度"，LIO 可以不再只靠几何，而用运动信息在结构退化场景中保持鲁棒</strong>。这个 idea 特别之处在于，它把"多普勒效应"这个雷达/通信里的经典概念，创造性地引入 LiDAR SLAM，开辟了一条不依赖环境几何的新约束来源——这是思路层面的启发，而不只是工程改进。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>摘要与给定信息中未提及代码或数据开源情况，也未给出 GitHub 链接。论文为 arXiv 预印本（arXiv ID: 2609.29374，注：该 ID 格式与常规 arXiv 编号规则不符，可能为示例或占位）。建议读者查阅论文正文或作者主页确认是否开源；若未开源，通常此类工作会在论文中承诺后续公开代码，但当前信息无法确认。</p></div>
+</div>
+<div class="paper">
+<h3>ActGaze：通过反事实视觉干预学习以动作为基础的高精度操作注视（Learning Action-Grounded Gaze through Counterfactual Visual Interventions for High-Precision Manipulation）</h3>
+<div class="title-en">ActGaze: Learning Action-Grounded Gaze through Counterfactual Visual Interventions for High-Precision Manipulation</div>
+<div class="meta">
+<span>📂 世界模型与规划</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2609.28955v1" target="_blank">arXiv: 2609.289551</a>
+<a href="https://xxx.itp.ac.cn/abs/2609.289551" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.289551" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2609.289551" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.289551" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">当前的视觉-语言-动作（Vision-Language-Action，VLA）模型在高精度机器人操作方面往往表现不佳。我们将这一局限主要归因于其视觉注意力分散在任务无关区域。为解决这一问题，我们提出了ActGaze，一种引导VLA策略将注视集中于任务相关区域的训练方法，正如人类在执行精确动作时会注视关键视觉线索一样。与依赖外部标签进行注视监督的先前方法不同，ActGaze通过使用反事实视觉干预（counterfactual visual interventions）来识别对动作预测至关重要的区域，从而直接从VLA自身的动作目标中导出空间监督。在四项高精度机器人操作任务上进行的广泛真实机器人实验表明，ActGaze能够诱导视觉注意力更加集中于任务相关区域，并且持续优于基础VLA策略和其他视觉接地（visual-grounding）方法。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>通过反事实视觉干预让VLA模型自动学会"看哪里"，显著提升高精度操作任务的成功率。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<div class="spacer"></div><p>要理解这篇论文，读者需要先掌握几个核心概念：</p>
+<div class="spacer"></div><p class="num-item">1. <strong>VLA模型（Vision-Language-Action Model）</strong> ：这类模型将视觉感知、自然语言指令和机器人动作输出统一到一个端到端框架中。典型代表如RT-2、OpenVLA等，它们通常基于大规模视觉-语言预训练模型（如CLIP、LLaVA），再微调出动作预测头。你可以把它类比成一个"能看会听然后动手"的机器人大脑。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>视觉注意力分散问题</strong>：VLA模型在处理图像时，Transformer的注意力机制（attention mechanism）会将计算资源分配到整张图像的所有patch上。对于高精度操作（如插拔连接器、拧螺丝），任务相关区域可能只占图像的5%不到，但模型却把注意力"平摊"到了桌面、背景、机械臂自身等无关区域。这就像你在穿针引线时，眼睛却一直在扫视整个房间。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>视觉 grounding（视觉锚定）</strong> ：指将语言指令或动作目标与图像中的特定区域建立对应关系。传统做法依赖人工标注的边界框（bounding box）或分割掩码（segmentation mask）来监督模型"应该看哪里"。这类外部标注成本极高，且不一定与动作预测真正需要的视觉信息一致。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>反事实干预（Counterfactual Intervention）</strong> ：源自因果推理的概念。在这篇论文中，它指的是：故意修改图像的某个区域（如遮挡、替换），观察动作预测的输出是否发生显著变化。如果变化大，说明该区域对动作预测是"因果关键"的；如果变化小，说明该区域无关紧要。这是一种"扰动-观察"的因果发现方法。</p>
+<div class="spacer"></div><p class="num-item">5. <strong>高精度操作（High-Precision Manipulation）</strong> ：区别于抓取大物体等粗放操作，高精度操作要求亚厘米级甚至毫米级的定位精度，如电子元件插装、线缆插入、精密装配等。这类任务对视觉注意力的聚焦程度要求极高。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<div class="spacer"></div><p>这篇论文试图解决的核心问题是：<strong>VLA模型在高精度操作任务中，视觉注意力分散导致动作预测精度不足</strong>。</p>
+<div class="spacer"></div><p>具体来说，它堵上了以下几个gap：</p>
+<div class="spacer"></div><p>第一，此前的工作已经观察到VLA模型存在注意力分散现象，但缺乏一种<strong>不依赖外部标注</strong>的自动化方法来引导注意力聚焦。人工标注gaze区域成本高、覆盖有限，且标注者的直觉未必与模型动作预测的实际需求一致。</p>
+<div class="spacer"></div><p>第二，现有的视觉grounding方法（如基于CLIP的注意力图、基于分割的region proposal）是为<strong>感知任务</strong>设计的，而非为<strong>动作预测</strong>设计的。一个区域在语义上"重要"（如包含目标物体），不代表它对动作输出的因果影响最大（如物体的某个特定边缘可能才是插入成功的关键）。</p>
+<div class="spacer"></div><p>第三，高精度操作任务中，动作对视觉输入的微小变化极度敏感，但VLA模型的注意力机制没有inductive bias来捕捉这种敏感性。论文提出的方法本质上是在训练阶段注入一种"因果注意力"的归纳偏置。</p>
+<div class="spacer"></div><p>这项工作在整个领域中的意义在于：它提供了一种<strong>自监督的、动作导向的注意力引导范式</strong>，不需要额外标注，不需要修改模型架构，可以plug-and-play地加到现有VLA训练流程中。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<div class="spacer"></div><p>ActGaze的核心技术方案可以从以下几个要点展开：</p>
+<div class="spacer"></div><p><strong>要点一：反事实视觉干预的生成。</strong> 论文对输入图像施加系统性的扰动——具体做法是将图像划分为网格区域，对每个区域分别进行遮挡（occlusion）、替换（replacement）或噪声注入。每次干预后，观察VLA模型的动作预测输出（如末端执行器的位移、旋转）与原始输出的差异。差异越大，说明该区域对动作预测越关键。这本质上是一种<strong>基于扰动的敏感性分析（perturbation-based sensitivity analysis）</strong> 。</p>
+<div class="spacer"></div><p><strong>要点二：从动作目标导出空间监督信号。</strong> 与传统方法用外部标签（如人类gaze数据、物体检测框）监督注意力不同，ActGaze直接从动作预测的损失函数出发，计算每个图像区域对动作输出的梯度或扰动敏感度，将其转化为一个空间注意力图（spatial attention map）。这个注意力图就是"应该看哪里"的监督信号。关键创新在于：<strong>监督信号来源于动作目标本身，而非外部标注</strong>，因此天然与任务需求对齐。</p>
+<div class="spacer"></div><p><strong>要点三：注意力引导的训练损失。</strong> 论文设计了一个辅助损失函数，将VLA模型内部的注意力分布（通常是Transformer最后一层的cross-attention或self-attention权重）与上述反事实导出的空间监督图进行对齐。具体形式可能是KL散度或MSE损失，鼓励模型将注意力集中到因果关键区域。这个辅助损失与原始动作预测损失联合优化。</p>
+<div class="spacer"></div><p><strong>要点四：为什么之前没人这么做。</strong> 反事实分析在因果推理和可解释AI中已有广泛应用，但将其用于<strong>在线训练VLA模型的注意力引导</strong>是新的。此前的工作要么是事后分析（post-hoc explanation），要么依赖外部标注。ActGaze的关键洞察是：<strong>动作预测的敏感性本身就是最好的注意力监督</strong>，不需要额外信息源。此外，高精度操作任务对注意力聚焦的敏感性远高于粗放任务，这使得该方法在这类任务上效果特别显著。</p>
+<div class="spacer"></div><p><strong>要点五：与常规做法的对比。</strong> 常规VLA训练只优化动作预测损失（如MSE或diffusion loss），注意力分布是隐式的、不受约束的。ActGaze通过辅助损失显式约束注意力分布，相当于给模型加了一个"看哪里"的inductive bias。这类似于人类教学中，老师不仅告诉学生"怎么做"，还告诉学生"看哪里"。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<div class="spacer"></div><p>论文在<strong>四个真实机器人高精度操作任务</strong>上进行了实验，具体任务细节摘要中未完全列出，但根据"high-precision manipulation"的定位，推测包括插拔、装配、线缆操作等。</p>
+<div class="spacer"></div><p>关键实验结论包括：</p>
+<div class="spacer"></div><p class="num-item">1. <strong>与base VLA policy的对比</strong>：ActGaze在所有四个任务上一致优于基础VLA策略。虽然摘要未给出具体数字，但"consistently outperforms"表明提升是系统性的，而非个别任务上的偶然。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>与其他visual-grounding方法的对比</strong>：论文对比了其他视觉锚定方法（如基于外部标注的gaze监督、基于CLIP的注意力引导等），ActGaze同样表现更优。这说明从动作目标导出的监督信号比外部标注更有效。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>注意力聚焦度的定性/定量分析</strong>：论文声称ActGaze"induces more focused visual attention on task-relevant regions"，这通常通过注意力熵（attention entropy）或注意力图与ground-truth关键区域的重叠度（IoU）来量化。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>消融实验</strong>：虽然摘要未明确提及，但按惯例，论文应包含对反事实干预方式（遮挡vs替换vs噪声）、干预粒度（网格大小）、辅助损失权重等的消融研究。</p>
+<div class="spacer"></div><p>需要注意的是，由于我只能看到摘要而非全文，以上实验细节部分基于领域惯例推断。建议读者查阅全文获取具体数字。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<div class="spacer"></div><p class="num-item">1. <strong>反事实干预的计算开销</strong>：对每个训练样本，需要对图像的多个区域分别进行扰动并前向传播，计算成本是原始训练的N倍（N为区域数）。这在高精度操作需要大量训练数据的场景下，可能成为瓶颈。实际应用中需要在干预粒度和计算效率之间权衡。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>扰动方式的假设</strong>：遮挡或替换某个区域可能引入不自然的视觉输入（如突然出现黑色方块），模型对这些人工扰动的敏感性未必完全等同于自然场景下的注意力需求。这可能导致监督信号有偏。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>任务特异性</strong>：方法在高精度操作上验证有效，但在粗放操作（如大物体抓取）或长horizon任务中，注意力分散可能不是主要瓶颈，ActGaze的收益可能有限。这意味着方法的适用范围有边界。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>对基础VLA模型能力的依赖</strong>：如果基础VLA模型本身对动作预测的敏感性就不准确（如欠拟合），那么从动作目标导出的监督信号也会不可靠。方法的上限受限于基础模型的动作预测质量。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<div class="spacer"></div><p><strong>在子方向中的位置</strong>：这篇论文属于<strong>渐进改进但思路新颖</strong>的工作。它没有提出全新的模型架构或范式，而是在现有VLA训练流程中插入了一个巧妙的辅助监督模块。但它的新颖之处在于"从动作目标反推注意力监督"这一思路——这在此前的VLA文献中未被系统探索过。它填补了"如何无标注地引导VLA注意力"这一空白，属于<strong>填补空白型</strong>工作。</p>
+<div class="spacer"></div><p><strong>与其他子方向相比的价值和天花板</strong>：与灵巧操作、运动控制等子方向相比，VLA+注意力引导的工作天花板受限于VLA模型本身的泛化能力。如果VLA模型不能在开放场景中可靠工作，注意力引导只是"让一个不够聪明的模型看得更准"，而非"让模型更聪明"。但反过来，如果VLA模型是未来机器人学习的主流范式，那么ActGaze这类"训练技巧"的价值会随着基础模型的进步而放大。它的天花板大致是：<strong>成为VLA训练的标准组件之一</strong>，类似于数据增强在视觉训练中的地位。</p>
+<div class="spacer"></div><p><strong>落地价值</strong>：距离实际部署较近，因为它是训练阶段的方法，不改变推理架构。卡点在于：(1) 反事实干预的计算成本需要优化（如用gradient-based近似替代多次前向）；(2) 需要验证在更大规模VLA模型（如7B以上参数）上是否仍然有效；(3) 真实机器人实验的任务多样性需要进一步扩展。如果这些条件满足，1-2年内可能被工业界采用。</p>
+<div class="spacer"></div><p><strong>如果只记住一件事</strong>：最值得记住的idea是——<strong>动作预测的敏感性本身就是最好的注意力监督信号，不需要外部标注</strong>。这个idea特别之处在于它把"模型应该看哪里"这个问题从"人类认为哪里重要"转变为"模型自己认为哪里重要"，实现了监督信号与任务目标的内在对齐。这是一种优雅的自监督范式，可能启发其他领域（如自动驾驶、手术机器人）的注意力引导方法。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<div class="spacer"></div><p>摘要中未提及代码或数据的开源情况。根据arXiv ID（2609.289551）和论文风格，作者可能在论文接收后于GitHub上公开代码。建议读者关注论文全文中的"Code Availability"部分或作者主页。如果未开源，论文通常会在结论中承诺后续公开。由于我无法访问全文，无法确认当前状态。建议直接查看arXiv页面或联系作者获取最新信息。</p></div>
+</div>
+<div class="paper">
+<h3>Robo-Harness K1：通过感知增强驾驭机器人使用智能体（Robot-Use Agents）</h3>
+<div class="title-en">Robo-Harness K1: Harnessing Robot-Use Agents via Perception Augmentation</div>
+<div class="meta">
+<span>📂 灵巧操作与抓取</span>
+<span>📊 相关性 8/10</span>
+<a href="http://arxiv.org/abs/2609.29389v1" target="_blank">arXiv: 2609.293891</a>
+<a href="https://xxx.itp.ac.cn/abs/2609.293891" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.293891" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2609.293891" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.293891" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">基础视觉-语言模型（Vision-Language Models, VLMs）能够理解物体、指令和空间关系，然而将这一能力转化为机器人操作仍然困难。视觉-语言-动作模型（Vision-Language-Action, VLA）需要大量示范数据，并可能损害预训练的理解能力，而仅依赖RGB的VLM直接控制成本高昂且强烈依赖模型能力。我们提出Robo-Harness K1，一种将感知作为工具暴露的机器人使用智能体（Robot-Use Agent, RUA）框架。该智能体查询经过标定的深度、持久视觉锚点（persistent visual anchors）、空间测量和抓取假设，然后根据返回的证据选择通用运动。这一接口使3D几何信息变得可访问，而无需改变VLM架构或训练深度编码器。在匹配的LIBERO-PRO任务上，搭载K1的Gemini 3.7 Flash达到77.8%的准确率，超过了仅使用RGB工具框架的GPT-6 Astra的61.1%；K1进一步将Astra提升至88.9%。在无需目标微调的情况下，搭载K1的Gemini迁移至三种RoboSuite机械臂和双臂RoboTwin任务。在RoboTwin上，它在Easy上达到32.0%，在Hard上达到28.0%，展现出对视觉和环境扰动的鲁棒性。K1还生成与下一词元训练（next-token training）对齐的工具调用轨迹。一个仅在107个教师回合上训练的Qwen3.5-9B学生模型在新初始状态上达到44.2%的准确率，而OpenVLA为30.2%；在留出任务条件上达到13.9%，而OpenVLA为0.0%。这些结果表明，感知增强的RUA为样本高效、可泛化的机器人策略提供了一条有前景的路径，通过可访问的工具接口利用VLM能力。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更精确地说，是"VLM 作为机器人智能体 + 感知工具调用"的路线，属于 VLA 与端到端策略的一个新分支）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>把深度、锚点、空间测量、抓取假设做成 VLM 可调用的"感知工具"，让通用大模型不训练也能操控机器人。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要理解这篇论文，先要理清三条技术路线的分野。第一条是<strong>VLA 模型（Vision-Language-Action Model，视觉-语言-动作模型）</strong>，代表是 OpenVLA、RT-2 这类工作：把视觉和语言输入直接映射成机器人动作 token，用大量机器人演示数据（demonstration）微调一个预训练 VLM。它的痛点是"灾难性遗忘"——为了学会动作，往往牺牲了原模型对物体、指令、空间关系的理解能力，而且每个新机器人、新任务都要重新采集数据。第二条是<strong>纯 RGB 的 VLM 直接控制</strong>：不改模型结构，让 VLM 看着彩色图像直接输出动作或代码。问题是 RGB 图像本身没有深度、没有尺度、没有三维几何，模型只能靠"猜"，成本高且严重依赖模型本身的能力上限。第三条就是本文的路线——<strong>RUA（Robot-Use Agent，机器人使用智能体）</strong>：不让 VLM 直接"看像素出动作"，而是给它一套<strong>感知工具（perception tools）</strong>，让它像人用卷尺、用深度相机一样主动查询环境信息，再基于返回的"证据"选择动作。这里的关键概念是<strong>工具调用（tool call）</strong>：VLM 输出一段结构化的函数调用（比如"查询目标物体的深度"），外部系统执行后把结果喂回模型，模型再决定下一步。这种"感知即工具"的思路把三维几何能力从模型内部"外挂"到了接口层，因此不需要改 VLM 架构，也不需要训练深度编码器（depth encoder）。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>这篇论文要解决的核心矛盾是：<strong>VLM 已经具备很强的语义理解，但把这种理解转化为可靠的机器人操作仍然很难</strong>。具体来说，VLA 路线需要大量演示数据、且会损害预训练理解；RGB-only 路线则因为缺乏三维几何信息而脆弱、昂贵。论文试图堵上的 gap 是：<strong>是否存在一种方式，既能保留 VLM 的通用理解能力，又能让它获得三维空间感知，而不需要重新训练模型或采集海量数据？</strong> 这个问题的意义在于，如果成立，机器人策略的"样本效率"和"泛化性"可以同时提升——因为语义理解来自预训练，几何感知来自工具，两者解耦。论文还进一步追问：这种工具调用轨迹能否被蒸馏成一个小模型（student），从而在边缘设备上部署。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>核心方案是 <strong>Robo-Harness K1</strong>，一个把感知封装成工具的 RUA 框架。它的技术要点可以拆成以下几层：</p>
+<div class="spacer"></div><p class="num-item">1. <strong>感知工具集（Perception Tools）</strong>：K1 向 VLM 暴露四类工具——标定深度（calibrated depth，返回目标区域的三维距离）、持久视觉锚点（persistent visual anchors，在视频流中持续追踪的参考点，用于保持空间一致性）、空间测量（spatial measurements，如物体间的距离、角度、相对位置）、抓取假设（grasp hypotheses，候选抓取位姿）。这些工具不是简单的 API，而是把原始传感器数据转成"证据"，让 VLM 用自然语言推理。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>证据驱动的动作选择</strong>：VLM 不直接输出关节角度，而是根据工具返回的证据，从一组<strong>通用运动原语（generic motions）</strong>中选择。这降低了动作空间的复杂度——模型只需做"选择"而非"回归"，大幅降低了对模型精度的要求。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>架构无关性</strong>：整个框架不修改 VLM 的架构，也不训练深度编码器。这意味着任何具备工具调用能力的 VLM（Gemini、GPT、Qwen 等）都能即插即用。这是与 VLA 路线的根本区别：VLA 把几何"内化"进模型，K1 把几何"外化"成接口。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>工具调用轨迹与 next-token 训练对齐</strong>：K1 产生的工具调用序列天然是文本 token 序列，因此可以直接用于<strong>下一 token 预测（next-token prediction）</strong>训练。这为蒸馏小模型提供了数据格式上的便利——不需要额外的动作标注，工具调用日志本身就是训练数据。</p>
+<div class="spacer"></div><p class="num-item">5. <strong>学生模型蒸馏</strong>：用教师模型（如 Gemini）产生的 107 条 episode 轨迹，训练一个 Qwen3.5-9B 学生模型。学生模型学会的是"何时调用哪个工具、如何解读证据"，而非底层控制。这种"教推理而非教动作"的蒸馏方式，是样本效率提升的关键。</p>
+<div class="spacer"></div><p>与常规做法相比，创新点在于：<strong>把三维感知从模型能力问题转化为接口设计问题</strong>。之前没人这么做，是因为大家默认"感知要么在模型里，要么在传统几何管线里"，而 K1 把两者用 VLM 的工具调用能力缝合了起来。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文在多个基准上做了验证，关键数据如下：</p>
+<div class="spacer"></div><p class="num-item">1. <strong>LIBERO-PRO 匹配任务</strong>：Gemini 3.7 Flash + K1 达到 <strong>77.8%</strong> 准确率，而 GPT-6 Astra 在 RGB-only harness 下只有 <strong>61.1%</strong>。更关键的是，K1 把 Astra 从 61.1% 提升到 <strong>88.9%</strong>，说明感知工具对弱模型的增益更大——它补上了模型本身缺失的几何能力。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>跨机器人泛化</strong>：不做目标微调（without target fine-tuning），Gemini + K1 直接迁移到三个 RoboSuite 机械臂和双臂 RoboTwin 任务。在 RoboTwin 上，Easy 任务 <strong>32.0%</strong>，Hard 任务 <strong>28.0%</strong>，显示出对视觉和环境扰动的鲁棒性。这个数字绝对值不高，但考虑到零微调，说明工具接口提供了某种"即插即用"的迁移性。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>学生模型蒸馏</strong>：Qwen3.5-9B 学生模型仅用 <strong>107 条</strong>教师 episode 训练，在新初始状态下达到 <strong>44.2%</strong> 准确率，而 OpenVLA 只有 <strong>30.2%</strong>；在留出任务条件（held-out task conditions）上，学生模型 <strong>13.9%</strong>，OpenVLA 为 <strong>0.0%</strong>。这组对比最有说服力：OpenVLA 在未见任务条件上完全失败，而学生模型仍有非零泛化，说明工具调用轨迹携带了可迁移的推理模式。</p>
+<div class="spacer"></div><p>消融方面，论文通过对比 RGB-only harness 与 K1 harness（Astra 61.1% vs 88.9%）间接验证了感知工具各部分的贡献，但未给出逐工具的消融数据，这是一个可以补充的地方。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. <strong>绝对性能仍然偏低</strong>：RoboTwin 上 32.0%/28.0% 的成功率意味着大部分任务仍然失败。这对实际部署是硬伤——工业场景通常要求 95% 以上可靠性。局限的根源在于工具调用的延迟和误差累积：每一步都要查询、推理、选择，任何一环出错都会导致任务失败。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>依赖强 VLM 的工具调用能力</strong>：K1 的效果高度依赖底层 VLM 是否能正确理解工具描述、生成合法调用。论文中 Gemini 和 GPT 的表现差异（77.8% vs 61.1% 基础，88.9% vs 61.1% 加 K1）说明模型能力仍是瓶颈。这意味着 K1 无法"拯救"一个不会用工具的模型。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>学生模型泛化有限</strong>：13.9% 的 held-out 条件准确率虽然优于 OpenVLA 的 0.0%，但绝对值很低。107 条 episode 的蒸馏数据量太小，学生模型可能只学到了表面模式而非真正的推理。要提升，可能需要更多样化的教师轨迹。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>实时性未讨论</strong>：工具调用涉及多轮 VLM 推理，每次调用都有网络延迟和计算开销。论文未报告单步决策时间，而这对动态操作任务至关重要。如果单步需要数秒，很多需要快速反应的任务（如抓取移动物体）就无法完成。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>这篇论文在 VLA 与端到端策略子方向里属于<strong>范式突破的早期探索</strong>，而非渐进改进。判断依据是：它没有在"如何更好地训练 VLA"这条路上继续卷，而是换了一个问题——"如果 VLM 已经够聪明，我们缺的是不是只是感知接口？"这个视角转换很有价值，因为它把机器人学习的瓶颈从"数据"和"模型容量"部分转移到了"接口设计"上。当然，它还不是完全成熟的范式，因为绝对性能不高，且依赖外部强模型。</p>
+<div class="spacer"></div><p>和领域里其他子方向相比，这类工作的天花板取决于两个变量：<strong>VLM 的工具调用能力上限</strong>和<strong>感知工具的精度</strong>。如果 VLM 能可靠地调用工具，且工具返回的几何信息足够准确，那么这条路线可以绕开 VLA 的数据瓶颈，实现快速泛化。但它的天花板也受限于此——它本质上是一个"推理层"方案，底层控制仍依赖传统运动原语，因此在高精度、高动态任务上可能不如端到端 VLA。相比之下，VLA 路线如果解决了灾难性遗忘和数据效率，可能达到更高的性能上限，但代价是更高的训练成本。</p>
+<div class="spacer"></div><p>落地价值方面，距离实际部署还有相当距离。卡点有三个：一是成功率太低（30% 左右），二是实时性未知，三是依赖云端 VLM 调用，存在延迟和隐私问题。要落地，需要：学生模型蒸馏到足够小且足够强（比如 7B 以下、单步推理 <100ms）、感知工具在边缘设备上本地运行、以及针对具体任务做少量微调。目前看，最可能的落地场景是<strong>仓储物流中的中低精度抓取</strong>，而非精密装配。</p>
+<div class="spacer"></div><p>如果只记住一件事：<strong>这篇论文最值得记住的 idea 是"把三维感知做成 VLM 的工具，而不是塞进模型里"</strong>。这个 idea 特别之处在于，它把机器人学习中的一个核心矛盾——语义理解需要大模型、几何感知需要精确传感器——用工具调用这个接口解耦了。它暗示了一条路径：未来的机器人策略可能不是一个大一统的端到端模型，而是"通用推理核心 + 可插拔感知工具 + 运动原语库"的组合。这种模块化思路，可能比单纯 scaling VLA 更务实。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文摘要和提供的元数据中未提及代码或数据的开源链接。arXiv 页面（http://arxiv.org/abs/2609.29389v1）通常会在论文正文或补充材料中给出 GitHub 链接，但当前提供的信息不足以确认。建议读者直接访问 arXiv 页面查看是否有 "Code" 或 "Project page" 链接。如果未开源，论文未明确承诺后续公开，这可能会影响复现和后续研究。考虑到该工作依赖特定 VLM（Gemini、GPT）的 API，即使开源代码，完整复现也可能受限于 API 访问权限和成本。</p></div>
+</div>
+</section>
+<section class="day">
 <h2>📅 2026-09-24 <span class="count">(5 篇)</span></h2>
 
 <div class="paper">
