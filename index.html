@@ -82,6 +82,235 @@ body {
 <div class="header"><h1>📄 embodied_ai 论文速递</h1><p>每日自动推送 · 由 paper-digest-agent 驱动</p></div>
 <div class="container">
 <section class="day">
+<h2>📅 2026-09-29 <span class="count">(5 篇)</span></h2>
+
+<div class="paper">
+<h3>基于离散VLA模型的人形机器人移动-操作（Humanoid Loco-Manipulation With Discrete VLA Model）</h3>
+<div class="title-en">Humanoid Loco-Manipulation With Discrete VLA Model</div>
+<div class="meta">
+<span>📂 VLA与端到端策略</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2609.35709v1" target="_blank">arXiv: 2609.357091</a>
+<a href="https://xxx.itp.ac.cn/abs/2609.357091" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.357091" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2609.357091" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.357091" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">使用离散动作令牌（discrete action tokens）的视觉-语言-动作（Vision-Language-Action, VLA）模型已被证明在机械臂操作任务的控制中行之有效。然而，对于人形机器人而言，其全身动作空间——包括腿、躯干、手臂和手——的维度远更高且具有异构性，这带来了此前VLA模型未曾应对的令牌化（tokenization）、训练和实时推理挑战。我们提出了Holo-M，据我们所知，这是首个面向人形机器人移动-操作（loco-manipulation）的离散VLA模型，它通过将动作令牌扩展至语言模型的词表之中，从本质上利用了语言模型。在该模型中，我们设计了一种统一的动作令牌化器（action tokenizer），将人形机器人的动作空间分解为四个针对特定身体部位的令牌化器——末端执行器（end-effector）、身体（body）、手（hand）和运动学（kinematics）——从而支持在截然不同的具身形态和数据来源上进行训练，包括人形机器人遥操作、第一人称视角人类视频以及仿真。通过将动作令牌扩展至语言模型的词表，我们避免了使用独立连续动作专家（continuous action experts）的模型所固有的知识隔离（knowledge-insulation）问题。为满足实时控制需求，我们通过分组离散扩散解码（grouped discrete diffusion decoding）来解码每个身体部位的动作令牌，而非对动作令牌使用自回归（autoregression）。我们在SIMPLE人形机器人移动-操作基准上进行了大量实验，Holo-M在通用评估和专用评估中均取得了最高的成功率，并以显著优势领先第二名。我们将发布所有代码和模型权重。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更细一点可标注为：人形全身 loco-manipulation 的离散 VLA 模型）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>提出首个面向人形机器人全身 loco-manipulation 的离散 VLA 模型 Holo-M，用动作 token 扩展语言模型词表并实现实时全身控制。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要理解这篇论文，先要弄清几个概念。VLA（Vision-Language-Action，视觉-语言-动作模型）是一类把视觉观测、自然语言指令直接映射为机器人动作的端到端模型，通常建立在预训练视觉语言模型（VLM）之上。所谓"离散动作 token"（discrete action token），是指把连续的动作数值（如关节角度、末端位姿）先量化成一个个离散符号，就像把连续语音切成文字词元一样，然后让语言模型像"预测下一个词"那样预测下一个动作 token。这种做法在机械臂操作任务上已被证明有效，因为语言模型天生擅长处理离散序列，且能复用其预训练知识。但人形机器人（humanoid）的全身动作空间涵盖腿、躯干、手臂、手，维度极高且各部位性质差异巨大（腿要维持平衡、手要精细抓取），这给 tokenization（动作离散化）、训练和实时推理都带来新挑战。此外，loco-manipulation（移动操作）指机器人一边行走移动一边完成操作任务，是人形机器人最核心也最难的能力之一。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>现有离散 VLA 模型几乎都针对机械臂操作设计，动作空间维度低、同质，无法直接迁移到人形机器人高维异构的全身动作空间。人形机器人若用连续动作专家（continuous action expert，即单独的动作头网络）来输出动作，会与语言模型主干形成"知识隔离"（knowledge-insulation）问题——动作专家学到的知识与语言模型的语义知识彼此割裂，难以互相增强。同时，人形全身控制对实时性要求极高，若用自回归（autoregressive，逐个 token 顺序生成）方式解码动作 token，速度太慢无法满足控制频率。这篇论文要堵上的 gap 正是：如何让离散 VLA 范式真正适配人形全身 loco-manipulation，既保留语言模型的知识融合优势，又满足实时控制，还能跨不同本体和数据源训练。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p class="num-item">1. 统一动作 tokenizer（unified action tokenizer）：把整个人形动作空间拆成四个身体部位专属的 tokenizer——末端执行器（end-effector）、躯干（body）、手（hand）和运动学（kinematics）。这样做的原理是不同部位动作的物理含义和数值范围差异极大，分开量化能提高 tokenization 精度；同时这种模块化设计让模型能跨不同本体（不同人形硬件）和不同数据源训练，因为各部位 tokenizer 可独立对齐。</p>
+<div class="spacer"></div><p class="num-item">2. 用动作 token 扩展语言模型词表：把上述动作 token 直接加入语言模型的 vocabulary（词表），让模型像生成文本一样生成动作。这避免了使用独立连续动作专家带来的知识隔离问题——动作和语言共享同一套表征空间，语言模型的语义知识能直接作用于动作生成，反之动作数据也能反哺语言表征。</p>
+<div class="spacer"></div><p class="num-item">3. 分组离散扩散解码（grouped discrete diffusion decoding）：为满足实时控制，不用自回归逐个生成动作 token，而是按身体部位分组，用离散扩散（discrete diffusion，一种从噪声逐步去噪生成离散序列的方法）并行解码各部位动作。这大幅提升推理速度，同时保持生成质量，是满足人形高频控制的关键。</p>
+<div class="spacer"></div><p class="num-item">4. 多源数据训练：模型在人类遥操作数据、第一人称人类视频（ego-centric human video）和仿真数据上联合训练，充分利用异构数据，提升泛化性。这是"跨本体、跨数据源"能力的具体体现。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文在 SIMPLE 人形 loco-manipulation 基准（benchmark）上做了大量实验。Holo-M 在通用（generalist）和专家（specialist）两类评测中都取得最高成功率，且显著领先第二名。摘要明确强调"leading the second best by significant margins"（以显著优势领先第二名），说明提升幅度不是边际改进。此外，模型能跨不同本体和数据源训练，验证了统一 tokenizer 和多源数据方案的有效性。论文还通过分组离散扩散解码满足实时控制要求，说明推理速度达到可用水平。消融方面，虽然摘要未列具体数字，但从方法设计看，四部位 tokenizer、词表扩展、扩散解码三部分应均有对应验证（论文承诺开源代码和权重，细节可查全文）。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. 摘要未给出具体量化指标（如成功率数值、推理延迟毫秒数），读者难以判断实际性能天花板，需查阅全文确认。</p>
+<p class="num-item">2. 依赖多源数据（遥操作、人类视频、仿真），数据采集与对齐成本高，跨本体迁移的实际泛化边界尚不清晰，对没有大量数据积累的团队落地门槛高。</p>
+<p class="num-item">3. 离散扩散解码虽提升速度，但相比连续控制可能在动作平滑性和精细度上有折衷，对高动态、高精度任务（如快速奔跑中抓取）可能受限。</p>
+<p class="num-item">4. 评测集中在 SIMPLE 基准，真实世界复杂场景（光照变化、动态障碍、非结构化环境）的鲁棒性未在摘要中体现，距离真实部署仍有 gap。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>这篇论文在 VLA 与端到端策略子方向里属于"填补空白 + 范式迁移"型工作：它把已在机械臂上验证的离散 VLA 范式，首次系统性地迁移到人形全身 loco-manipulation，并针对人形特有的高维异构动作空间和实时性要求做了专门设计（四部位 tokenizer + 分组扩散解码）。这不是简单的规模放大，而是针对新问题重构了 tokenization 和解码机制，因此判断为填补空白而非渐进改进。与领域其他子方向相比，VLA 是当前具身智能最热、天花板最高的方向之一，因为它直接连接大模型语义理解与机器人控制，具备通用性潜力；但人形全身控制又比机械臂难一个量级，所以这类工作的价值处于"高价值、高难度"层级，一旦跑通，通用人形助手的想象空间极大。落地价值方面，距离产品化还有明显距离：卡点在于真实世界鲁棒性、数据采集成本、推理实时性在真实硬件上的稳定性，以及安全性保障。需要的前提条件包括：更大规模高质量人形数据、更高效的端侧推理、以及真实场景的长期验证。如果只记住一件事：这篇论文最值得记住的 idea 是"用动作 token 扩展语言模型词表，让动作和语言共享同一表征空间，从而避免知识隔离"——这个思路特别在于它把机器人控制问题转化为语言模型的原生问题，既复用了大模型知识，又统一了多本体多数据源，是通向通用具身智能的一条优雅路径。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文明确承诺"We will release all the code and model weights"（将公开全部代码和模型权重），但摘要中未给出具体链接。读者可关注 arXiv 页面（http://arxiv.org/abs/2609.35709v1）及作者后续更新，以获取开源仓库地址。</p></div>
+</div>
+<div class="paper">
+<h3>Uni-VLaT：面向人形移动操作（loco-manipulation）的VLA策略全身触觉适配</h3>
+<div class="title-en">Uni-VLaT: Whole-Body Tactile Adaptation of VLA Policies for Humanoid Loco-Manipulation</div>
+<div class="meta">
+<span>📂 运动控制（足式/人形）</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2609.35450v1" target="_blank">arXiv: 2609.354501</a>
+<a href="https://xxx.itp.ac.cn/abs/2609.354501" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.354501" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2609.354501" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.354501" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">物理接触往往决定了人形机器人在移动操作（loco-manipulation）过程中应当如何响应，然而仅凭视觉和本体感觉（proprioception）往往不足以刻画物理交互，尤其是当接触区域被遮挡时。与在预定义区域进行稀疏的力或力矩测量不同，分布式触觉感知（distributed tactile sensing）能够保留跨越机器人全身的空间分辨接触模式。因此，我们研究如何将这种全身触觉信息集成到视觉-语言-动作（vision-language-action，VLA）策略中，以实现接触丰富的控制。我们的方法Uni-VLaT引入了一条触觉通路，其潜在状态不仅针对动作生成进行训练，还用于预测未来的触觉、本体感觉和视觉表征。这一预测目标构建了一个以触觉为锚点的多模态上下文，促进了对物理世界更具结构化的理解。我们在五项真实机器人任务上评估了Uni-VLaT，涵盖触觉触发式移动、持续物理交互、人-机器人接触以及移动操作。Uni-VLaT取得了75%的平均成功率，比无触觉输入的基线高出43个百分点，比有触觉输入但无预测监督的基线高出7个百分点。在两个预训练VLA主干（backbone）上，我们的方法在两个主干上均将Table Sweeping提升了30个百分点，并将Back-Tap Walking提升了85-90个百分点。消融实验进一步表明，上下文化的触觉预测和绝对未来目标对性能至关重要。这些结果表明，预测性触觉学习为将预训练VLA策略扩展到全身物理交互提供了一条有效路径。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更细分可标为“触觉增强的VLA策略 / 全身接触丰富的人形loco-manipulation”）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>把全身分布式触觉引入VLA策略，并让触觉隐状态去预测未来触觉/本体/视觉表征，从而让人形机器人完成接触丰富的移动操作。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p class="num-item">1. <strong>VLA（Vision-Language-Action，视觉-语言-动作）策略</strong>：一类把视觉观测、语言指令直接映射为机器人动作的端到端模型，通常基于大规模预训练的视觉-语言模型（VLM）微调而来。它的优势是泛化性和语义理解，但输入模态长期以视觉+本体感知（proprioception，即关节角、速度等机器人自身状态）为主。</p>
+<p class="num-item">2. <strong>Loco-manipulation（移动操作）</strong>：人形机器人一边行走一边用手/身体操作物体的任务，比如边走边推、边走边擦桌子。它比固定底座操作难，因为平衡、步态、接触力、操作目标互相耦合。</p>
+<p class="num-item">3. <strong>触觉感知（tactile sensing）</strong>：传统机器人常用的是关节力矩或少数几个力/力矩传感器（F/T sensor），只能测预定义位置的稀疏力。<strong>分布式触觉</strong>（如电子皮肤、触觉阵列）能覆盖机器人全身，给出空间上连续的接触图案（contact pattern），例如“左前臂外侧被压了一片”。</p>
+<p class="num-item">4. <strong>接触遮挡问题</strong>：当机器人手臂或身体挡住摄像头时，视觉无法判断是否发生接触、接触在哪、力多大。这正是触觉要补的短板。</p>
+<p class="num-item">5. <strong>预测式表征学习（predictive representation learning）</strong>：让模型的隐状态去预测未来的观测（如未来帧、未来触觉），迫使隐状态编码物理动态，而不是只拟合当前动作。类似世界模型（world model）思路，但这里预测的是多模态表征而非像素。</p>
+<p class="num-item">6. <strong>为什么这件事现在重要</strong>：VLA 在抓取、桌面操作上已较成熟，但一旦进入“身体接触世界”的场景（人机接触、全身推挤、被遮挡接触），纯视觉VLA会失效。把触觉接进VLA，是当前具身智能从“看得见的手”走向“摸得着的身体”的关键一步。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p class="num-item">1. 现有VLA策略几乎只依赖视觉+本体感知，无法表征被遮挡的物理接触，导致在接触触发型任务（如被拍背才起步）上失败。</p>
+<p class="num-item">2. 已有的触觉工作多用于固定底座机械臂、且只用稀疏力/力矩，缺少“全身分布式触觉 + 移动操作”的统一方案。</p>
+<p class="num-item">3. 直接把触觉向量拼进VLA输入并不够——触觉信号高频、局部、噪声大，简单拼接会让预训练VLA的语义先验被稀释，性能提升有限。</p>
+<p class="num-item">4. 论文要回答的核心问题是：<strong>如何让预训练VLA策略有效吸收全身触觉，并形成对物理世界的结构化理解</strong>，而不只是把触觉当额外输入通道。</p>
+<p class="num-item">5. 这个问题重要在于：它决定了人形机器人能否安全、可靠地参与人机接触和接触丰富的真实任务，是VLA从“桌面智能”走向“全身具身智能”的必经关卡。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p class="num-item">1. <strong>整体架构 Uni-VLaT</strong>：在预训练VLA骨干（backbone）之外，新增一条<strong>触觉通路（tactile pathway）</strong>，把全身分布式触觉编码成触觉隐状态（latent state），再与视觉-语言特征融合后送入动作头。关键是触觉不是简单拼接，而是独立编码后再融合。</p>
+<p class="num-item">2. <strong>触觉锚定的多模态预测目标（tactile-anchored predictive objective）</strong>：触觉隐状态不仅用于生成动作，还要预测<strong>未来的触觉、本体感知、视觉表征</strong>。原理是：要预测未来接触，隐状态必须编码“当前接触如何随动作演化”的物理动态，从而被迫学到结构化的物理理解。之前没人这么做，是因为触觉工作通常只做当前帧分类或力回归，没把触觉当作预测未来的锚点。</p>
+<p class="num-item">3. <strong>为什么用“表征”而非“原始观测”做预测目标</strong>：预测未来视觉像素代价高且易受光照干扰；预测未来<strong>表征</strong>（如VLA内部特征）更稳定，且与策略共享语义空间，相当于让触觉隐状态对齐到VLA已有的多模态语义中。</p>
+<p class="num-item">4. <strong>绝对未来目标（absolute future targets）</strong>：消融显示预测绝对未来目标（而非相对增量）对性能关键。原因是绝对目标提供稳定的物理锚点，避免隐状态只学漂移量而丢失全局接触状态。</p>
+<p class="num-item">5. <strong>上下文化触觉预测（contextualized tactile prediction）</strong>：触觉预测不是孤立进行，而是以视觉-语言上下文为条件，使触觉隐状态理解“在什么任务、什么场景下这个接触意味着什么”。这解决了触觉信号本身语义弱的问题。</p>
+<p class="num-item">6. <strong>与预训练VLA骨干的兼容性</strong>：方法在两个不同的预训练VLA骨干上都验证有效，说明触觉通路是<strong>骨干无关的适配模块</strong>，而不是绑定某个模型。这降低了迁移成本，也解释了为什么它能“扩展现有VLA”而非重训。</p>
+<p class="num-item">7. <strong>训练方式</strong>：在真实机器人数据上微调，动作损失 + 多模态预测损失联合优化。预测损失相当于辅助任务（auxiliary task），起到正则化和表征塑形作用。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p class="num-item">1. <strong>任务与设置</strong>：在<strong>五类真实机器人任务</strong>上评估，覆盖触觉触发型行走（tactile-triggered locomotion）、持续物理交互（sustained physical interaction）、人机接触（human-robot contact）、移动操作（loco-manipulation）。全部为真机实验，非仿真。</p>
+<p class="num-item">2. <strong>总体成功率</strong>：Uni-VLaT 平均成功率 <strong>75%</strong>，比<strong>无触觉输入的baseline高43个百分点</strong>，比<strong>有触觉输入但无预测监督的baseline高7个百分点</strong>。这说明触觉本身贡献大（+43），而预测式学习在触觉基础上再贡献（+7），两者不可互相替代。</p>
+<p class="num-item">3. <strong>跨骨干泛化</strong>：在两个预训练VLA骨干上，<strong>Table Sweeping（擦桌）任务均提升30个百分点</strong>，<strong>Back-Tap Walking（被拍背起步行走）提升85–90个百分点</strong>。Back-Tap 提升幅度极大，说明该任务几乎完全依赖触觉，纯视觉VLA基本无法完成。</p>
+<p class="num-item">4. <strong>消融实验</strong>：验证了<strong>上下文化触觉预测</strong>和<strong>绝对未来目标</strong>两个设计是性能关键。去掉任一都会显著掉点，证明预测目标的设计细节（而非仅仅“加了预测”）才是增益来源。</p>
+<p class="num-item">5. <strong>对比维度</strong>：baseline包括（a）无触觉VLA、（b）有触觉但无预测监督。这组对比干净地分离了“触觉输入”和“预测式触觉学习”的贡献，是本文实验设计最值得称道的地方。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. <strong>真机数据规模与任务数量有限</strong>：仅5个任务、真机采集，数据量和多样性远小于VLA预训练规模。这意味着泛化到全新任务、新物体、新接触模式的能力尚未验证，实际部署时遇到训练分布外的接触可能失效。</p>
+<p class="num-item">2. <strong>依赖全身分布式触觉硬件</strong>：方法假设机器人全身覆盖触觉阵列。这类硬件成本高、易损、标定复杂，目前多数人形平台没有标配。这直接限制了方法的可复现性和落地速度——没有电子皮肤就无从谈起。</p>
+<p class="num-item">3. <strong>预测目标增加训练复杂度</strong>：多模态预测损失需要未来触觉/本体/视觉表征作为监督信号，数据采集时需同步记录多模态未来序列，对数据管线要求高；且预测辅助任务的权重需要调参，增加工程负担。</p>
+<p class="num-item">4. <strong>未涉及安全性保证</strong>：人机接触任务中，触觉虽能感知接触，但论文未讨论力控制安全边界、碰撞后紧急停止等安全机制。对真实人机协作场景，仅有感知不足以保证安全，这是从实验室到产品的关键缺口。</p>
+<p class="num-item">5. <strong>触觉隐状态的可解释性弱</strong>：虽然声称“结构化理解物理世界”，但没有可视化或分析触觉隐状态究竟编码了什么，难以诊断失败原因。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<ul>
+<li><strong>在子方向中的位置：填补空白偏范式性</strong>。VLA + 触觉此前多为固定底座、稀疏力传感；本文首次系统地把<strong>全身分布式触觉</strong>接入<strong>预训练VLA</strong>并用于<strong>人形loco-manipulation</strong>，同时提出“触觉锚定的多模态预测”这一训练范式。它不是单纯刷点，而是给出了“如何让VLA学会摸”的方法论，属于填补空白并带有范式意味的工作。</li>
+<li><strong>与其他子方向相比的价值层级</strong>：在VLA与端到端策略这个子方向里，视觉-语言预训练已卷到极致，边际收益递减；触觉是尚未被充分开发的高价值模态。本文的价值在于开辟“触觉增强VLA”这条线，天花板取决于触觉硬件的普及速度。相比纯视觉VLA，它的上限更高（能处理遮挡和接触），但下限也更依赖硬件。与灵巧操作、运动控制等子方向相比，它处在交叉位置，受益面广但单点深度有限。</li>
+<li><strong>落地价值与卡点</strong>：距离产品化还有明显距离。卡点有三：一是<strong>硬件</strong>，全身电子皮肤的成本、耐久、布线、标定尚未成熟；二是<strong>数据</strong>，多模态未来序列的真机采集成本高；三是<strong>安全</strong>，人机接触场景需要力控与安全认证，本文未涉及。落地需要：低成本可量产触觉皮肤 + 大规模多模态真机数据 + 安全控制层三者齐备。短期内更可能在工业协作（结构化环境、固定任务）先落地，而非家庭开放场景。</li>
+<li><strong>如果只记住一件事</strong>：<strong>触觉隐状态不该只用来出动作，而应被逼着预测未来——预测未来触觉/本体/视觉表征，才能让VLA真正“理解”接触</strong>。这个idea特别在于：它把触觉从“输入通道”升级为“学习信号”，用预测任务把物理动态压进隐空间，而且骨干无关、可即插即用。这比单纯加触觉输入高明一个层级，也是+7点增益背后的真正原因。</li>
+</ul>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文摘要与提供的元信息中<strong>未提及代码或数据集开源</strong>，也未给出项目主页或GitHub链接。arXiv链接为 http://arxiv.org/abs/2609.35450v1 。鉴于该工作依赖全身分布式触觉硬件与真机多模态数据，完整复现门槛较高；是否后续公开代码/数据需以作者官方发布为准，建议关注论文正文的“Code/Data Availability”章节或作者主页。</p></div>
+</div>
+<div class="paper">
+<h3>自演化编码智能体：从数字程序到物理世界智能（Self-Evolving Coding Agents: From Digital Programs to Physical-World Intelligence）</h3>
+<div class="title-en">Self-Evolving Coding Agents: From Digital Programs to Physical-World Intelligence</div>
+<div class="meta">
+<span>📂 仿真到真机 / 强化学习</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2609.35432v1" target="_blank">arXiv: 2609.354321</a>
+<a href="https://xxx.itp.ac.cn/abs/2609.354321" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.354321" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2609.354321" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.354321" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">视觉-语言-动作（Vision-Language-Action, VLA）模型和世界-动作模型（World-Action Model, WAM）将观测和指令直接映射为机器人动作。这种直接性将策略与训练绑定：轻微的布局或视角变化就会导致失败，且指令泛化能力很差。根本原因在于表征：任务需求、条件、进度和失败恢复被隐式编码在动作序列中，使其难以被检查或修正。数字编码智能体提供了一个先例：LLM调用工具、验证结果，并基于反馈以可执行代码的形式进行修正。这种显式状态、可管理执行和可修正程序的相同工作模式，构成了物理世界中泛化与长时程执行的基础，使物理经验能够作为可复用程序、记忆或证据回归。我们提出物理编码（Physical Coding），将任务状态和执行表示为代码。代码作为世界（Code as World）记录对象、关系、约束和进度；代码作为策略（Code as Policy）组织规划、验证、恢复和执行。我们构建了HexaAnything，它调用感知、规划和控制工具，包括VLA/WAM策略，并基于外部反馈进行在环决策。经过验证的轨迹成为数据和记忆，使演化能够从工具和Harness推进到模型权重、架构，并最终到硬件和任务设计。在RoboCasa365上，HexaAnything在Composite-Unseen和整体成功率上优于XR-1 VLA，且其经Harness训练的HexaModel在每个划分上都优于基座模型，表明代码轨迹内化了物理执行能力。在PhyBench和双臂AgileX机器人上，该智能体自主完成物理实验和大多数桌面任务，通常比已发表结果更快。我们观察到数据、模型和工具的自演化；未来工作目标是权重内化、架构/语言/表征/任务的自主重新设计，以及在制造业和科学中的部署。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更准确地说，是"用代码作为中间表示来重构VLA/世界模型策略"的交叉方向，可自拟标签：<strong>代码化具身智能体 / Physical Coding</strong>）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>把机器人任务的状态与执行写成可检查、可修改的代码，让VLA/世界模型从"黑箱映射"变成"可编程智能体"。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要理解这篇论文，先要理解当前具身智能主流范式的两个关键词。<strong>VLA（Vision-Language-Action，视觉-语言-动作模型）</strong>：把摄像头图像和自然语言指令直接映射成机器人动作序列，类似"看到什么、听到什么，就直接输出关节该转多少度"。<strong>WAM（World-Action Model，世界-动作模型）</strong>：在VLA基础上加入对世界状态演变的预测，让模型不仅输出动作，还预测"做了这个动作后世界会变成什么样"。这两个范式的共同特点是<strong>端到端（end-to-end）</strong>：从感知输入直接到动作输出，中间没有显式的、人类可读的中间表示。问题在于，这种"直接"把任务的需求、条件、进度、失败恢复全都隐式地编码在动作序列的权重里，导致：换个桌子布局就失败、换个说法就听不懂、出错后无法定位是哪一步逻辑错了。类比一下：这就像让一个人闭着眼睛背下一整套动作，而不是给他一份可以阅读、修改、调试的菜谱。论文提出的"<strong>Physical Coding（物理编码）</strong>"思路，借鉴的是<strong>数字编码智能体（coding agents）</strong>的成功经验——LLM调用工具、验证结果、根据反馈修改代码，整个过程是可检查、可回滚、可迭代的。作者认为，物理世界的泛化与长时程执行，同样需要这种"显式状态 + 可控执行 + 可修改流程"的工作模式。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>这篇论文试图解决的核心问题是：<strong>端到端VLA/WAM策略缺乏可检查、可修改的中间表示，导致泛化差、长时程任务难以完成、失败后无法恢复</strong>。这个问题重要，是因为它触及了当前具身智能的一个根本矛盾——模型越大、数据越多，策略越强，但一旦部署到真实环境，微小的布局或视角变化就会导致失败，而工程师却无法像调试软件一样定位问题出在哪。前人工作大多在"更大的模型、更多的数据"上做文章，或者引入少量结构化模块（如技能库、符号规划器），但都没有把"任务状态与执行流程"本身作为一等公民用代码来表达。这篇论文堵上的gap是：<strong>把物理世界的任务执行从"隐式权重"转变为"显式程序"</strong>，从而让物理经验可以像代码一样被复用、验证和演化。它的意义在于，为具身智能提供了一条不同于" scaling law"的泛化路径——不是靠更多数据硬扛，而是靠更好的表示来获得可解释性和可修改性。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>论文的核心方案叫<strong>Physical Coding（物理编码）</strong>，包含两个支柱，外加一个具体系统实现。第一，<strong>Code as World（代码即世界）</strong>：用代码显式记录物体、关系、约束和任务进度。比如"杯子在桌子左边、不能碰倒、已经抓取成功"这些状态，不再藏在神经网络的隐层里，而是写成可读的数据结构。这样做的好处是，任何一步失败，都能追溯到是哪个物体关系判断错了，而不是面对一个黑箱束手无策。第二，<strong>Code as Policy（代码即策略）</strong>：用代码组织规划、验证、恢复和执行四个环节。规划负责生成步骤，验证负责检查每步是否成功，恢复负责在失败时回退或换策略，执行负责调用底层工具。这四者用代码串起来，形成一个可循环的闭环。第三，<strong>HexaAnything系统</strong>：这是论文的具体实现，它调用感知、规划、控制等工具，其中包括VLA/WAM策略作为底层执行器。关键在于，HexaAnything不是替代VLA，而是把VLA当作"工具"来调用，并在外层用代码做决策。第四，<strong>验证轨迹转化为数据与记忆</strong>：每次成功执行后，轨迹被保存为可复用的程序、记忆或证据，使得系统能从工具层、Harness层逐步演化到模型权重、架构，甚至硬件和任务设计。与常规做法相比，创新点在于：以前是把代码当辅助（如用LLM生成少量代码片段），这篇论文是把代码当作<strong>任务表示的主干</strong>，让整个物理执行过程围绕代码展开。为什么之前没人这么做？因为端到端范式太成功，大家默认"隐式表示更强"，而忽略了显式表示在泛化和可调试性上的优势。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文在多个平台做了验证。第一，在<strong>RoboCasa365</strong>（一个机器人操作基准）上，HexaAnything在<strong>Composite-Unseen</strong>（组合未见场景）和整体成功率上均超过<strong>XR-1 VLA</strong>基线，说明代码化表示在泛化到新布局时确实有效。第二，<strong>Harness-trained HexaModel</strong>（用Harness训练出的HexaModel）在<strong>每一个split</strong>上都超过了base模型，这表明代码轨迹不仅仅是外部脚手架，还能被内化到模型权重中，让模型本身学会物理执行。第三，在<strong>PhyBench</strong>（物理实验基准）和<strong>双机械臂AgileX机器人</strong>上，智能体自主完成了物理实验和大多数桌面任务，且<strong>often faster than published results</strong>（通常比已发表结果更快）。消融方面，论文通过对比Harness训练前后的模型表现，验证了代码轨迹对模型内化的贡献。具体数字方面，摘要给出了定性结论（"improves"、"beats"、"faster"），但未列出精确百分比，需要查阅全文获取详细指标。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p>第一，<strong>对底层VLA/WAM的依赖</strong>：HexaAnything把VLA/WAM当作工具调用，如果底层策略本身在某个动作上失败率很高，外层代码再会规划也无法完成物理执行。这意味着系统的上限仍受限于底层模型的能力，实际部署时需要先保证底层工具在基本动作上的可靠性。第二，<strong>代码表示的覆盖范围有限</strong>：论文展示的是桌面操作和物理实验，这类任务的状态和约束相对容易用代码描述。但真实世界的任务往往涉及模糊的物理交互（如布料、液体）、社会规范、多智能体协作，这些很难用显式代码完整表达。第三，<strong>演化机制的验证尚不充分</strong>：论文提到"数据、模型、工具自演化"，但摘要中只展示了Harness训练这一层，从工具到权重、架构、硬件的完整演化链条是否真能自动发生，还需要更多证据。第四，<strong>真实部署的工程复杂度</strong>：代码化智能体需要感知、规划、控制多个模块协同，任何一个模块的延迟或错误都会影响整体，实际产品化时对系统集成的要求很高。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>这篇论文在VLA与端到端策略这个子方向里，属于<strong>范式突破</strong>而非渐进改进。为什么这么判断？因为当前主流做法是在"端到端"框架内做优化——更大的模型、更多的数据、更好的注意力机制。而这篇论文直接质疑了"端到端必须隐式"这个前提，提出用代码作为显式中间表示，把VLA从"策略"降级为"工具"。这种思路的转变，类似于软件工程从"汇编"到"高级语言"的跃迁：不是让汇编写得更快，而是换一种表示方式，让程序可读、可调试、可复用。和领域里其他子方向相比，这类工作的价值在于它提供了一条<strong>不同于scaling law的泛化路径</strong>。运动控制、灵巧操作等子方向的天花板受限于物理硬件和底层控制精度，而代码化智能体的天花板在于"表示能力"——只要能用代码描述的任务，就能获得泛化和可调试性。这意味着它的价值层级可能更高，因为它改变的是"如何组织智能"这个元问题。落地价值方面，距离实际部署还有距离，卡点主要在：底层VLA/WAM在真实环境中的可靠性、代码表示对复杂任务的覆盖度、以及多模块系统的工程集成。需要什么条件？至少需要底层工具在基本动作上达到99%以上的成功率，以及一套成熟的代码生成与验证流程。如果只记住一件事：<strong>这篇论文最值得记住的idea是——把物理世界的任务执行写成代码，让机器人像程序员调试程序一样调试自己的行为</strong>。这个idea特别之处在于，它把具身智能从"训练一个黑箱"转变为"编写一个可演化的程序"，从而让物理经验可以像开源代码一样被积累、复用和改进。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文摘要中未明确提及代码或数据的开源情况，也未给出GitHub链接。arXiv页面（http://arxiv.org/abs/2609.35432v1）通常会在全文或补充材料中说明开源承诺。建议读者直接查阅arXiv全文的"Code Availability"或"Reproducibility"章节。如果未开源，论文可能会在后续版本中公开，因为这类系统级工作通常需要开源才能被社区验证和复用。</p></div>
+</div>
+<div class="paper">
+<h3>面向四足侦察机器人的地形感知自主行星探索：基于外感知-本体感知建图（Terrain-Aware Autonomous Planetary Exploration for Exteroceptive-Proprioceptive Mapping with Quadruped Scouts）</h3>
+<div class="title-en">Terrain-Aware Autonomous Planetary Exploration for Exteroceptive-Proprioceptive Mapping with Quadruped Scouts</div>
+<div class="meta">
+<span>📂 世界模型与规划</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2609.35493v1" target="_blank">arXiv: 2609.354931</a>
+<a href="https://xxx.itp.ac.cn/abs/2609.354931" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.354931" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2609.354931" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.354931" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">自主行星探索要求机器人在未知、不平坦的地形中导航，同时评估风险、可通行性和能量消耗。四足侦察机器人非常适合这一任务，因为它们能够穿越不规则表面，并在运动过程中采集与移动性相关的信息。本文提出了一种地形感知探索框架，该框架面向类月环境中的四足机器人，结合了外感知建图（exteroceptive mapping）与本体感知建图（proprioceptive mapping）。机载RGB-D相机（RGB-D camera）构建以机器人为中心的高程地图（elevation maps），估计几何可通行性（geometric traversability），并推导用于自主规划的导航代价（navigation costs）。与此同时，本体感知测量（proprioceptive measurements）提供交互感知的地形线索（interaction-aware terrain cues），以补充基于几何的评估。局部地图被增量式配准到全局多层表示（global multi-layer representation）中，该表示由探索模块用于在未探索的兴趣区域中选择目标。这些目标由自主导航系统到达，该系统利用可用的地图和代价层引导碰撞感知运动（collision-aware motion）。在NVIDIA Isaac Sim上的仿真结果展示了自主探索、地图扩展以及地形几何与机器人-地形交互之间的空间关联。随后利用这些信息进行的导航表现出比初始探索更低的平均运输成本（Cost of Transport, CoT）。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>导航与场景理解（偏“足式机器人自主探索 + 地形可通行性建模”）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>让四足机器人用相机几何+本体感觉一起建地形图，自主探索月球样环境并降低行走能耗。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p class="num-item">1. 行星探索机器人（planetary exploration robot）传统上以轮式漫游车（rover）为主，例如火星车。轮式平台在平坦或缓坡地形效率极高，但遇到松软月壤、碎石坡、陡坎时容易打滑或被困，因此“能走”不等于“敢走”。</p>
+<p class="num-item">2. 四足机器人（quadruped robot）通过离散落足点移动，天生更适合不规则地形；它在行走时还能通过关节力矩、足端接触、机身姿态等本体感觉（proprioception，指机器人对自身关节、力、姿态等内部状态的感知）判断“脚下这块地到底稳不稳”。</p>
+<p class="num-item">3. 外部感知（exteroception，指相机、LiDAR 等对外部环境的感知）可以构建高程图（elevation map，把地形表示为每个网格的高度），并据此估计几何可通行性（geometric traversability，例如坡度、粗糙度、台阶高度是否超过阈值）。</p>
+<p class="num-item">4. 但仅靠几何可通行性不够：两块看起来一样平的地面，一块是硬土，一块是松沙，轮子/脚踩上去的下陷和打滑完全不同。因此需要把“看起来能走”和“走起来感觉如何”结合起来。</p>
+<p class="num-item">5. 自主探索（autonomous exploration）指机器人不依赖人工指定目标点，而是自己选择未知区域中的候选目标，边探索边建图，常用于行星表面、洞穴、灾后废墟等无法预先给地图的场景。</p>
+<p class="num-item">6. 能耗指标 Cost of Transport（CoT，运输成本，通常定义为移动单位距离/单位重量所消耗的能量）是足式机器人移动效率的核心指标；在行星任务中，能量极其宝贵，CoT 直接关系到任务半径和生存时间。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p class="num-item">1. 行星探索中，机器人必须在未知、非结构化地形上自主决策，但现有工作往往只用外部感知做几何可通行性判断，忽略了“机器人与地形交互”这一层信息，导致规划出的路径可能几何上可行、实际却高能耗或高风险。</p>
+<p class="num-item">2. 四足机器人在行走时天然产生丰富的本体感觉数据，例如足端接触力、关节力矩、机身俯仰/横滚、打滑等，但这些数据通常只用于底层控制，很少被提升到地图层面，用于指导高层探索和导航。</p>
+<p class="num-item">3. 如何把外部感知的几何地图与本体感觉的交互线索融合成一个多层全局地图，并让探索模块利用它选择目标、让导航模块利用它规划低能耗路径，是一个尚未充分解决的系统性问题。</p>
+<p class="num-item">4. 这件事的重要性在于：如果机器人能把“哪里走得稳、哪里走得费劲”记录下来并复用于后续导航，就能在同样能量预算下探索更大范围，这对月球/火星等无法补给的环境是任务级收益。</p>
+<p class="num-item">5. 论文要堵的 gap 是：将 exteroceptive-proprioceptive mapping（外部-本体感知融合建图）与 terrain-aware exploration（地形感知探索）整合到一个四足侦察机器人框架中，并在类月环境仿真中验证探索后导航的 CoT 下降。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p class="num-item">1. 系统整体是一个“边探索边建图、再用图导航”的闭环框架：机载 RGB-D 相机（RGB-D camera，同时输出彩色图和深度图的相机）构建以机器人为中心的高程图，估计几何可通行性并推导导航代价；同时本体感觉测量提供交互感知的地形线索；局部地图增量配准到全局多层表示；探索模块在未探索兴趣区域选目标；导航系统用地图和代价层做避障运动。</p>
+<p class="num-item">2. 外部感知建图：用 RGB-D 构建 robot-centered elevation map（以机器人为中心的高程图），这意味着地图随机器人移动而滚动更新，适合未知环境下的局部精细建模。几何可通行性通常由坡度、粗糙度、台阶/障碍高度等几何特征计算，再转成导航代价层，供规划器避开高风险区域。</p>
+<p class="num-item">3. 本体感觉交互线索：论文强调 proprioceptive measurements provide interaction-aware terrain cues，即利用行走过程中关节力矩、足端接触、机身姿态等判断地形软硬、打滑、下沉等几何地图看不出的属性。其有效性在于：几何上相同的两块地，交互响应不同，本体感觉能提供“实际走起来”的标签。</p>
+<p class="num-item">4. 多层全局地图：局部地图增量配准（incremental registration）到全局 multi-layer representation（多层表示），每一层可以理解为一种信息通道，例如几何高程层、几何可通行性层、交互感知层、导航代价层。这样探索和导航都能按需查询不同层，而不是把所有信息压成一个黑箱。</p>
+<p class="num-item">5. 探索模块：在未探索区域中选择兴趣目标（targets in unexplored regions of interest）。与只按几何边界选点的常规探索相比，这里的目标选择可以隐含地偏向“可到达且交互风险可接受”的区域，因为代价层已经融合了本体感觉线索。</p>
+<p class="num-item">6. 自主导航：用可用地图和代价层引导 collision-aware motion（碰撞感知运动），即规划时同时考虑障碍和地形代价。创新点不在于单个规划算法，而在于规划所用的代价来自外部-本体融合地图，因此路径更可能低能耗。</p>
+<p class="num-item">7. 为什么之前没人这么做：外部感知建图和本体感觉控制通常分属两个社区，前者做 SLAM/探索，后者做腿式控制；把本体感觉提升为地图层并用于探索目标选择和导航代价，需要跨层系统集成，工程复杂度高，且需要仿真中能提供一致的机器人-地形交互数据。</p>
+<p class="num-item">8. 验证方式：在 NVIDIA Isaac Sim 中做类月环境仿真，观察自主探索、地图扩展、地形几何与机器人-地形交互的空间关联，并比较探索后导航与初始探索的平均 CoT。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p class="num-item">1. 实验平台与环境：使用 NVIDIA Isaac Sim 仿真，地形为 lunar-like environments（类月环境），机器人是四足 scout。Isaac Sim 能提供物理一致的机器人-地形交互，因此适合验证本体感觉线索。</p>
+<p class="num-item">2. 核心定性结果：论文报告了 autonomous exploration（自主探索）、map expansion（地图扩展）、以及 terrain geometry 与 robot-terrain interaction 之间的 spatial association（空间关联）。也就是说，地图不仅能扩大，还能显示出“某些几何区域对应特定交互响应”的关联。</p>
+<p class="num-item">3. 核心定量结果：subsequent navigation using this information exhibits lower average Cost of Transport (CoT) than initial exploration。即利用融合地图进行后续导航时，平均运输成本低于初始探索阶段。这说明探索阶段积累的本体感觉-几何关联被复用于导航，带来了能耗收益。</p>
+<p class="num-item">4. 对比基线：摘要未列出具体 baseline 名称，但从表述看，主要对比是“初始探索阶段的移动”与“使用融合地图后的后续导航”，属于自比较/消融式验证，用来证明地图信息对导航能耗的正向作用。</p>
+<p class="num-item">5. 消融与贡献验证：摘要没有给出多层地图各层的消融数字，例如去掉本体感觉层后 CoT 会上升多少、去掉几何层会怎样。因此目前能确认的是系统整体有效，但各模块的独立贡献大小在摘要层面不明确。</p>
+<p class="num-item">6. 具体数字：摘要未提供 CoT 降低的百分比、地图扩展面积、探索步数、成功率等具体数值。若需要精确数据，需要查看全文中的图表和表格。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. 仅在仿真中验证，没有真机实验。Isaac Sim 的接触模型、月壤力学、相机噪声与真实月球环境仍有差距；仿真中有效的本体感觉线索在真机上可能受噪声、漂移、足端打滑模型误差影响。对实际应用意味着：离月球部署还很远，最多是方法可行性验证。</p>
+<p class="num-item">2. 缺少与强 baseline 的定量对比。摘要只提到后续导航 CoT 低于初始探索，但没有说明对比了哪些探索策略、哪些建图方式、哪些规划器。没有 baseline 就无法判断增益是来自融合地图，还是仅仅来自“探索后地图更全”这一常识性因素。</p>
+<p class="num-item">3. 多层地图的层间融合机制和权重未在摘要中说明。几何可通行性与本体感觉线索如何统一到同一代价空间、如何避免某一层主导、如何处理冲突，是系统成败关键；如果融合规则手工设计且未做消融，泛化性存疑。</p>
+<p class="num-item">4. 类月环境可能过于理想化。真实月球表面有极低重力、真空、静电月尘、极端光照等问题，RGB-D 相机在强阴影和低纹理环境下深度估计会退化；论文的仿真是否建模这些因素，摘要未说明。</p>
+<p class="num-item">5. 探索目标选择只提到“未探索兴趣区域”，没有说明是否显式优化信息增益与能耗的权衡。如果目标选择仍以覆盖为主，本体感觉地图对探索阶段的直接收益可能有限，更多是服务于后续导航。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<ul>
+<li>在子方向中的位置：这篇工作属于“系统集成型填补空白”，不是单一算法范式突破。它把外部感知建图、本体感觉地形分类、多层地图、自主探索和导航串成一个完整框架，并给出 CoT 收益。判断依据是：单个组件在各自社区并不全新，但把它们整合到四足行星探索并验证能耗收益，此前较少见。</li>
+<li>与其它子方向相比的价值和天花板：与 VLA/端到端策略相比，它不追求通用操作或语言指令，而是聚焦“走得好、走得省”；与纯运动控制相比，它把控制层信息上升到任务层。其价值在行星探索、灾后搜救、矿山巡检等“无图、能量受限、地形复杂”的场景很高。天花板在于：如果本体感觉线索不能可靠跨地形泛化，或者多层地图维护成本过高，系统就难以扩展到大规模长时任务。</li>
+<li>落地价值：距离实际部署还有明显距离。卡点包括：真机上的在线标定与噪声处理、低重力/月尘对相机和关节的影响、长时探索中的地图一致性、以及能量预算下的计算资源限制。需要的前提条件：在真实四足平台上完成闭环实验，证明本体感觉地图层在真实地形上可重复、可迁移，并且 CoT 收益在真机上仍然存在。</li>
+<li>如果只记住一件事：最值得记住的 idea 是“把本体感觉从底层控制信号提升为地图层，并让探索和导航共用这张融合地图”。这个 idea 特别在于：它把“走起来的感觉”变成可存储、可查询、可规划的空间信息，从而让机器人不仅知道“哪里能走”，还知道“哪里走得省”。这是从几何可通行性走向交互感知可通行性的关键一步。</li>
+</ul>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>摘要和给定信息中未提及代码、数据或仿真环境的开源链接。论文是否承诺后续公开，摘要未说明。建议查阅 arXiv 全文的 Code Availability、Supplementary Material 或项目主页；若未开源，可关注作者团队（IIT DLS）后续发布。</p></div>
+</div>
+<div class="paper">
+<h3>F4R：面向持续机器人自我改进的失败驱动识别、重建、精炼与重新部署（Failure-Driven Recognition, Reconstruction, Refinement, and Redeployment）</h3>
+<div class="title-en">F4R: Failure-Driven Recognition, Reconstruction, Refinement, and Redeployment for Continual Robot Self-Improvement</div>
+<div class="meta">
+<span>📂 灵巧操作与抓取</span>
+<span>📊 相关性 8/10</span>
+<a href="http://arxiv.org/abs/2609.35575v1" target="_blank">arXiv: 2609.355751</a>
+<a href="https://xxx.itp.ac.cn/abs/2609.355751" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.355751" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2609.355751" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2609.355751" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">当前视觉-语言-动作模型（vision-language-action models）在真实世界中的性能，从根本上受限于专家演示覆盖范围有限，以及其对物理交互理解不足。一种常见的补救方法是针对新遇到的失败收集更多真实世界演示。然而，这一过程成本高昂、效率低下、可能不安全，并且难以扩展。为应对这一挑战，我们提出了“失败促升”（Failure for Rising，F4R），一种失败驱动的真实到仿真再到真实（real-to-sim-to-real）闭环学习框架，其将真实世界中的失败转化为有针对性的策略改进。F4R首先使用一个智能体（agent）从 rollout 中自动识别并诊断失败。它将每一次失败重建为一个交互式的、以对象为中心的桌面环境，该环境保留了与任务相关的空间和物理条件。随后，策略通过以失败为条件的仿真-真实协同训练（failure-conditioned sim-real co-training），以及在重建环境中的针对性强化学习得到精炼。改进后的策略随后被重新部署，而新观察到的失败则被持续反馈到下一轮重建与学习循环中。在四项操作任务上的真实世界评估表明，F4R实现了93.75%的分布内（In-Distribution）成功率和90.0%的分布外（Out-of-Distribution，OOD）成功率，在OOD条件下较预算匹配的Targeted BC基线高出18.75个百分点，且无需收集额外的真实世界纠正演示。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>仿真到真机 / 强化学习（Real-to-Sim-to-Real + 持续学习），兼跨 VLA与端到端策略</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>把真机失败案例自动重建成仿真环境再训练，让机器人不用额外采集纠错数据就能持续自我提升。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，需要先掌握几个关键概念。第一是 VLA 模型（Vision-Language-Action Model，视觉-语言-动作模型）：这类模型把摄像头图像、自然语言指令直接映射为机器人动作序列，是当前端到端机器人策略的主流范式，代表工作如 RT-2、OpenVLA 等。第二是专家演示（expert demonstration）：训练 VLA 通常依赖人类遥操作采集的成功轨迹数据，数据量和覆盖度直接决定策略上限。第三是分布外泛化（Out-of-Distribution, OOD）：当测试场景与训练数据分布不同（如新物体位置、新光照），策略成功率会急剧下降，这是 VLA 落地的核心瓶颈。第四是 real-to-sim-to-real 闭环：先在真实世界发现问题，把问题搬到仿真里低成本地大量试错，再把学到的策略部署回真机——这个思路的价值在于仿真可以无限采样且无安全风险。第五是强化学习（Reinforcement Learning, RL）微调：在仿真中用奖励信号进一步优化策略，弥补模仿学习（imitation learning）只学"成功轨迹"、不理解失败边界的缺陷。最后是持续学习（continual learning）：让机器人在部署后不断从新失败中迭代，而不是一次性训练完就固定。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>当前 VLA 模型在真实世界的表现受限于两点：专家演示覆盖不足，以及对物理交互的理解不够深入。当机器人在部署中遇到新失败时，业界常见的补救方式是人工再采集一批针对该失败的纠错演示（corrective demonstration），但这个过程昂贵、低效、有安全风险且难以规模化。这篇论文要解决的核心问题是：能否让机器人自动把真实世界的失败转化为策略改进，而无需额外采集真机纠错数据？这个问题的意义在于，它直接堵上了"失败数据无法被有效利用"这个 gap——传统流程中失败只是被丢弃或靠人工补救，而 F4R 把失败本身变成了一种可自动消化的训练资源，使持续自我改进成为可能。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>F4R 的核心是一个"失败驱动"的 real-to-sim-to-real 闭环，包含四个阶段：识别（Recognition）、重建（Reconstruction）、精炼（Refinement）、再部署（Redeployment）。</p>
+<div class="spacer"></div><p>第一，失败识别与诊断（Recognition）。论文用一个 agent（智能体，这里指基于大模型的自动化诊断模块）自动从 rollout（策略在真机上的执行轨迹）中检测失败并分析失败原因。这一步的关键在于自动化——不需要人工标注哪一步失败了、为什么失败，agent 直接输出失败诊断信息，这是整个闭环能"持续"运转的前提。</p>
+<div class="spacer"></div><p>第二，失败重建（Reconstruction）。系统把每个失败案例重建为一个交互式的、以物体为中心（object-centric）的桌面仿真环境，并保留与任务相关的空间和物理条件。这里的创新点在于"object-centric"和"task-relevant"：不是重建整个场景，而是只重建与失败相关的物体和物理属性，这样既降低了重建难度，又保证了仿真环境能复现导致失败的关键条件。相比常规的域随机化（domain randomization）——随机扰动一大堆参数碰运气——这种"针对性重建"效率高得多。</p>
+<div class="spacer"></div><p>第三，失败条件化的仿真-真机协同训练（failure-conditioned sim-real co-training）。策略同时在仿真重建环境和真机数据上训练，且训练过程以失败条件为引导。这样做的原理是：仿真提供大量失败边界附近的试错信号，真机数据锚定真实物理分布，两者协同避免纯仿真训练带来的 sim-to-real gap（仿真到真机的差距）。</p>
+<div class="spacer"></div><p>第四，针对性强化学习（targeted RL）。在重建的仿真环境中用 RL 进一步精炼策略，奖励信号聚焦于克服已识别的失败模式。相比常规 RL 的"广撒网"式探索，这种 targeted RL 把算力集中在失败区域，样本效率更高。</p>
+<div class="spacer"></div><p>第五，持续闭环。改进后的策略重新部署到真机，新观察到的失败又被反馈进下一轮重建和学习循环。这个"持续"机制是论文标题中 "Continual" 的体现，也是它区别于一次性 sim-to-real 工作的关键。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文在四个真实世界操作任务上做了评估。关键数据如下：F4R 达到 93.75% 的分布内（In-Distribution, ID）成功率和 90.0% 的分布外（OOD）成功率。在预算匹配（budget-matched，即对比方法使用相同数量的真机数据采集预算）的条件下，F4R 在 OOD 场景下比 Targeted BC（Targeted Behavior Cloning，针对性行为克隆，即用纠错演示做模仿学习的基线）高出 18.75 个百分点。最重要的是，F4R 实现这一提升的过程中没有采集任何额外的真机纠错演示（without collecting additional real-world corrective demonstrations）。这三组数据共同说明：F4R 的优势在 OOD 场景下最明显（因为 OOD 正是失败高发区），且其性能提升不依赖昂贵的人工数据采集。论文还包含消融实验来验证各阶段（重建、协同训练、RL 精炼）的贡献，但摘要中未给出具体消融数字。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p>第一，重建保真度是天花板。仿真环境再逼真也无法完全复现真实物理（如接触摩擦、柔性物体形变、传感器噪声），重建误差会直接传导到策略上，导致 sim-to-real gap 依然存在。对实际应用意味着：在物理交互极其复杂的任务（如布料操作、精密装配）上，F4R 的效果可能大打折扣。</p>
+<div class="spacer"></div><p>第二，依赖失败可被重建为桌面场景。论文明确限定在"object-centric table-top environment"（以物体为中心的桌面环境），这意味着移动操作、大空间导航、多机器人协作等场景不在覆盖范围内。对应用而言，F4R 目前只适用于结构化的桌面操作任务。</p>
+<div class="spacer"></div><p>第三，失败诊断 agent 的可靠性未被充分讨论。如果 agent 误判失败原因或漏检失败，整个闭环会朝错误方向优化。这是一个级联风险：诊断错→重建错→训练错→部署更错。实际部署中需要额外的验证机制。</p>
+<div class="spacer"></div><p>第四，持续学习的灾难性遗忘（catastrophic forgetting）风险。论文强调持续迭代，但未说明如何保证新失败的学习不会覆盖旧能力。如果每轮只针对新失败优化，策略可能在旧任务上退化。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>这篇论文在"仿真到真机 / 强化学习"子方向里属于<strong>填补空白的范式整合</strong>，而非单点渐进改进。为什么这么判断？real-to-sim-to-real 本身不新（如 RMA、DrEureka 等已探索），失败驱动学习也不新，但把"自动失败诊断→针对性重建→协同训练→持续闭环"完整串起来、并证明无需额外真机纠错数据就能提升 OOD 性能，这个组合是新的。它解决的是持续学习在机器人领域长期缺失的"自动化数据飞轮"问题——过去失败数据的利用要么靠人工、要么靠随机探索，F4R 给出了一个可自动运转的闭环。</p>
+<div class="spacer"></div><p>和领域其他子方向相比，这类工作的价值和天花板处于<strong>中高层级</strong>。它不像 VLA 基础模型那样有"通用性"的想象空间，也不像灵巧操作那样有"硬件+算法"的双重壁垒，但它的价值在于<strong>方法论的可复用性</strong>：任何有仿真器的机器人任务都可以套用这个"失败→重建→精炼"的循环。天花板在于它受限于仿真器的保真度和任务的可重建性——如果仿真器建不出来，整个方法就失效。</p>
+<div class="spacer"></div><p>落地价值方面，距离实际部署还有中等距离，卡点有三个：一是重建自动化程度——论文用 agent 自动重建，但真实场景的物体几何、物理参数获取仍需视觉/触觉估计，这部分鲁棒性未知；二是算力成本——每轮闭环都要跑 RL，真机部署场景下是否有足够算力做在线迭代存疑；三是安全——持续迭代过程中策略可能产生危险动作，需要安全约束层。落地需要的条件是：高保真可微仿真器、可靠的失败检测、以及安全部署框架。</p>
+<div class="spacer"></div><p>如果只记住一件事：<strong>失败不是垃圾，而是最宝贵的训练信号——关键是要有一个自动化的管道把真机失败"翻译"成仿真里可训练的环境。</strong> 这个 idea 特别在于它把机器人学习的瓶颈从"数据采集"转移到了"失败利用"，而后者是可以通过工程自动化解决的，前者则受限于人力和成本。这个视角转换本身，比具体的 18.75 个百分点提升更有价值。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>摘要和给定信息中未提及代码或数据的开源情况，也未给出项目主页链接。arXiv 链接为 http://arxiv.org/abs/2609.35575v1。建议读者关注论文正文的 "Code and Data" 章节或作者主页，确认是否承诺后续公开。从领域惯例看，这类 real-to-sim-to-real 工作通常会开源仿真环境和训练代码以促进复现，但真机实验数据和硬件配置往往不公开。</p></div>
+</div>
+</section>
+<section class="day">
 <h2>📅 2026-09-28 <span class="count">(5 篇)</span></h2>
 
 <div class="paper">
