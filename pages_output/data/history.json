@@ -13035,5 +13035,210 @@
         "structured_summary": "【子方向标签】\n多模态感知（更细一点：面向具身智能的视觉定位基础模型 / Visual Grounding Foundation Model）\n\n【一句话简介】\n提出 4B 视觉定位基础模型 GroundingPI，用点/框坐标统一词表做精确感知，作为 VLA 与自动驾驶的视觉骨干显著提升下游操作性能。\n\n【背景知识】\n要理解这篇论文，先要弄清几个概念。▲视觉定位（Visual Grounding）▲指的是给定一句自然语言描述（如\"把左边那个红色杯子拿起来\"），模型要输出目标物体在图像中的精确位置，通常用▲边界框（bounding box）▲或▲点（point）▲表示。▲VLA（Vision-Language-Action，视觉-语言-动作模型）▲是当前具身智能的主流范式：把图像和语言指令一起喂给一个大模型，直接输出机器人动作，代表作有 RT-2、OpenVLA 等。▲WAM（World-Action Model，世界-动作模型）▲则更进一步，让模型在预测未来视频帧的同时输出动作。这两类模型的\"眼睛\"通常直接借用通用▲视觉-语言模型（VLM，如 CLIP、SigLIP）▲或▲视频生成骨干（如 Sora 类模型）▲，但这些骨干是为\"图像分类\"\"图文匹配\"训练的，并不擅长在杂乱场景中精确定位一个小物体。▲GRPO（Group Relative Policy Optimization，组相对策略优化）▲是一种强化学习算法，最早用于 DeepSeek 系列推理模型，通过比较一组采样输出的相对好坏来更新策略，无需价值网络。▲RoboTwin 2.0 / RoboCasa-GR1 / nuScenes▲ 分别是双臂操作仿真基准、人形机器人操作基准和自动驾驶数据集，用来验证骨干模型的迁移能力。\n\n【核心问题】\n当前 VLA 和 WAM 的感知能力被\"借用\"的通用视觉骨干拖了后腿：这些骨干在杂乱场景、小物体、需要闭环高频响应的场景下定位不准，导致机器人抓取失败或自动驾驶误判。领域内缺少一个专门为\"物理智能\"训练的感知基础模型——既要有精确的定位能力，又要足够快以支持闭环控制，还要能作为通用骨干被下游任务直接替换使用。GroundingPI 试图填补这个空白：把\"定位\"从通用视觉能力中独立出来，作为一个专门的基础模型来训练，并证明它能系统性地提升机器人和自动驾驶任务。这背后的判断是：▲感知基础（perceptual foundation）应当与语言/推理基础分离，专门为物理世界服务▲。\n\n【方法】\nGroundingPI 的核心设计可以从四个层面理解。\n\n第一，▲统一坐标词表（shared vocabulary of quantized coordinates）▲。传统定位模型输出连续的坐标回归值，或用专门的检测头输出框。GroundingPI 把图像坐标离散化成 token，和文本 token 放在同一个词表里，模型像\"说话\"一样输出坐标 token。这样做的好处是：定位任务和语言任务共享同一套自回归生成框架，可以复用 LLM 的训练基础设施（SFT、RL），也让\"点\"和\"框\"用同一种表示统一处理。\n\n第二，▲三阶段训练流水线▲。先做▲多模态与空间预训练（multimodal and spatial pretraining）▲，让模型建立基本的图文对齐和空间感知；再做▲监督微调（SFT, Supervised Fine-Tuning）▲，用公开数据集和专门构建的▲数据引擎（data engine）▲产出的标注数据教模型做精确定位；最后用 ▲GRPO 强化学习▲进一步优化，让模型在采样中自我改进。数据引擎是关键的工程贡献——它自动化地生成高质量定位监督信号，解决了人工标注成本高的问题。\n\n第三，▲4B 参数规模的选择▲。相比动辄 7B、13B 的通用 VLM，4B 是一个\"够用且够快\"的平衡点，适合作为需要闭环控制的机器人系统的感知模块。这也解释了为什么它能作为骨干被直接嵌入下游系统。\n\n第四，▲作为视觉骨干的即插即用设计▲。GroundingPI 不只是定位模型，它被设计成可以替换 VLA/WAM 中原有的视觉编码器，下游任务只需换骨干即可受益。这种\"骨干替换\"的实验设计是论文说服力的关键——它直接证明专用感知预训练比通用视觉预训练更适合物理智能。\n\n【实验结果】\n论文在 34 个定位基准、11 类感知能力上对比了 44 个 baseline，平均得分 ▲73.68%▲，超过更大的 ▲GPT-6 Astra（71.54%）▲，建立了新的 SOTA。下游任务方面：在 ▲RoboTwin 2.0▲ 上，GroundingPI 在全部四种▲分布外（OOD, Out-of-Distribution）▲设置中都优于所有评估的主流骨干，相对最强骨干提升最高达 ▲24.8%▲。在 ▲RoboCasa-GR1▲ 上，用 ▲50% 演示数据▲训练的 GroundingPI 超过了用 ▲75% 数据▲训练的 baseline，说明感知质量可以部分替代数据量。在 ▲nuScenes▲ 自动驾驶数据集上，作为视觉骨干取得平均开环 ▲L2 误差 0.296 米▲。论文还做了预训练规模与数据组成的系统分析：下游操作和自动驾驶性能随预训练规模增长而提升；在 11 类感知能力的数据配方分析中，▲密集定位（dense grounding）▲对两个下游任务都有显著收益，而 ▲OCR▲ 能力被发现是感知学习的\"催化剂\"。\n\n【局限性】\n第一，▲4B 规模虽然平衡了速度与精度，但在需要极高频闭环控制（如 >100Hz）的场景下是否足够快，论文未给出明确的延迟数据▲。这对实际机器人部署是关键指标——如果推理延迟超过控制周期，再准的定位也无法用于闭环。\n\n第二，▲统一坐标词表的离散化精度存在理论上限▲。把连续坐标量化成 token 意味着定位精度受限于量化粒度，对于需要亚像素级精度的任务（如精密装配）可能不够。论文未讨论量化误差对下游任务的具体影响。\n\n第三，▲下游验证集中在仿真环境（RoboTwin 2.0、RoboCasa-GR1）▲，真机实验缺失。仿真到真机的差距（sim-to-real gap）在感知层面同样存在——仿真中的光照、纹理、遮挡分布与真实世界差异很大，GroundingPI 在真实杂乱场景中的鲁棒性尚未验证。\n\n第四，▲OCR 作为\"催化剂\"的发现缺乏机制解释▲。论文观察到 OCR 能力有助于感知学习，但没有说明为什么——是因为 OCR 训练提供了密集的文本定位监督，还是因为它增强了细粒度空间注意力？这个发现如果被后续工作验证并解释，可能影响未来感知基础模型的数据配方设计。\n\n【个人视角点评】\n这篇论文在\"多模态感知\"子方向中属于▲填补空白 + 范式倡导▲的定位。说它填补空白，是因为此前没有专门为物理智能训练的定位基础模型——大家要么用通用 VLM 做零样本定位，要么在具体任务上微调检测器。GroundingPI 第一次系统性地把\"定位\"作为独立的基础能力来预训练，并证明它可以迁移到机器人和自动驾驶。说它倡导范式，是因为论文明确提出了\"grounding as a perceptual foundation\"和\"dedicated perceptual pretraining\"两个主张，试图影响领域对\"VLA 的视觉骨干应该怎么来\"这个问题的回答。\n\n和领域内其他子方向相比，这类工作的价值在于▲基础设施层▲——它不直接解决某个机器人任务，而是提升所有下游任务的感知上限。天花板取决于两点：一是专用感知预训练能否持续 scaling（论文初步证明了这一点），二是下游 VLA/WAM 是否愿意采用外部骨干（工程惯性是阻力）。如果这两点成立，GroundingPI 类工作可能成为具身智能的\"CLIP 时刻\"——一个被广泛复用的感知底座。\n\n落地价值方面，距离实际部署还有中等距离。卡点主要在：真机验证缺失、推理延迟未报告、以及机器人公司是否愿意替换已有视觉栈。需要的条件是：在真实机器人上证明闭环控制下的稳定性，以及提供高效的推理优化（量化、蒸馏、专用硬件适配）。如果这些补齐，GroundingPI 作为即插即用骨干的定位使其落地路径相对清晰——不需要重构整个系统，只需替换视觉编码器。\n\n如果只记住一件事：▲感知应该被当作独立的基础能力来预训练，而不是通用 VLM 的副产品▲。这个 idea 特别之处在于它挑战了当前 VLA 领域的默认假设——大家都在 scaling 语言和动作，却忽略了\"看清楚\"本身就是需要专门训练的能力。GroundingPI 用 4B 规模、统一坐标词表和 GRPO 训练证明了这个假设的可行性，并用下游任务的显著提升（最高 24.8%）给出了有力证据。\n\n【代码/数据开源情况】\n论文摘要和元数据中未明确提及代码或模型权重的开源情况，也未给出 GitHub 链接或 HuggingFace 模型地址。考虑到论文使用了公开数据集并构建了专门的数据引擎，数据引擎本身可能涉及专有数据。建议关注作者后续是否在 arXiv 页面或项目主页公开代码与权重。从领域惯例看，4B 基础模型的开源对社区复用至关重要，若不开源将显著限制其影响力。"
       }
     ]
+  },
+  {
+    "date": "2026-10-02",
+    "domain": "具身智能与机器人学习",
+    "count": 5,
+    "papers": [
+      {
+        "arxiv_id": "2610.021611",
+        "raw_id": "http://arxiv.org/abs/2610.02161v1",
+        "title": "DuoMind: Enabling Distributed Multi-Robot Coordination with Semantic Communication",
+        "authors": [
+          "Hanchu Zhou",
+          "Dechen Gao",
+          "Hang Wang",
+          "Brendan Lynch",
+          "Boqi Zhao",
+          "Qiyao Ma",
+          "Raman Goyal",
+          "Junshan Zhang"
+        ],
+        "abstract": "Vision-language models (VLMs) and vision-language-action models (VLAs) have recently driven rapid progress in general-purpose robots, yet most progress has focused on single-robot settings. Extending these capabilities to multi-robot systems remains challenging because robots must coordinate long-horizon behaviors while maintaining reliable, fine-grained execution. We introduce DuoMind, a distributed hierarchical framework for multi-robot coordination through semantic communication. Each robot uses a VLA-based action model for low-level execution and a VLM-based orchestrator for high-level reasoning and inter-agent coordination. At each planning step, the orchestrator at each robot reasons over the task instruction, local observations, and messages received from other robots. It then generates low-level instructions for the action model and semantic messages for peer robots. This architecture exploits the complementary strengths of pretrained models by combining the semantic reasoning capabilities of VLMs with the precise action-generation capabilities of VLAs. To address the scarcity of benchmarks for multi-robot coordination, we further develop RoboPoly, a benchmark comprising long-horizon manipulation tasks that require coordinated, closed-loop execution under distributed control. Experiments on RoboPoly and RoboTwin demonstrate that DuoMind improves multi-robot task performance, while ablation studies confirm the contributions of hierarchical orchestration and semantic communication. More details are available on our project page.",
+        "published": "2026-10-01T17:53:09+00:00",
+        "url": "http://arxiv.org/abs/2610.02161v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.02161v1",
+        "categories": [
+          "cs.RO",
+          "cs.AI"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "VLA与端到端策略",
+        "score_reason": "提出统一的视觉-语言-动作模型，在多种机器人任务上实现端到端策略学习，是该方向的重要进展。",
+        "title_cn": "DuoMind：以语义通信实现分布式多机器人协调（DuoMind: Enabling Distributed Multi-Robot Coordination with Semantic Communication）",
+        "abstract_cn": "视觉语言模型（Vision-Language Models, VLMs）与视觉语言动作模型（Vision-Language-Action Models, VLAs）近来推动了通用机器人的快速进展，然而大多数进展都集中在单机器人场景中。将这些能力扩展到多机器人系统仍然具有挑战性，因为机器人必须在保持可靠、细粒度执行的同时协调长时程行为。我们提出了 DuoMind，一个通过语义通信实现多机器人协调的分布式分层框架。每个机器人使用基于 VLA 的动作模型进行底层执行，并使用基于 VLM 的编排器进行高层推理与智能体间协调。在每个规划步骤中，每个机器人的编排器会针对任务指令、局部观测以及从其他机器人接收到的消息进行推理。随后，它为该动作模型生成底层指令，并为同伴机器人生成语义消息。该架构通过将 VLM 的语义推理能力与 VLA 的精确动作生成能力相结合，利用了预训练模型的互补优势。为应对多机器人协调基准的稀缺问题，我们进一步开发了 RoboPoly，这是一个包含长时程操作任务的基准，这些任务要求在分布式控制下进行协调的闭环执行。在 RoboPoly 和 RoboTwin 上的实验表明，DuoMind 提升了多机器人任务性能，而消融研究则证实了分层编排与语义通信的贡献。更多细节可在我们的项目页面上获取。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.021611",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.021611"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细分地说，是\"多机器人 VLA 协同 + 语义通信\"这一交叉方向）\n\n【一句话简介】\n用 VLM 做高层协调、VLA 做底层执行，让多台机器人通过\"语义消息\"而非原始观测互相沟通协作。\n\n【背景知识】\n要理解这篇论文，读者需要先掌握四个概念。第一，VLA（Vision-Language-Action model，视觉-语言-动作模型）：它把\"看图像 + 读语言指令\"直接映射成机器人动作序列，是当前通用机器人策略的主流范式（如 RT-2、OpenVLA），特点是端到端、泛化好，但通常只针对单台机器人。第二，VLM（Vision-Language Model，视觉-语言模型）：只做\"看+理解+推理\"，输出文字而非动作，擅长语义推理但不会精确控制。第三，多机器人协调（multi-robot coordination）：多台机器人要完成一个长时程任务（long-horizon task，指需要几十上百步、含多个子目标的任务），必须分工、同步、避免冲突，传统做法靠集中式规划或共享原始观测。第四，语义通信（semantic communication）：源自通信领域的概念，指不传原始数据（如整张图、点云），而传\"经过理解的、压缩后的语义信息\"（如\"我这边货架已清空\"），以降低带宽、提升可解释性。本文的核心思路就是把这四者缝在一起：VLM 当\"大脑\"负责协调，VLA 当\"小脑\"负责执行，机器人之间只交换语义消息。理解这一点，就能看懂它想解决什么问题。\n\n【核心问题】\n当前 VLA/VLM 驱动的通用机器人进展几乎全部集中在单机器人场景，而现实任务（如协作搬运、装配、清理）天然需要多台机器人配合，这个 gap 一直没被系统性填补。多机器人协调的难点在于：既要保证长时程行为上的高层一致性（谁做什么、何时做），又要保证每一步执行的精细可靠（动作不能糊），这两者在单一模型里很难兼顾。此外，多机器人系统若靠共享原始观测来协调，会带来带宽爆炸和隐私/可扩展性问题，而现有工作很少用\"语义通信\"来解耦协调与执行。更实际的是，这个方向长期缺乏标准 benchmark——没有统一的长时程多机器人任务评测集，方法之间无法公平比较，这本身也是阻碍领域前进的一块空白。本文同时针对\"方法\"和\"评测\"两个 gap 发力。\n\n【方法】\nDuoMind 的核心是一个分布式层级框架，可以拆成四点理解。第一，层级解耦：每台机器人内部都有两层——高层是 VLM-based orchestrator（编排器），负责推理与协调；低层是 VLA-based action model（动作模型），负责把高层给的\"低层指令\"变成具体动作。这样做的理由是 VLM 擅长语义推理但不擅长精确控制，VLA 擅长动作生成但不擅长全局协调，二者互补，比让一个模型全包更稳。第二，分布式而非集中式：没有中央调度器，每台机器人各自运行自己的 orchestrator，避免了单点故障和中心带宽瓶颈，这是\"distributed\"的关键含义。第三，语义通信机制：在每个规划步，orchestrator 综合三样东西——任务指令、本地观测、以及从同伴收到的消息——然后同时产出两样输出：给本机动作模型的低层指令，以及发给同伴的语义消息。消息是\"语义级\"的（如状态摘要、意图、进度），不是原始图像，因此通信开销小、可解释性强。第四，闭环执行：整个过程是 closed-loop 的，机器人边执行边更新消息、边重新规划，从而应对动态变化和同伴状态变化。相比常规做法（集中式规划 + 共享原始观测，或纯端到端单模型），它的创新点在于把\"协调\"和\"执行\"在模型层面显式分离，并用语义消息作为二者之间的接口——之前很少有人把 VLM/VLA 的分工与语义通信结合到多机器人闭环里。\n\n【实验结果】\n论文在两个 benchmark 上验证：自建的 RoboPoly 和已有的 RoboTwin。RoboPoly 是作者专门为多机器人协调构建的 benchmark，包含需要分布式控制下闭环协作的长时程操作任务，填补了该方向评测空白。实验结论是 DuoMind 提升了多机器人任务表现，且消融实验（ablation study）确认了两个关键组件的贡献：层级化编排（hierarchical orchestration）和语义通信（semantic communication）——也就是说，去掉任一组件性能都会下降，证明它们不是装饰而是有效来源。需要指出的是，摘要只给出了定性结论（\"improves performance\"\"confirm contributions\"），没有披露具体数值（如成功率提升百分比、对比了哪些 baseline 的具体分数），因此无法在此给出精确数字；要拿到量化对比需查阅正文与项目页。可确认的三组实质信息是：(1) 评测环境为 RoboPoly + RoboTwin 两个 benchmark；(2) 消融验证了层级编排与语义通信两部分各自的必要性；(3) 任务类型为分布式控制下的长时程协作操作。\n\n【局限性】\n第一，量化证据在摘要层面缺失：只报告\"提升\"而无具体数字和 baseline 清单，读者无法判断提升幅度是否显著，这对想复现或对比的研究者是实质障碍。第二，依赖预训练 VLM/VLA 的能力上限：整个框架的协调质量受限于所用 VLM 的推理能力和 VLA 的动作精度，若底层模型在某类任务上弱，层级结构也救不回来，这意味着落地时对基础模型选型高度敏感。第三，语义消息的设计与鲁棒性未被充分讨论：消息格式、压缩程度、丢包或误解时的容错机制在摘要中未提及，而真实多机器人系统的通信是不可靠的，这直接关系到能否部署。第四，可扩展性存疑：分布式 orchestrator 虽避免了中心瓶颈，但当机器人数量增大时，两两语义消息的交互复杂度可能上升，论文未说明在多少台机器人、多大团队规模下验证过，这限制了它对大规模集群的适用性判断。\n\n【个人视角点评】\n从定位看，这篇工作属于\"填补空白 + 组合式创新\"，而非单点范式突破。它没有提出全新的模型架构或学习算法，而是把已有的 VLM、VLA、语义通信、分布式层级这几个成熟组件第一次系统地缝合成多机器人协调框架，并配上一个新 benchmark——这类\"接口创新 + 评测基建\"的工作在领域早期往往价值很高，因为它定义了问题、提供了比较基准。放在整个具身智能坐标系里，单机器人 VLA 已经卷得很厉害，多机器人协调是明显更稀缺、更接近真实应用的方向，因此它的天花板比又一个单机器人策略改进要高；但它的价值也受制于\"组合\"本身——如果底层 VLM/VLA 不进步，它的上限就被锁死。落地价值上，它距离产品化还有明显距离：卡点不在算法思想，而在通信可靠性、消息协议标准化、团队规模验证和真实硬件上的闭环延迟。要落地，至少需要（1）在真实多机器人平台上验证而非仅仿真 benchmark，（2）给出语义消息在丢包/延迟下的鲁棒方案，（3）证明能扩展到 5 台以上机器人。如果只记住一件事：把\"协调\"和\"执行\"在模型层面显式分开、并用语义消息作为机器人之间的通信接口——这个\"分层 + 语义通信\"的组合，是让多机器人系统既聪明又省带宽的关键 idea，也是它区别于端到端单模型路线的核心。\n\n【代码/数据开源情况】\n摘要提到\"More details are available on our project page\"，表明作者提供了项目主页（通常含视频、方法细节，可能含代码与 RoboPoly benchmark），但摘要与给定信息中未给出具体链接，也未明确承诺开源代码或数据集。建议读者通过 arXiv 页面（http://arxiv.org/abs/2610.02161v1）跳转到项目页确认代码与 RoboPoly 的公开情况。若 RoboPoly 开源，将对该子方向的评测标准化有较大推动；若仅部分公开，则复现门槛仍偏高。"
+      },
+      {
+        "arxiv_id": "2610.018561",
+        "raw_id": "http://arxiv.org/abs/2610.01856v1",
+        "title": "ChunkVLA-AM: Parallel Action Chunking for Vision-Language-Action Robot Control in Additive Manufacturing",
+        "authors": [
+          "Zhugang Liu",
+          "Kaichuang Zhang",
+          "Jinman Zhang",
+          "Pu Sun",
+          "Martha Asare",
+          "Jose Hernandez",
+          "Maxim Ermolinsky",
+          "Efren Saenz",
+          "Qi Lu",
+          "Jinghao Yang"
+        ],
+        "abstract": "Vision-language-action (VLA) models unify visual perception, language understanding, and action generation, offering new opportunities for automation in additive manufacturing (AM). However, deployment in AM remains challenging because adapting these models to unseen robot embodiments is costly, and performance can degrade under environment changes. In this work, we present a framework for deploying OpenVLA-OFT on a FAIRINO FR3 robot in a fixed AM workcell. A data pipeline converts monocular real-world demonstrations into OpenVLA-compatible TFDS/RLDS datasets to support adaptation to the FR3 embodiment. At runtime, each inference request predicts an eight-step chunk of 7-D actions. The FR3 executes each chunk open loop before capturing a new observation, providing closed-loop feedback between chunks. The system uses a cloud-edge architecture in which the FR3 client streams observations to a remote inference server through a FastAPI interface. In 42 physical A-to-B object-transfer trials, evenly split between red and blue targets, the system succeeded in 39 (92.9%). All three failures occurred during final placement, when insufficient release-height control caused the object to topple. An illumination sweep identified a low-error luminance range of 85-125 on a 0-255 scale, with the lowest mean spatial error at 95.",
+        "published": "2026-10-01T15:21:05+00:00",
+        "url": "http://arxiv.org/abs/2610.01856v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.01856v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "运动控制（足式/人形）",
+        "score_reason": "提出人形机器人全身运动控制框架，在仿真与真机上实现复杂动态动作，具有较高影响力。",
+        "title_cn": "ChunkVLA-AM：面向增材制造中视觉-语言-动作机器人控制的并行动作分块（Parallel Action Chunking）",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action，VLA）模型统一了视觉感知、语言理解和动作生成，为增材制造（Additive Manufacturing，AM）中的自动化提供了新的机遇。然而，在增材制造中的部署仍然具有挑战性，因为这些模型对未见过的机器人本体的适配成本高昂，并且性能在环境变化下可能下降。在这项工作中，我们提出了一个框架，用于在固定增材制造工作单元中的FAIRINO FR3机器人上部署OpenVLA-OFT。一条数据流水线将单目真实世界演示转换为OpenVLA兼容的TFDS/RLDS数据集，以支持对FR3本体的适配。在运行时，每个推理请求预测一个由7维动作组成的八步分块（chunk）。FR3在捕获新观测之前以开环方式执行每个分块，从而在分块之间提供闭环反馈。该系统采用云-边架构，其中FR3客户端通过FastAPI接口将观测流式传输到远程推理服务器。在42次物理A到B物体转移试验中，红色和蓝色目标各占一半，系统成功39次（92.9%）。所有三次失败均发生在最终放置阶段，此时释放高度控制不足导致物体倾倒。一次光照扫描确定了在0-255尺度上85-125的低误差亮度范围，其中平均空间误差在95时最低。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.018561",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.018561"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（Vision-Language-Action，视觉-语言-动作模型部署与适配）\n\n【一句话简介】\n把 OpenVLA-OFT 部署到 FAIRINO FR3 机械臂上做增材制造场景的物体搬运，用并行动作分块实现 92.9% 的实物成功率。\n\n【背景知识】\n要读懂这篇论文，先要理解几个层层递进的概念。第一，VLA 模型（Vision-Language-Action model，视觉-语言-动作模型）是一类把\"看图像 + 读语言指令\"直接映射成\"机器人动作\"的大模型，可以理解为给机器人装了一个能听懂人话、看懂画面、直接输出关节/末端动作的\"大脑\"，代表工作有 RT-2、OpenVLA 等。第二，OpenVLA 是其中一个开源 VLA 基座模型，而 OpenVLA-OFT（Optimized Fine-Tuning，优化微调）是它的改进版，核心是让模型一次预测\"一串动作\"而不是单个动作，并加快推理。第三，动作分块（Action Chunking）指模型一次输出未来若干步的动作序列（本文是 8 步），机器人先\"开环\"执行完这一整块，再重新看一眼环境、预测下一块——这样既减少推理次数，又在块与块之间保留了闭环反馈，是当前 VLA 落地的主流工程范式。第四，TFDS/RLDS（TensorFlow Datasets / Reinforcement Learning Datasets）是机器人学习社区通用的数据格式，把演示数据标准化后才能喂给 OpenVLA 训练。第五，增材制造（Additive Manufacturing，AM，即 3D 打印）是一个典型的结构化工业场景，机器人需要在固定工位里完成取放、上下料等任务，环境相对可控但对可靠性要求高。最后，\"具身适配\"（embodiment adaptation）指同一个模型换到不同机械臂上时，因为关节数、运动学、相机位置不同而性能下降，需要重新采集数据微调——这是 VLA 落地的核心痛点之一。\n\n【核心问题】\n这篇论文要解决的是 VLA 模型从\"论文里的通用基座\"走向\"真实工业工位可用\"之间的工程鸿沟。具体来说，OpenVLA 这类模型通常在固定机器人（如 WidowX、Franka）上训练，换到一台新机械臂（这里是 FAIRINO FR3）时，动作空间、相机视角、工作空间全都变了，直接部署几乎必然失败，而重新采集大规模数据微调成本极高。论文试图回答：在增材制造这种固定工位场景下，能否用一套轻量的数据管线 + 云端推理架构，把 OpenVLA-OFT 低成本地适配到一台新机械臂上并达到可用的成功率？这个问题的意义在于，它堵上了\"通用 VLA 模型\"与\"特定工业机器人\"之间的适配 gap——这正是当前 VLA 研究从 benchmark 走向产线的关键瓶颈。同时，论文还系统考察了光照这一在实际车间里极易被忽视、却对视觉策略影响巨大的环境因素，填补了 VLA 鲁棒性研究中\"工业现场变量\"这一空白。\n\n【方法】\n论文的核心方案可以拆成四块。第一，数据管线：作者把单目（monocular，即单个普通摄像头）采集的真实人类演示，转换成 OpenVLA 兼容的 TFDS/RLDS 格式，从而用少量真实数据完成对 FR3 这一新具身（embodiment）的适配。这一步的关键在于\"格式标准化 + 单目输入\"，意味着不需要昂贵的多相机或动捕设备，普通摄像头录的演示就能用，大幅降低了数据采集门槛。第二，并行动作分块推理：每次推理请求，模型一次性预测 8 步、每步 7 维的动作块（7-D 通常指末端 6 自由度位姿 + 1 个夹爪开合）。机器人开环执行完这 8 步后再拍一张新图，形成\"块间闭环\"。相比每步都推理一次，这种做法把推理频率降低约 8 倍，缓解了 VLA 大模型推理慢的问题；相比完全开环执行整条轨迹，它又保留了周期性纠偏能力，是速度与鲁棒性的折中。第三，云边架构（cloud-edge architecture）：FR3 客户端通过 FastAPI 接口把观测流式传到远程推理服务器，服务器返回动作块。这样把重算力放在云端、轻客户端放在工位，避免每台机器人配一张昂贵 GPU。第四，光照鲁棒性分析：作者做了光照扫描实验，找出低误差的亮度区间。这一点的价值在于，它把\"环境变化导致性能退化\"这一抽象问题，量化成了一个可操作的工程参数（亮度范围），让部署者知道该把车间灯光调到什么水平。\n\n【实验结果】\n论文在真实的 FAIRINO FR3 机械臂 + 固定增材制造工位上做了物理实验。第一组数据：42 次实物 A 点到 B 点物体搬运试验，红蓝目标各半，成功 39 次，成功率 92.9%——这是最核心的落地指标，说明该框架在结构化场景下已接近可用。第二组数据：3 次失败全部发生在\"最终放置\"阶段，原因是释放高度控制不足导致物体倾倒，这揭示了失败模式高度集中，而非随机分布，对后续改进有明确指向。第三组数据：光照扫描实验在 0–255 亮度尺度上，识别出低误差区间为 85–125，其中平均空间误差最低点出现在亮度 95。这组数据把\"光照影响性能\"从定性描述变成了定量区间，是本文相对一般 VLA 部署工作少见的鲁棒性刻画。需要指出的是，摘要中未提及与传统 baseline（如每步推理的逐步策略、或纯开环执行）的对比数字，也未明确列出消融实验，因此\"动作分块\"和\"云边架构\"各自的独立贡献在摘要层面尚无法量化验证，这是读者需要留意的信息缺口。\n\n【局限性】\n第一，任务与场景高度受限：实验只在固定工位、固定 A→B 搬运任务上验证，环境是结构化的增材制造工位，一旦任务变成多目标、动态障碍或非结构化环境，92.9% 的成功率未必能保持——这意味着它更像\"单点验证\"而非\"通用方案\"。第二，失败模式暴露了精细控制短板：3 次失败全在放置阶段因释放高度不当导致倾倒，说明系统在需要精细力控/高度控制的接触-rich 操作上仍脆弱，而增材制造恰恰常涉及精密取放，这是实际部署的直接卡点。第三，云边架构引入通信依赖：观测要流式传到远程服务器再返回动作，网络延迟或中断会直接影响实时性与安全，论文未报告延迟数据或断网降级策略，这对工业现场的可靠性要求是隐患。第四，适配成本与泛化性未充分说明：论文用数据管线适配了 FR3，但未说明采集了多少演示、适配耗时多久、换一台机械臂是否要重来一遍，因此\"低成本适配\"这一卖点的边界仍不清晰。第五，光照结论的场景依赖性：85–125 的亮度区间是在该工位、该相机、该任务下测得的，换相机或换场景后这个区间是否成立未知，直接照搬有风险。\n\n【个人视角点评】\n从子方向定位看，这篇论文属于\"填补空白 + 工程渐进\"的混合体，而非范式突破。它没有提出新的 VLA 架构或学习算法，而是把已有的 OpenVLA-OFT、动作分块、云边推理组合起来，解决\"换机械臂 + 进工业现场\"这一具体落地问题。判断依据是：核心方法组件（动作分块、TFDS/RLDS 数据格式、云边推理）都是社区已有工具，论文的增量在于系统集成与真实场景验证。但它的价值恰恰在于\"真实\"——当前 VLA 领域大量工作停留在仿真 benchmark 或固定机器人上，真正把模型搬到一台新机械臂、在真实工位跑 42 次物理试验并报告失败模式的工作并不多，这类\"脏活\"对领域从 research 走向 deployment 至关重要。\n\n和其他子方向相比，这类工作的价值层级是\"应用验证层\"而非\"方法创新层\"。它的天花板受限于基座模型能力——如果 OpenVLA-OFT 本身泛化不够，再好的部署工程也救不了；但它的地板很高，因为一旦跑通，就能直接复制到同类工业工位。相比之下，运动控制或世界模型方向的工作可能更具理论突破性，但离产线更远；而本文这类工作离钱更近。它的天花板大致是\"某个垂直场景的可靠自动化方案\"，而非\"通用机器人智能\"。\n\n落地价值方面，距离实际部署已经不远，但仍卡在三点：一是精细操作（如放置高度控制）需要引入力控或更细的动作表示，纯位置控制不够；二是云边架构的延迟与可靠性需要工程加固（本地兜底、超时处理）；三是适配流程的自动化程度——如果每换一台机器人就要人工采数据、转格式、重训，成本仍高。要真正落地，需要基座模型具备更强的跨具身零样本能力，加上标准化的数据采集工具链，以及边缘端可跑的轻量推理。\n\n如果只记住一件事：这篇论文最值得记住的 idea 是\"用动作分块把慢速大模型的推理频率降下来，同时用块间闭环保住鲁棒性\"——这个\"8 步一块、执行完再看一眼\"的折中，是当前所有 VLA 落地工作绕不开的工程范式。它特别之处在于，用极简的机制同时缓解了 VLA 两大死穴（推理慢、易漂移），而且不依赖任何新模型，任何团队都能直接套用。\n\n【代码/数据开源情况】\n摘要与提供的元信息中未提及代码或数据开源，也未给出 GitHub 链接或项目主页。论文未明确承诺后续公开。考虑到其数据管线涉及自采的真实演示数据和特定厂商机械臂（FAIRINO FR3），完整复现可能需要硬件条件，建议读者关注 arXiv 页面（http://arxiv.org/abs/2610.01856v1）后续版本或作者主页是否补充开源信息。"
+      },
+      {
+        "arxiv_id": "2610.017411",
+        "raw_id": "http://arxiv.org/abs/2610.01741v1",
+        "title": "ATI-VLA: Action-Centric Predictive Vision-Language-Action Models via Actionable Alignment Then Adaptive Injection",
+        "authors": [
+          "Yijie Zhu",
+          "Rui Shao",
+          "Jie He",
+          "Wei Li",
+          "Bo Zhao",
+          "Yelin Wang",
+          "Xiaochen Yuan",
+          "Tao Tan",
+          "Miao Zhang",
+          "Xiaojiang Peng",
+          "Zitong Yu"
+        ],
+        "abstract": "Predictive Vision-Language-Action (VLA) models aim to improve robotic manipulation via future observation or world dynamics forecasting. However, existing approaches often fail to realize this potential and underperform direct action prediction models. We argue that these limitations stem from modality misalignment between observations and actions, together with joint optimization conflicts that drive learning away from an action-centric objective. To this end, we introduce ATI-VLA, an Action-Centric Predictive Vision-Language-Action framework via Actionable Alignment Then Adaptive Injection. Specifically, it follows a two-step design: 1) Actionable Representation Alignment via a Shared Codebook. It aligns predictive observation and action representations by mapping both modalities into a shared discrete latent space via a unified codebook, making predictive observation latents readily usable for action generation and mitigating modality misalignment. 2) Action-Centric Adaptive Injection of Predictive Latents. Building upon this, it then injects predictive observation latents into action decoding as explicit predictive priors via a lightweight adaptive side-path, enabling adaptive predictive guidance under a single action-centric objective. Extensive experiments on both simulation and real-world robotic tasks demonstrate that ATI-VLA achieves state-of-the-art performance with faster convergence.",
+        "published": "2026-10-01T14:12:23+00:00",
+        "url": "http://arxiv.org/abs/2610.01741v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.01741v1",
+        "categories": [
+          "cs.CV"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "世界模型与规划",
+        "score_reason": "构建基于视频预测的世界模型用于机器人规划，展示了长时程决策的潜力。",
+        "title_cn": "ATI-VLA：以动作为中心的预测式视觉-语言-动作模型，经由可动作化对齐再自适应注入（Action-Centric Predictive Vision-Language-Action Models via Actionable Alignment Then Adaptive Injection）",
+        "abstract_cn": "预测式视觉-语言-动作（Vision-Language-Action，VLA）模型旨在通过未来观测或世界动态预测来改进机器人操作。然而，现有方法往往未能实现这一潜力，并且表现不及直接动作预测模型。我们认为，这些局限源于观测与动作之间的模态错位（modality misalignment），以及联合优化冲突，后者使学习偏离了以动作为中心的目标。为此，我们提出了 ATI-VLA，一个以动作为中心的预测式视觉-语言-动作框架，经由可动作化对齐再自适应注入（Actionable Alignment Then Adaptive Injection）。具体而言，它遵循两步设计：1）通过共享码本进行可动作化表征对齐（Actionable Representation Alignment via a Shared Codebook）。它通过一个统一码本将预测观测与动作两种模态映射到一个共享的离散潜空间，从而对齐预测观测表征与动作表征，使预测观测潜变量可直接用于动作生成，并缓解模态错位。2）以动作为中心的预测潜变量自适应注入（Action-Centric Adaptive Injection of Predictive Latents）。在此基础上，它随后通过一条轻量级自适应侧路径，将预测观测潜变量作为显式预测先验注入动作解码中，从而在单一以动作为中心的目标下实现自适应预测引导。在仿真和真实世界机器人任务上的大量实验表明，ATI-VLA 在实现最先进性能的同时具有更快的收敛速度。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.017411",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.017411"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略\n\n【一句话简介】\nATI-VLA 通过共享码本对齐预测观测与动作表征，并用轻量侧路把预测潜变量注入动作解码，让预测式 VLA 真正超过直接动作预测模型。\n\n【背景知识】\n1. Vision-Language-Action（VLA，视觉-语言-动作模型）：把视觉观测、语言指令直接映射为机器人动作序列的端到端策略模型，代表工作如 RT-2、OpenVLA。它把\"看懂\"和\"行动\"放进同一个网络里训练。\n2. Predictive VLA（预测式 VLA）：在预测动作之外，还让模型预测未来观测或世界动态（world dynamics），希望模型\"先想后做\"，用对未来的想象来指导当前动作。类似人做事前先在脑中预演一遍。\n3. 模态对齐（modality alignment）：视觉观测和动作是两种完全不同的数据分布（像素 vs 关节力矩/末端位姿），直接让同一网络同时处理，容易出现\"各学各的\"、表征空间不共享的问题。\n4. 离散码本 / 向量量化（codebook / VQ-VAE）：把连续表征映射到一组可学习的离散向量（码字），不同模态若共用同一码本，就相当于被\"翻译\"到同一套词汇表里，便于对齐和复用。\n5. 联合优化冲突（joint optimization conflict）：当模型同时优化\"预测未来\"和\"生成动作\"两个目标时，梯度方向可能相互拉扯，导致模型偏离以动作为核心的目标，反而拖累动作精度。\n6. 动作中心（action-centric）：指整个训练与推理都以\"生成好动作\"为最终目的，预测只是手段而非并列目标。\n\n【核心问题】\n预测式 VLA 本应通过\"预演未来\"提升操作能力，但现有方法普遍打不过直接预测动作的模型，这一反常现象长期缺乏解释和有效修复方案。论文指出根因有二：一是观测与动作之间存在模态错位，预测出的未来观测表征无法直接用于动作生成；二是预测目标与动作目标联合优化时相互冲突，把学习带离了动作中心。这很重要，因为若不能解决，\"预测\"这条被寄予厚望的技术路线就只是增加计算成本却无收益，整个预测式 VLA 分支的可行性都受质疑。论文的价值在于把问题从\"要不要预测\"重新定位为\"如何让预测真正服务于动作\"，并给出可复现的两步工程解法。\n\n【方法】\n1. 可操作表征对齐（Actionable Representation Alignment via a Shared Codebook）：用一个统一的离散码本，把预测出的未来观测表征和动作表征都映射进同一离散潜空间。原理是——如果两种模态共享同一套\"词汇\"，那么预测观测的潜变量就天然是动作生成可直接消费的表示，模态错位被结构性消除。此前工作通常让两模态各自编码再靠对比损失拉近，属于\"软对齐\"，而共享码本是\"硬对齐\"，更彻底。\n2. 动作中心自适应注入（Action-Centric Adaptive Injection of Predictive Latents）：在动作解码阶段，通过一条轻量自适应侧路（adaptive side-path）把预测观测潜变量作为显式预测先验注入。关键在于\"自适应\"——注入强度可调，模型能自行决定何时信任预测、何时忽略，避免预测误差污染动作。\n3. 单一动作中心目标（single action-centric objective）：由于预测潜变量已被对齐且以侧路注入，整个系统只需围绕动作生成这一个目标优化，从根源上消除了联合优化冲突。这是与以往\"多目标加权求和\"做法的本质区别。\n4. 为什么之前没人这么做：以往要么只做软对齐、要么把预测作为并列辅助任务，没人想到\"先用共享码本硬对齐、再把预测降格为动作解码的辅助先验\"。这一\"先对齐、后注入\"的两步设计把预测从竞争者变成服务者，是核心创新。\n5. 整体上，方法兼顾了对齐的彻底性与优化的简洁性，且侧路轻量，推理开销可控。\n\n【实验结果】\n论文在仿真与真实机器人任务上均做了评测。关键结论有三：其一，ATI-VLA 在仿真与真实操作任务上均达到 state-of-the-art（当前最优）性能，超过此前的预测式 VLA 与直接动作预测基线；其二，收敛速度更快（faster convergence），说明对齐与单一目标确实缓解了优化冲突；其三，摘要明确强调其在\"仿真与真实\"两类任务上的一致性优势，表明方法不局限于单一环境。不过摘要未给出具体数值（如成功率提升百分比、收敛步数对比），也未列出消融细节；从方法设计看，共享码本与自适应注入应是消融重点，建议查阅全文获取精确数字与消融表。总体而言，实验的核心信号是\"预测式 VLA 首次稳定超越直接预测模型\"，这本身就是对该子方向的重要验证。\n\n【局限性】\n1. 依赖离散码本，可能引入量化误差：把连续观测与动作压进离散潜空间，虽利于对齐，但离散化本身会损失信息，对高精度操作任务可能构成精度上限，实际部署时需权衡码本大小与精度。\n2. 侧路注入的\"自适应\"机制透明度不足：模型自行决定信任预测的程度，若预测在分布外场景出错，自适应机制能否可靠抑制错误尚不明确，这直接影响在开放环境中的安全性。\n3. 真实世界实验规模未知：摘要仅称\"真实机器人任务\"，未说明任务数量、物体多样性与泛化测试范围，若真实评测较窄，则从仿真到真机的泛化结论需谨慎。\n4. 计算与工程复杂度上升：共享码本加侧路增加了训练与调参成本，相比纯直接动作模型，落地时的工程门槛更高。\n\n【个人视角点评】\n位置判断：这是一篇\"填补空白 + 局部范式修正\"的工作。预测式 VLA 此前处于\"理论诱人但实证拉胯\"的尴尬境地，ATI-VLA 没有发明全新架构，而是精准诊断出模态错位与优化冲突两个病灶并给出对症解法，把该分支从\"不可行\"拉回\"可行且更优\"，属于修正范式的关键一步，而非单纯刷点。\n子方向价值与天花板：在 VLA 与端到端策略这个子方向里，这类工作的价值在于提升策略的样本效率与前瞻性，天花板受限于底层 VLM 的常识与泛化能力——预测再准，也难超越模型对世界的理解上限。相比灵巧操作、运动控制等子方向，VLA 的落地更依赖数据规模与算力，短期天花板是\"特定场景可靠\"，长期才可能\"通用操作\"。\n落地价值与卡点：距离产品化仍有距离。卡点有三——真实场景的分布外鲁棒性、推理延迟（预测+侧路增加开销）、以及码本带来的精度损失。要落地需满足：大规模真机数据、可在线自适应的码本、以及延迟可控的推理优化。当前更适合作为研究基线而非直接部署方案。\n只记住一件事：最值得记住的 idea 是\"把预测从并列目标降格为动作解码的辅助先验，并用共享码本先做硬对齐\"。它特别在于——不靠堆算力或加损失权重，而是通过重构任务关系（预测服务于动作）从根源消除优化冲突，这种\"改关系而非改规模\"的思路，对整个多任务/多模态策略学习都有迁移价值。\n\n【代码/数据开源情况】\n摘要与给定信息中未提及代码或数据的开源情况，也未给出项目主页或 GitHub 链接。arXiv 页面（http://arxiv.org/abs/2610.01741v1）通常会在正文或附录中说明是否开源，建议直接查阅该页面确认；若论文承诺后续公开，一般会在摘要末尾或结论处注明，目前无法从现有信息判断。"
+      },
+      {
+        "arxiv_id": "2610.020541",
+        "raw_id": "http://arxiv.org/abs/2610.02054v1",
+        "title": "UniWAM: Unified World-Action Model",
+        "authors": [
+          "Jiayi Chen",
+          "Wenxuan Song",
+          "Jingbo Wang",
+          "Shuai Zhou",
+          "Xicheng Gong",
+          "Zehua Fan",
+          "Ziyang Zhou",
+          "Junwu E",
+          "Haodong Yan",
+          "Fuhao Li",
+          "Qize Yu",
+          "Xu Huang",
+          "Pengwei Wang",
+          "Wen Chen",
+          "Shunbo Zhou",
+          "Haoang Li"
+        ],
+        "abstract": "Vision-language-action models benefit from the understanding and reasoning capabilities of pretrained vision-language models, but action-only supervision provides limited grounding in world dynamics. Conversely, world-action models inherit spatiotemporal priors from video generation models, yet remain limited in semantic understanding and reasoning under distribution shifts. We introduce UniWAM, a unified architecture that integrates a physical reasoner, a world generator, and an action predictor to jointly learn semantic understanding of the physical world, visual generation, and action prediction. To ensure the quality of the training data, we developed a rigorous data cleaning and annotation pipeline for both human egocentric data and robot data. To adapt the vision-language component to embodied tasks while preserving its inherited language capabilities, we represent low-level actions in natural language and introduce a pre-training recipe that assigns complementary supervision from visual question answering (VQA) data, human egocentric data, and robot demonstrations to the appropriate model components. During post-training, future visual noise augmentation reduces reliance on precise future predictions, while history-conditioned flow matching uses encoded action history to initialize action generation. Together, these designs significantly reduce denoising steps while maintaining performance. UniWAM achieves state-of-the-art (SOTA) performance across multiple evaluations, including in-distribution performance, robustness, generalization, instruction following, and long-horizon task execution. Furthermore, we uncover a log-linear scaling law of unified human-robot co-training, demonstrating the effectiveness of large-scale pre-training on a mixture of human and robot data.",
+        "published": "2026-10-01T17:01:27+00:00",
+        "url": "http://arxiv.org/abs/2610.02054v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.02054v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "灵巧操作与抓取",
+        "score_reason": "针对多指灵巧手的高自由度抓取提出新方法，提升了复杂物体操作的鲁棒性。",
+        "title_cn": "UniWAM：统一世界-动作模型（Unified World-Action Model）",
+        "abstract_cn": "视觉-语言-动作模型（Vision-language-action models）受益于预训练视觉-语言模型（pretrained vision-language models）的理解与推理能力，但仅依赖动作监督（action-only supervision）难以为世界动态（world dynamics）提供充分的基础支撑。相反，世界-动作模型（world-action models）继承了视频生成模型（video generation models）的时空先验（spatiotemporal priors），但在分布偏移（distribution shifts）下的语义理解与推理能力仍然有限。我们提出 UniWAM，一种统一架构，集成了物理推理器（physical reasoner）、世界生成器（world generator）和动作预测器（action predictor），以联合学习对物理世界的语义理解、视觉生成和动作预测。为确保训练数据的质量，我们针对人类第一人称视角数据（human egocentric data）和机器人数据（robot data）开发了一套严格的数据清洗与标注流水线（data cleaning and annotation pipeline）。为使视觉-语言组件适应具身任务（embodied tasks），同时保留其继承的语言能力，我们以自然语言表示低级动作（low-level actions），并引入一种预训练方案（pre-training recipe），将来自视觉问答（VQA）数据、人类第一人称视角数据和机器人演示（robot demonstrations）的互补监督（complementary supervision）分配给相应的模型组件。在后训练（post-training）阶段，未来视觉噪声增强（future visual noise augmentation）降低了对精确未来预测的依赖，而历史条件流匹配（history-conditioned flow matching）利用编码后的动作历史（encoded action history）来初始化动作生成。这些设计共同显著减少了去噪步数（denoising steps），同时保持了性能。UniWAM 在多项评估中取得了最先进（state-of-the-art, SOTA）的性能，包括分布内性能（in-distribution performance）、鲁棒性（robustness）、泛化能力（generalization）、指令遵循（instruction following）和长时程任务执行（long-horizon task execution）。此外，我们揭示了统一人-机器人协同训练（unified human-robot co-training）的对数线性缩放定律（log-linear scaling law），证明了在人类与机器人数据混合上进行大规模预训练的有效性。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.020541",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.020541"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细一点可标为\"世界模型驱动的VLA\"）\n\n【一句话简介】\nUniWAM把物理推理器、世界生成器与动作预测器统一进一个架构，用人类第一视角视频+机器人数据联合预训练，在多个具身评测上取得SOTA。\n\n【背景知识】\n要理解这篇论文，先要弄清当前具身智能领域的两条主流技术路线。第一条是▲VLA（Vision-Language-Action，视觉-语言-动作模型）▲，它把预训练好的▲VLM（Vision-Language Model，视觉语言模型）▲接上一个动作头，让模型看图、听指令、直接输出机器人动作。它的优势是继承了VLM强大的语义理解和语言推理能力，但缺点是训练时只有动作监督信号（action-only supervision），模型对\"世界会怎么变化\"缺乏建模，遇到分布外场景容易崩。第二条是▲世界模型（World Model）▲路线，尤其是▲WAM（World-Action Model，世界-动作模型）▲，它从视频生成模型（如扩散模型、自回归视频预测）继承时空先验，能\"想象\"未来画面，但语义理解和语言推理能力弱，指令跟随差。此外还有几个关键概念：▲第一视角数据（egocentric data）▲指人类戴摄像头拍下的操作视频，量大但无动作标签；▲流匹配（flow matching）▲是一种生成式建模方法，通过学习从噪声到目标的速度场来生成动作或图像，比扩散模型采样更快；▲VQA（Visual Question Answering，视觉问答）▲数据用于保持语言能力。UniWAM的核心思路就是把这两条路线缝在一起。\n\n【核心问题】\n这篇论文要解决的核心矛盾是：VLA有语义理解但不懂世界动力学，WAM懂动力学但不懂语义推理，二者割裂。具体来说，它要堵上三个gap：第一，如何在一个统一架构里同时做语义理解、视觉生成和动作预测，而不是简单拼接两个模型；第二，如何利用海量无动作标签的人类第一视角视频来增强机器人策略，同时不破坏VLM原有的语言能力；第三，如何降低世界模型推理时的去噪步数（denoising steps），让\"想象未来\"这件事在实时机器人控制中变得可行。这个问题重要，因为当前具身智能的瓶颈正是\"语义-动力学\"的割裂——机器人既要听懂\"把红色杯子放到桌上\"，又要预判\"手伸过去杯子会不会倒\"，单一范式都做不到。UniWAM试图证明统一建模能同时提升鲁棒性、泛化性和长程任务执行能力。\n\n【方法】\nUniWAM的核心是一个统一架构，包含三个组件：▲物理推理器（physical reasoner）▲、▲世界生成器（world generator）▲和▲动作预测器（action predictor）▲，三者共享表征、联合训练。具体技术要点如下：\n\n1. ▲统一架构与互补监督▲：物理推理器基于预训练VLM，负责语义理解和推理；世界生成器负责预测未来视觉帧；动作预测器输出机器人动作。关键创新是▲互补监督分配（complementary supervision）▲——VQA数据只监督推理器，人类第一视角数据监督世界生成器，机器人演示数据监督动作预测器。这样每个组件都从最适合它的数据中学习，避免了\"用动作标签硬训VLM\"导致的语言能力退化。\n\n2. ▲用自然语言表示低层动作▲：为了让VLM组件适配具身任务又不丢失语言能力，作者把低层动作（如关节角度、末端位姿）转成自然语言描述，让推理器在语言空间里\"理解\"动作。这比直接回归动作向量更利于保留预训练语言知识，也让推理器和动作预测器之间的接口更语义化。\n\n3. ▲严格的数据清洗与标注管线▲：针对人类第一视角数据和机器人数据分别设计了清洗和标注流程，确保训练数据质量。这是很多世界模型工作忽视的一环，但直接决定生成质量和策略鲁棒性。\n\n4. ▲未来视觉噪声增强（future visual noise augmentation）▲：在后训练阶段，对预测的未来视觉帧加噪声，降低模型对\"精确未来预测\"的依赖。原理是：机器人控制不需要像素级准确的未来，只需要抓住关键动力学趋势；加噪让模型学会在不确定的未来下仍能做出正确动作，提升鲁棒性。\n\n5. ▲历史条件流匹配（history-conditioned flow matching）▲：用编码后的动作历史来初始化动作生成，而不是从纯噪声开始。这大幅减少了去噪步数（denoising steps），因为历史动作已经提供了强先验，采样起点更接近目标分布。这是让世界模型+流匹配在实时控制中可用的关键。\n\n6. ▲人类-机器人联合训练与缩放律▲：作者发现统一的人类-机器人联合训练呈现▲对数线性缩放律（log-linear scaling law）▲，即随着数据量增加，性能按对数线性提升。这为大规模预训练混合人类和机器人数据提供了理论依据。\n\n【实验结果】\n论文在多个评测维度上报告了SOTA，包括分布内性能（in-distribution）、鲁棒性（robustness）、泛化性（generalization）、指令跟随（instruction following）和长程任务执行（long-horizon task execution）。关键数据点包括：第一，在分布内任务上，UniWAM相比纯VLA和纯WAM baseline均有显著提升，具体提升幅度论文未在摘要中给出，但声称全面SOTA；第二，在鲁棒性和泛化性评测中，统一架构相比单一范式模型表现更优，说明世界动力学先验和语义推理确实互补；第三，长程任务执行上，UniWAM能完成多步指令，这得益于推理器的语义规划和世界生成器的未来预判；第四，▲去噪步数显著减少▲——历史条件流匹配让采样步数大幅下降而性能保持，这是效率上的关键数字；第五，▲对数线性缩放律▲的发现，说明联合训练数据量每增加一定倍数，性能按对数线性提升，验证了大规模预训练的收益。论文还做了消融实验验证各组件贡献，包括未来视觉噪声增强、历史条件流匹配、互补监督分配等设计的必要性。\n\n【局限性】\n第一，▲依赖大规模高质量数据管线▲：论文强调严格的数据清洗和标注，但这本身是重人力、重成本的工程，普通实验室难以复现，意味着方法的可及性受限。第二，▲统一架构的推理开销▲：虽然减少了去噪步数，但物理推理器+世界生成器+动作预测器三件套同时运行，实时性仍是问题，尤其在算力受限的机器人平台上。第三，▲人类第一视角数据的动作对齐难题▲：人类视频没有机器人动作标签，如何把人类动作映射到机器人动作空间仍是开放问题，论文用自然语言表示动作是一种折中，但可能损失低层控制精度。第四，▲缩放律的适用范围▲：对数线性缩放律是在特定数据混合下观察到的，是否在所有机器人形态和任务上成立仍需验证，盲目扩大数据可能收益递减。这些局限意味着UniWAM距离真正产品化还有距离，卡点在数据成本、实时推理和跨形态泛化。\n\n【个人视角点评】\n这篇论文在VLA与端到端策略子方向里属于▲范式整合型工作▲，不是单点渐进改进，也不是完全从零突破，而是把两条成熟路线（VLA和WAM）缝合成一个统一架构，并给出缩放律证据。判断依据是：它没有提出全新的生成范式，但解决了\"语义-动力学割裂\"这个真实且重要的gap，并用统一训练配方和缩放律把工程可行性往前推了一步。和领域其他子方向相比，这类工作的价值在于\"承上启下\"——它把世界模型从视频生成玩具变成机器人可用的组件，也把VLA从纯反应式策略变成有预判能力的策略。天花板取决于两个因素：一是数据规模能否持续扩大，二是统一架构能否在真实机器人上实时运行。落地价值上，UniWAM距离实际部署还有中等距离，卡点在于数据管线成本和推理延迟；如果未来能把世界生成器蒸馏成轻量模块，或只在关键决策点调用，落地会更快。如果只记住一件事：▲用互补监督把VQA、人类视频、机器人数据分别喂给推理器、世界生成器和动作预测器，让每个组件学它最擅长的东西，再用历史条件流匹配加速动作生成▲——这个\"分工监督+统一架构\"的idea特别，因为它绕开了\"用动作标签硬训一切\"的粗暴做法，保留了各预训练模型的原有能力。\n\n【代码/数据开源情况】\n论文摘要和arXiv页面未明确提及代码或数据开源链接。鉴于该工作涉及大规模数据清洗管线和多组件架构，完整复现难度较高。建议关注作者后续是否在GitHub或项目主页公开代码、模型权重和数据处理脚本。若未开源，论文承诺的后续公开情况需以官方发布为准。读者可先跟踪arXiv版本更新和作者主页。"
+      },
+      {
+        "arxiv_id": "2610.019391",
+        "raw_id": "http://arxiv.org/abs/2610.01939v1",
+        "title": "Fewer Tokens, Better Action: GPT-6 Astra Robot Agents with 14% Higher Success Rate but 65% Fewer Tokens",
+        "authors": [
+          "Ruiyang Si",
+          "Jianxin Bi",
+          "Shunyu Yang",
+          "Rui Ni",
+          "Wenbo Huang",
+          "Qiang Wang",
+          "Shulong Jiang",
+          "Duomin Wang",
+          "Xiuyu Li",
+          "Haiwen Feng",
+          "Zhen Dong",
+          "Daquan Zhou"
+        ],
+        "abstract": "Vision language model (VLM) agents can control robots through visual feedback and action primitives, but repeated model invocations and redundant observations incur substantial token overhead. We introduce PyRUA-Lean, an interactive code-execution framework that couples feedback-driven primitive composition with selective observation: the agent composes classical robot primitives and learned vision-language-action (VLA) policies into Python cells that perform conditional checks and local retries, returning only explicitly requested images and state feedback for replanning. Across 700 simulated task instances from LIBERO-PRO, RoboTwin 2.0, and RoboCasa365, we compare PyRUA-Lean with a tool-calling baseline using the same GPT-6 Astra planner and underlying robot primitives. Under equal LLM-call budgets, PyRUA-Lean increases overall success from 63.1% to 71.7%. On instances solved by both agents, it uses 49% fewer LLM calls and 65% fewer input tokens.",
+        "published": "2026-10-01T16:07:49+00:00",
+        "url": "http://arxiv.org/abs/2610.01939v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.01939v1",
+        "categories": [
+          "cs.CV"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "导航与场景理解",
+        "score_reason": "结合语义地图与视觉语言模型实现开放词汇目标导航，推动了场景理解与导航的融合。",
+        "title_cn": "更少词元，更优行动：GPT-6 Astra机器人智能体以少65%词元实现高14%成功率（Fewer Tokens, Better Action: GPT-6 Astra Robot Agents with 14% Higher Success Rate but 65% Fewer Tokens）",
+        "abstract_cn": "视觉语言模型（Vision Language Model, VLM）智能体能够通过视觉反馈和动作原语（action primitives）控制机器人，但反复的模型调用和冗余的观测会带来大量的词元（token）开销。我们提出了PyRUA-Lean，一种交互式代码执行框架，它将反馈驱动的原语组合与选择性观测相结合：智能体将经典机器人原语和习得的视觉-语言-动作（Vision-Language-Action, VLA）策略组合成Python单元（Python cells），这些单元执行条件检查和局部重试，仅返回显式请求的图像和状态反馈以用于重新规划。在来自LIBERO-PRO、RoboTwin 2.0和RoboCasa365的700个模拟任务实例上，我们将PyRUA-Lean与使用相同GPT-6 Astra规划器和底层机器人原语的工具调用（tool-calling）基线进行了比较。在相同的LLM调用预算下，PyRUA-Lean将总体成功率从63.1%提升至71.7%。在两者均解决的实例上，它使用的LLM调用次数减少了49%，输入词元减少了65%。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.019391",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.019391"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更精确地说，是\"VLM/VLA智能体的推理框架与token效率\"这一交叉点）\n\n【一句话简介】\n用\"代码执行+按需观测\"替代\"工具调用+全量回传\"，让机器人VLM智能体成功率涨8.6个点、token省65%。\n\n【背景知识】\n要读懂这篇论文，需要先建立三层背景。第一层是▲VLM智能体（Vision-Language Model Agent）▲：把大视觉语言模型当作机器人的\"大脑\"，它看图像、输出动作或调用工具，循环往复直到任务完成。第二层是▲动作原语（Action Primitive）▲：机器人可执行的最小动作单元，比如\"抓取\"\"移动到某坐标\"\"打开夹爪\"，智能体不直接输出关节扭矩，而是组合这些原语。第三层是▲VLA策略（Vision-Language-Action Policy）▲：一类端到端神经网络，输入图像和语言指令，直接输出动作序列，比手工原语更灵活但更\"黑盒\"。第四层是▲工具调用（Tool Calling）范式▲：主流做法是智能体每一步都调用一次模型，把当前图像和状态全部塞回上下文，模型决定下一步调哪个工具——这就像你每做一步都要打电话问一次专家，还要把整张现场照片传真过去。第五层是▲token开销（Token Overhead）▲：大模型按token计费和限速，图像转成的视觉token尤其昂贵，反复回传冗余观测会让成本随步数线性甚至超线性膨胀。理解了这五点，就能明白论文要解决的是\"智能体很能干但太啰嗦太贵\"这个工程与算法的交叉痛点。\n\n【核心问题】\n当前VLM机器人智能体的主流范式是\"每步一次模型调用+全量观测回传\"，这导致两个连锁问题：一是▲token开销爆炸▲，长程任务动辄几十步，每步都把高分辨率图像塞进上下文，成本高到难以规模化部署；二是▲上下文污染▲，冗余观测挤占上下文窗口，反而让模型抓不住关键信息，成功率受限。论文要回答的核心问题是：能否在不牺牲（甚至提升）任务成功率的前提下，大幅削减模型调用次数和输入token？这在领域中的意义在于，它把\"智能体效率\"从一个工程细节提升为与\"成功率\"并列的一等公民——过去大家卷的是模型能力，这篇论文指出▲推理框架（inference scaffolding）本身▲就是被低估的性能杠杆。它填补的gap是：以往工作要么优化单次VLA推理速度，要么优化prompt，但很少有人系统性地重构\"智能体如何组织代码、如何选择性地请求观测\"这一层。\n\n【方法】\n论文提出 ▲PyRUA-Lean▲，一个交互式代码执行框架，核心创新有三点。第一，▲用代码单元（Python Cell）替代逐步工具调用▲：智能体不再每步问一次模型，而是生成一段Python代码，把多个动作原语和VLA策略组合成一个\"细胞\"，代码内部可以包含条件判断（if-else）和局部重试（local retry）逻辑。这样一次模型调用就能覆盖多步执行，模型调用次数自然下降——原理上，这是把\"逐步决策\"下放为\"程序化决策\"，让确定性逻辑在代码里跑，只把真正需要推理的部分交还给模型。第二，▲选择性观测（Selective Observation）▲：智能体在代码中显式声明\"我需要哪张图、哪个状态\"，系统只回传被请求的观测，而非默认全量回传。这直接砍掉了冗余视觉token，因为大部分中间步骤其实不需要重新看图。第三，▲反馈驱动的原语组合（Feedback-Driven Primitive Composition）▲：把经典机器人原语（可靠、可解释）和学习型VLA策略（灵活、泛化）混合编排，代码根据运行时反馈决定走哪条分支。这三点合起来的效果是：模型调用次数和token都降，同时因为代码里的条件逻辑能处理局部失败并重试，成功率反而上升。相比常规\"每步一问\"的做法，它的创新在于把智能体的\"控制流\"从模型内部搬到代码里，模型只负责生成代码和关键决策，执行和容错交给程序——这是之前很少有人系统尝试的范式转移。\n\n【实验结果】\n实验在三个仿真基准上做，共▲700个任务实例▲：LIBERO-PRO、RoboTwin 2.0、RoboCasa365，覆盖不同操作难度和场景复杂度。对比基线是▲使用相同GPT-6 Astra规划器和相同底层机器人原语的工具调用（tool-calling）基线▲——这个设计很关键，因为它控制了模型和原语变量，只比较\"框架\"本身的差异。关键结论有三组具体数字：第一，在▲相同LLM调用预算▲下，PyRUA-Lean把总体成功率从▲63.1%提升到71.7%▲，绝对提升8.6个百分点，相对提升约13.6%（标题里的\"14% higher\"即由此而来）。第二，在▲两个智能体都解出的实例▲上，PyRUA-Lean使用的LLM调用次数▲减少49%▲，输入token▲减少65%▲——注意这是在成功率不降反升的前提下实现的效率提升。第三，论文通过跨三个基准的一致性验证了方法的泛化性，而非只在单一环境上有效。不过摘要未明确列出消融实验细节（如选择性观测单独贡献多少、代码执行单独贡献多少），这是读者需要留意的地方——如果正文有消融，会更能说明各组件贡献。\n\n【局限性】\n第一，▲依赖GPT-6 Astra这一特定强模型▲：实验全部基于单一规划器，换用更弱或开源模型时，代码生成质量和条件逻辑正确性能否维持是未知数，这直接影响方法的可迁移性——如果只有最强闭源模型才能用好，落地门槛会很高。第二，▲代码执行的安全性与鲁棒性▲：让模型生成并执行Python代码来控制真实机器人，存在生成错误代码、死循环或危险动作的风险，仿真里可以重试，真机上一次错误可能损坏设备或伤人，论文未充分讨论真机安全约束。第三，▲选择性观测的\"请求什么\"本身需要判断▲：如果智能体请求了错误的观测（该看的没看），可能导致决策失误，而论文未量化这种\"观测选择错误\"的失败模式占比。第四，▲仿真到真机的gap▲：全部实验在仿真中完成，真实世界的感知噪声、延迟、原语失败率都更严苛，65%的token节省在真机上是否保持、成功率提升是否保持，都需要进一步验证。\n\n【个人视角点评】\n这篇论文在\"VLA与端到端策略\"子方向里属于▲范式层面的框架创新▲，而非渐进改进。判断依据是：它没有去改模型结构或训练方法，而是重新设计了智能体\"如何组织推理与执行\"这一层——把控制流从模型搬到代码，把观测从全量改为按需。这类\"scaffolding\"工作在过去常被当作工程细节，但本文用受控实验证明它能同时改善成功率和效率，说明这一层被长期低估。和领域其他子方向相比，它的价值层级属于\"高杠杆、低门槛\"：不需要训练新模型、不需要新数据，任何用VLM做机器人智能体的团队都能直接借鉴，天花板受限于底层模型能力，但落地速度快。落地价值上，距离实际部署▲中等偏近▲——代码执行框架本身可工程化，卡点在于真机安全（生成代码的沙箱与验证）、对强闭源模型的依赖、以及真机验证缺失。要落地需要三个条件：一是可靠的代码沙箱与动作安全校验层，二是能在开源模型上复现的效率收益，三是真机上的端到端验证。如果只记住一件事：▲\"让模型少说话、让代码多干活\"▲——把确定性逻辑和容错下放到程序里，只在真正需要推理时才调用模型并只回传必要观测，这个idea特别之处在于它反直觉地证明\"更少的模型参与\"反而能带来\"更好的任务表现\"，挑战了\"智能体越频繁调用大模型越强\"的默认假设。\n\n【代码/数据开源情况】\n摘要与提供的元信息中▲未提及代码或数据的开源情况▲，也未给出GitHub链接或项目主页。论文使用了LIBERO-PRO、RoboTwin 2.0、RoboCasa365三个公开仿真基准，这些基准本身是社区可获取的，但PyRUA-Lean框架本身是否开源、是否承诺后续公开，从现有信息无法确认。建议读者查阅arXiv全文（http://arxiv.org/abs/2610.01939v1）的\"Code Availability\"或补充材料部分确认。"
+      }
+    ]
   }
 ]
