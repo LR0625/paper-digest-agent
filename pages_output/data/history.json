@@ -13240,5 +13240,181 @@
         "structured_summary": "【子方向标签】\nVLA与端到端策略（更精确地说，是\"VLM/VLA智能体的推理框架与token效率\"这一交叉点）\n\n【一句话简介】\n用\"代码执行+按需观测\"替代\"工具调用+全量回传\"，让机器人VLM智能体成功率涨8.6个点、token省65%。\n\n【背景知识】\n要读懂这篇论文，需要先建立三层背景。第一层是▲VLM智能体（Vision-Language Model Agent）▲：把大视觉语言模型当作机器人的\"大脑\"，它看图像、输出动作或调用工具，循环往复直到任务完成。第二层是▲动作原语（Action Primitive）▲：机器人可执行的最小动作单元，比如\"抓取\"\"移动到某坐标\"\"打开夹爪\"，智能体不直接输出关节扭矩，而是组合这些原语。第三层是▲VLA策略（Vision-Language-Action Policy）▲：一类端到端神经网络，输入图像和语言指令，直接输出动作序列，比手工原语更灵活但更\"黑盒\"。第四层是▲工具调用（Tool Calling）范式▲：主流做法是智能体每一步都调用一次模型，把当前图像和状态全部塞回上下文，模型决定下一步调哪个工具——这就像你每做一步都要打电话问一次专家，还要把整张现场照片传真过去。第五层是▲token开销（Token Overhead）▲：大模型按token计费和限速，图像转成的视觉token尤其昂贵，反复回传冗余观测会让成本随步数线性甚至超线性膨胀。理解了这五点，就能明白论文要解决的是\"智能体很能干但太啰嗦太贵\"这个工程与算法的交叉痛点。\n\n【核心问题】\n当前VLM机器人智能体的主流范式是\"每步一次模型调用+全量观测回传\"，这导致两个连锁问题：一是▲token开销爆炸▲，长程任务动辄几十步，每步都把高分辨率图像塞进上下文，成本高到难以规模化部署；二是▲上下文污染▲，冗余观测挤占上下文窗口，反而让模型抓不住关键信息，成功率受限。论文要回答的核心问题是：能否在不牺牲（甚至提升）任务成功率的前提下，大幅削减模型调用次数和输入token？这在领域中的意义在于，它把\"智能体效率\"从一个工程细节提升为与\"成功率\"并列的一等公民——过去大家卷的是模型能力，这篇论文指出▲推理框架（inference scaffolding）本身▲就是被低估的性能杠杆。它填补的gap是：以往工作要么优化单次VLA推理速度，要么优化prompt，但很少有人系统性地重构\"智能体如何组织代码、如何选择性地请求观测\"这一层。\n\n【方法】\n论文提出 ▲PyRUA-Lean▲，一个交互式代码执行框架，核心创新有三点。第一，▲用代码单元（Python Cell）替代逐步工具调用▲：智能体不再每步问一次模型，而是生成一段Python代码，把多个动作原语和VLA策略组合成一个\"细胞\"，代码内部可以包含条件判断（if-else）和局部重试（local retry）逻辑。这样一次模型调用就能覆盖多步执行，模型调用次数自然下降——原理上，这是把\"逐步决策\"下放为\"程序化决策\"，让确定性逻辑在代码里跑，只把真正需要推理的部分交还给模型。第二，▲选择性观测（Selective Observation）▲：智能体在代码中显式声明\"我需要哪张图、哪个状态\"，系统只回传被请求的观测，而非默认全量回传。这直接砍掉了冗余视觉token，因为大部分中间步骤其实不需要重新看图。第三，▲反馈驱动的原语组合（Feedback-Driven Primitive Composition）▲：把经典机器人原语（可靠、可解释）和学习型VLA策略（灵活、泛化）混合编排，代码根据运行时反馈决定走哪条分支。这三点合起来的效果是：模型调用次数和token都降，同时因为代码里的条件逻辑能处理局部失败并重试，成功率反而上升。相比常规\"每步一问\"的做法，它的创新在于把智能体的\"控制流\"从模型内部搬到代码里，模型只负责生成代码和关键决策，执行和容错交给程序——这是之前很少有人系统尝试的范式转移。\n\n【实验结果】\n实验在三个仿真基准上做，共▲700个任务实例▲：LIBERO-PRO、RoboTwin 2.0、RoboCasa365，覆盖不同操作难度和场景复杂度。对比基线是▲使用相同GPT-6 Astra规划器和相同底层机器人原语的工具调用（tool-calling）基线▲——这个设计很关键，因为它控制了模型和原语变量，只比较\"框架\"本身的差异。关键结论有三组具体数字：第一，在▲相同LLM调用预算▲下，PyRUA-Lean把总体成功率从▲63.1%提升到71.7%▲，绝对提升8.6个百分点，相对提升约13.6%（标题里的\"14% higher\"即由此而来）。第二，在▲两个智能体都解出的实例▲上，PyRUA-Lean使用的LLM调用次数▲减少49%▲，输入token▲减少65%▲——注意这是在成功率不降反升的前提下实现的效率提升。第三，论文通过跨三个基准的一致性验证了方法的泛化性，而非只在单一环境上有效。不过摘要未明确列出消融实验细节（如选择性观测单独贡献多少、代码执行单独贡献多少），这是读者需要留意的地方——如果正文有消融，会更能说明各组件贡献。\n\n【局限性】\n第一，▲依赖GPT-6 Astra这一特定强模型▲：实验全部基于单一规划器，换用更弱或开源模型时，代码生成质量和条件逻辑正确性能否维持是未知数，这直接影响方法的可迁移性——如果只有最强闭源模型才能用好，落地门槛会很高。第二，▲代码执行的安全性与鲁棒性▲：让模型生成并执行Python代码来控制真实机器人，存在生成错误代码、死循环或危险动作的风险，仿真里可以重试，真机上一次错误可能损坏设备或伤人，论文未充分讨论真机安全约束。第三，▲选择性观测的\"请求什么\"本身需要判断▲：如果智能体请求了错误的观测（该看的没看），可能导致决策失误，而论文未量化这种\"观测选择错误\"的失败模式占比。第四，▲仿真到真机的gap▲：全部实验在仿真中完成，真实世界的感知噪声、延迟、原语失败率都更严苛，65%的token节省在真机上是否保持、成功率提升是否保持，都需要进一步验证。\n\n【个人视角点评】\n这篇论文在\"VLA与端到端策略\"子方向里属于▲范式层面的框架创新▲，而非渐进改进。判断依据是：它没有去改模型结构或训练方法，而是重新设计了智能体\"如何组织推理与执行\"这一层——把控制流从模型搬到代码，把观测从全量改为按需。这类\"scaffolding\"工作在过去常被当作工程细节，但本文用受控实验证明它能同时改善成功率和效率，说明这一层被长期低估。和领域其他子方向相比，它的价值层级属于\"高杠杆、低门槛\"：不需要训练新模型、不需要新数据，任何用VLM做机器人智能体的团队都能直接借鉴，天花板受限于底层模型能力，但落地速度快。落地价值上，距离实际部署▲中等偏近▲——代码执行框架本身可工程化，卡点在于真机安全（生成代码的沙箱与验证）、对强闭源模型的依赖、以及真机验证缺失。要落地需要三个条件：一是可靠的代码沙箱与动作安全校验层，二是能在开源模型上复现的效率收益，三是真机上的端到端验证。如果只记住一件事：▲\"让模型少说话、让代码多干活\"▲——把确定性逻辑和容错下放到程序里，只在真正需要推理时才调用模型并只回传必要观测，这个idea特别之处在于它反直觉地证明\"更少的模型参与\"反而能带来\"更好的任务表现\"，挑战了\"智能体越频繁调用大模型越强\"的默认假设。\n\n【代码/数据开源情况】\n摘要与提供的元信息中▲未提及代码或数据的开源情况▲，也未给出GitHub链接或项目主页。论文使用了LIBERO-PRO、RoboTwin 2.0、RoboCasa365三个公开仿真基准，这些基准本身是社区可获取的，但PyRUA-Lean框架本身是否开源、是否承诺后续公开，从现有信息无法确认。建议读者查阅arXiv全文（http://arxiv.org/abs/2610.01939v1）的\"Code Availability\"或补充材料部分确认。"
       }
     ]
+  },
+  {
+    "date": "2026-10-03",
+    "domain": "具身智能与机器人学习",
+    "count": 5,
+    "papers": [
+      {
+        "arxiv_id": "2610.017941",
+        "raw_id": "http://arxiv.org/abs/2610.01794v1",
+        "title": "Continuous Conditioning of VLAs with Augmenting EMG and Visual Task Descriptors",
+        "authors": [
+          "Edward W. Staley",
+          "Connor O. Pyles",
+          "Rahul Hingorani",
+          "Frank Camargo",
+          "Griffin Milsap",
+          "Jared Markowitz",
+          "Matthew S. Fifer",
+          "Michael Wolmetz"
+        ],
+        "abstract": "Vision-Language-Action (VLA) models rely strongly on language for describing task information, despite having multimodal inputs. We hypothesize that other modalities in the state space may present opportunities for supplemental task conditioning, which may be particularly relevant in cluttered or otherwise ambiguous scenes. We introduce two tuned models to test this hypothesis: (1) an electrophysiology-conditioned VLA (EC-VLA) that incorporates 8-channel electromyography envelopes as continuous conditioning input concatenated to the proprioceptive vector, and (2) a visually-annotated VLA (VA-VLA) that incorporates visual segmentation annotations to the image inputs. On a cube-selection task evaluated across three participants, EC-VLA matches a language-prompted baseline in uncluttered, in-distribution conditions and substantially outperforms it in cluttered, out-of-distribution scenes. Similarly, VA-VLA shows modest improvements over a language-prompted baseline in in-distribution scenes with substantial improvement in cluttered, out-of-distribution trials. Together, these results provide strong evidence for the potential benefit of task-conditioning beyond language.",
+        "published": "2026-10-01T14:37:05+00:00",
+        "url": "http://arxiv.org/abs/2610.01794v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.01794v1",
+        "categories": [
+          "cs.CV",
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "VLA与端到端策略",
+        "score_reason": "提出统一的视觉-语言-动作模型，直接连接多模态理解与机器人控制，是该方向的重要进展。",
+        "title_cn": "利用增强肌电与视觉任务描述符对VLA模型进行连续条件化（Continuous Conditioning of VLAs with Augmenting EMG and Visual Task Descriptors）",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action，VLA）模型尽管具有多模态输入，却在描述任务信息时强烈依赖语言。我们假设，状态空间中的其他模态可能为补充性任务条件化（task conditioning）提供机会，这在杂乱或其他歧义场景中可能尤为相关。我们引入两个经过调优的模型来检验这一假设：（1）一个电生理条件化的VLA（electrophysiology-conditioned VLA，EC-VLA），它将8通道肌电（electromyography，EMG）包络作为连续条件化输入，并与本体感受向量拼接；（2）一个视觉标注的VLA（visually-annotated VLA，VA-VLA），它将视觉分割标注纳入图像输入。在一项跨三名参与者评估的立方体选择任务上，EC-VLA在非杂乱、分布内条件下与语言提示基线相匹配，并在杂乱、分布外场景中大幅优于该基线。类似地，VA-VLA在分布内场景中相较语言提示基线显示出适度改进，并在杂乱、分布外试验中取得显著改进。总之，这些结果为超越语言的任务条件化所具有的潜在益处提供了有力证据。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.017941",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.017941"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（多模态任务条件化）\n\n【一句话简介】\n用肌电信号和视觉分割标注替代纯语言指令，为VLA模型提供连续任务条件，在杂乱场景中显著提升选择准确率。\n\n【背景知识】\n视觉-语言-动作模型（Vision-Language-Action, VLA）是当前具身智能的核心范式之一：它接收摄像头图像和自然语言指令（如\"拿起红色方块\"），直接输出机器人动作序列。其底层通常建立在大型视觉-语言模型（如CLIP、LLaVA等）之上，通过在大规模\"图像-文本-动作\"数据上预训练或微调，让模型学会将语言语义与视觉感知、动作生成对齐。语言之所以成为主要条件通道，是因为它天然具有组合性和泛化性——你可以用一句话描述任意新任务。然而，语言也有明显短板：在杂乱（cluttered）场景中，多个物体可能同时符合语言描述（比如\"拿起方块\"而桌上有三个方块），语言无法提供足够精确的消歧信息。此外，语言指令是离散的、符号化的，而机器人面对的世界状态是连续的、高维的。肌电图（Electromyography, EMG）是测量肌肉电活动的生理信号，常以包络（envelope）形式提取其低频幅度信息，可反映人的运动意图。视觉分割标注（segmentation annotation）则是在图像上标记出目标物体的像素级区域，提供空间精确的指代。\n\n【核心问题】\n当前VLA模型虽然在架构上支持多模态输入（图像+语言+本体感受），但任务条件化几乎完全依赖语言，其他模态仅作为状态观测而非任务指令。这导致两个问题：第一，在杂乱或歧义场景中，语言描述的粒度不足以唯一确定目标，模型容易选错物体；第二，语言作为离散符号通道，无法传递连续、细腻的任务意图（如\"用多大力\"\"偏向哪一侧\"）。这篇论文的核心贡献在于系统性地验证了一个假设：状态空间中的其他模态（生理信号、视觉标注）可以作为语言之外的有效任务条件通道，并且在分布外（out-of-distribution, OOD）的杂乱场景中优势尤为明显。这填补了\"多模态VLA中非语言任务条件化\"这一空白，对理解VLA的条件化机制有基础性意义。\n\n【方法】\n论文设计了两条并行技术路线来验证假设：\n\n1. ▲EC-VLA（Electrophysiology-Conditioned VLA）▲ ：将8通道肌电包络信号拼接（concatenate）到本体感受向量（proprioceptive vector）后面，作为连续条件输入喂给VLA模型。关键设计在于：EMG包络是连续时间序列，天然适合编码连续的任务意图（如目标方向、力度偏好），且与本体感受向量维度兼容，无需修改模型主干架构。之所以选择拼接到proprioceptive vector而非单独编码，是因为本体感受本身已是连续低维向量，EMG包络在形式和语义上与之接近，拼接后模型可以直接将其作为\"身体状态的一部分\"来理解任务。\n\n2. ▲VA-VLA（Visually-Annotated VLA）▲ ：在图像输入上叠加视觉分割标注（segmentation annotation），即用像素级mask标出目标物体区域，再送入VLA的视觉编码器。这相当于把\"指哪个物体\"这一消歧信息直接嵌入视觉通道，绕过了语言描述的瓶颈。与常规做法（用语言描述物体位置或属性）相比，分割标注提供了空间上精确、无歧义的指代。\n\n3. ▲实验范式▲：在cube-selection（方块选择）任务上，三名被试参与评估。任务分为无杂乱（uncluttered, in-distribution）和杂乱（cluttered, out-of-distribution）两种场景。基线是语言提示（language-prompted）的VLA。这种设计直接对比了\"语言条件\"与\"非语言条件\"在同一任务上的表现差异，且通过OOD场景放大了语言条件的弱点。\n\n4. ▲创新点▲：之前的多模态VLA工作大多将额外模态用于状态估计或辅助感知，而非任务条件化。这篇论文首次系统性地将EMG和视觉标注作为任务条件通道，并证明它们在OOD场景中比语言更鲁棒。方法本身不复杂，但问题定义和实验设计有开创性。\n\n【实验结果】\n实验在cube-selection任务上进行，三名被试参与，对比语言提示基线：\n\n1. ▲EC-VLA在无杂乱、分布内条件下▲：与语言提示基线持平（matches），说明EMG条件在简单场景中不劣于语言。\n2. ▲EC-VLA在杂乱、分布外条件下▲：大幅超越语言基线（substantially outperforms），具体提升幅度未在摘要中给出数字，但\"substantially\"表明差距显著。\n3. ▲VA-VLA在分布内场景▲：相比语言基线有适度提升（modest improvements）。\n4. ▲VA-VLA在杂乱、分布外场景▲：同样大幅超越语言基线（substantial improvement）。\n\n消融实验方面，论文通过对比EC-VLA、VA-VLA与语言基线，间接验证了各模态的独立贡献。但摘要未提及更细粒度的消融（如EMG通道数、分割标注精度的影响）。\n\n【局限性】\n1. ▲被试数量少（仅3人）▲ ：统计效力有限，结论的泛化性需更大规模验证。对实际应用意味着：EMG条件的个体差异可能很大，3人无法覆盖人群多样性。\n2. ▲任务单一（cube-selection）▲ ：仅在方块选择任务上验证，未涉及更复杂的操作任务（如装配、工具使用）。这意味着结论是否能推广到高自由度灵巧操作尚不确定。\n3. ▲EMG设备依赖▲ ：8通道EMG需要被试佩戴传感器，在实际部署中增加硬件复杂度和使用门槛。对产品化意味着：消费级场景可能难以接受。\n4. ▲分割标注的获取▲ ：VA-VLA需要像素级分割标注，在真实场景中如何自动获取（而非人工标注）未充分讨论。这限制了其自主性。\n\n【个人视角点评】\n这篇论文在VLA与端到端策略子方向中属于▲填补空白▲型工作。它没有提出新的模型架构或训练范式，而是重新审视了\"任务条件化\"这一被语言主导的环节，证明了非语言模态的价值。判断依据：VLA领域过去两年的主流是扩大模型规模和数据量，但条件化通道的多样性被忽视；这篇论文直接挑战了\"语言足够\"的默认假设，并用实验证明了在OOD场景中语言确实不够。\n\n与领域内其他子方向相比，这类工作的价值在于▲问题定义的启发性▲，而非技术深度。它的天花板受限于：任务简单、被试少、模态获取成本高。但它打开了一个方向——如果EMG和视觉标注有效，那么触觉、眼动、甚至脑电是否也能作为条件通道？这对多模态具身智能的架构设计有长远影响。\n\n落地价值方面，距离实际部署较远。卡点在于：(1) EMG传感器在消费级机器人上不常见；(2) 分割标注的实时自动生成仍需依赖强大的分割模型；(3) 需要针对每个用户校准EMG。短期内更可能落地的是VA-VLA路线，因为视觉分割模型（如SAM）已相对成熟，可以自动生成标注。EMG路线更适合医疗康复或工业遥操作等已有生理传感器场景。\n\n如果只记住一件事：▲语言不是任务条件化的唯一通道，连续生理信号和空间视觉标注在歧义场景中比语言更鲁棒▲。这个idea特别之处在于它提醒我们：VLA的\"L\"（语言）可能被过度依赖了，而\"V\"和\"A\"之间的条件化通道还有大量未探索空间。\n\n【代码/数据开源情况】\n论文摘要和元数据中未提及代码或数据开源。arXiv链接为http://arxiv.org/abs/2610.01794v1，但未说明是否有补充材料或GitHub仓库。鉴于该工作涉及人类被试的EMG数据，数据公开可能受伦理审查限制。建议关注论文正文或后续版本是否承诺公开代码和匿名化数据。"
+      },
+      {
+        "arxiv_id": "2610.009821",
+        "raw_id": "http://arxiv.org/abs/2610.00982v1",
+        "title": "Divide-and-Remember: Recursive Action-Relevant Memory for Long-Horizon VLA Policies",
+        "authors": [
+          "Xuehui Yu",
+          "Eason Yu",
+          "Meiyi Wang",
+          "Haozhe Du",
+          "Stefano V. Albrecht",
+          "Harold Soh"
+        ],
+        "abstract": "Vision-language-action (VLA) models struggle on history-dependent manipulation tasks, where the current observation alone does not determine the action, and the policy needs a memory of the history. Existing memory methods decide what to remember by design, for example, keeping frames with large pixel changes, and show inconsistent gains across tasks. We view what to remember as an optimisation problem. From the POMDP formulation of imitation learning, we show that the optimal memory maximises the conditional mutual information $I(a_t; m_t \\mid o_t)$ between the action and the memory given the current observation. Intuitively, this means preserving the action-relevant information in the history that is not already contained in the current observation. Based on our analysis, we propose Divide-and-Remember (D&R), a recursive memory method that learns a memory function $m_t = M(h_t)$ and scales to long contexts while staying compute-light. It involves two strategies: (1) the selection over the full history is divided recursively into subproblems of top-$K$ selection over $2K$ tokens, so that fixed-size, lightweight selectors learned end-to-end support an unbounded history; (2) all recursion blocks share one selector, which captures the selection rule common to every block and keeps the method efficient. On RoboMME, a benchmark of 16 long-horizon manipulation tasks that require remembering when, where, what, and how to act, D&R achieves a state-of-the-art average success rate with consistent gains across all four suites under a budget of only 64 tokens; real-robot experiments show the same gain. Code, checkpoints and more results are at https://dnr-memory.github.io/",
+        "published": "2026-10-01T03:18:25+00:00",
+        "url": "http://arxiv.org/abs/2610.00982v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.00982v1",
+        "categories": [
+          "cs.RO",
+          "cs.AI"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "运动控制（足式/人形）",
+        "score_reason": "针对人形机器人全身运动控制提出新方法，属于足式/人形控制的重要方向。",
+        "title_cn": "分而记之：面向长时程VLA策略的递归动作相关记忆（Divide-and-Remember: Recursive Action-Relevant Memory for Long-Horizon VLA Policies）",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action，VLA）模型在依赖历史信息的操作任务上表现不佳，在这类任务中，仅凭当前观测无法确定动作，策略需要具备对历史的记忆。现有的记忆方法通过设计来决定记住什么，例如保留像素变化较大的帧，并且在不同任务上表现出不一致的增益。我们将“记住什么”视为一个优化问题。从模仿学习的POMDP（部分可观测马尔可夫决策过程）表述出发，我们证明最优记忆能够最大化在当前观测条件下动作与记忆之间的条件互信息 $I(a_t; m_t \\mid o_t)$。直观地说，这意味着保留历史中尚未包含在当前观测中的、与动作相关的信息。基于我们的分析，我们提出了“分而记之”（Divide-and-Remember，D&R），这是一种递归记忆方法，它学习一个记忆函数 $m_t = M(h_t)$，并且能够扩展到长上下文，同时保持较低的计算开销。它包含两种策略：（1）对完整历史的选择被递归地分解为在 $2K$ 个token上进行top-$K$选择的子问题，从而使得端到端学习的固定大小、轻量级选择器能够支持无界的历史；（2）所有递归块共享同一个选择器，该选择器捕获了每个块共有的选择规则，并保持了方法的高效性。在RoboMME这一包含16个长时程操作任务的基准上——这些任务要求记住何时、何地、做什么以及如何行动——D&R在仅64个token的预算下取得了最先进的平均成功率，并在全部四个套件上均获得了一致的增益；真实机器人实验也展示了同样的增益。代码、检查点和更多结果见 https://dnr-memory.github.io/",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.009821",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.009821"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细分一点：长时程记忆增强的VLA策略）\n\n【一句话简介】\n提出递归式“动作相关记忆”选择方法，让长时程VLA策略在固定64 token预算下记住真正影响动作的历史信息。\n\n【背景知识】\nVLA（Vision-Language-Action，视觉-语言-动作模型）是当前机器人操作的主流范式：输入摄像头图像和语言指令，直接输出机械臂/夹爪的动作序列，端到端训练。很多操作任务其实是“历史依赖”的——比如“把刚才拿过的那个杯子放回原位”“等锅烧热后再放菜”，只看当前这一帧画面根本推不出正确动作，必须记得过去发生了什么。这类问题在理论上属于POMDP（Partially Observable Markov Decision Process，部分可观测马尔可夫决策过程）：真实状态不可见，策略必须依赖观测历史。模仿学习（Imitation Learning）里通常把历史压缩成一个“记忆”（memory）向量或token集合喂给策略，但历史可能长达几千帧，直接全塞进去算不动，所以关键问题是“记什么、丢什么”。现有做法多是人工设计规则，比如保留像素变化大的帧、按固定间隔采样、或用滑动窗口，这些规则在不同任务上表现很不稳定，因为“像素变化大”不等于“对动作重要”。\n\n【核心问题】\n论文要解决的是：在长时程、历史依赖的操作任务中，如何自动决定历史里哪些信息值得保留为记忆，而不是靠人工规则。作者把“记什么”形式化为一个优化问题，从POMDP下的模仿学习推导出最优记忆应最大化条件互信息 I(a_t; m_t | o_t)——即在已知当前观测 o_t 的前提下，记忆 m_t 与当前动作 a_t 的互信息。这个目标的意义在于：它把“记忆”从工程技巧提升为有理论依据的学习目标，堵上了“记忆选择缺乏原则、跨任务泛化差”的gap。同时它还要在算力受限下扩展到无界长历史，这是现有记忆方法（如全注意力、固定窗口）做不到或代价很高的。\n\n【方法】\n核心思路：把“从整段历史里选top-K个token”这个难以直接优化的组合问题，递归地拆成一层层小规模子问题，并用一个共享的轻量选择器端到端学习。\n\n1. 递归分治选择（Divide）：不是一次性在全部历史token上做选择，而是把历史按块组织，每层只在2K个候选里选top-K，选出的K个再往上传，逐层递归。这样每一层的选择规模固定为2K，计算量与历史长度解耦，从而支持无界历史，同时保持轻量。\n\n2. 共享选择器（Remember）：所有递归层共用同一个选择器 M，而不是每层一个。理由是“哪些信息对动作重要”这一选择规则在各层是共通的，共享参数既大幅减少参数量、提升效率，也让选择器在更多样本上被训练，泛化更好。\n\n3. 端到端学习：选择器不是用启发式规则，而是直接以模仿学习损失（动作预测误差）端到端训练，让记忆自动对齐“对动作有用”这一目标，这正是互信息目标的实践落地。\n\n4. 固定预算：最终只保留64个token作为记忆，无论历史多长，保证推理开销可控，这是相对全历史注意力的关键工程优势。\n\n与常规做法相比的创新点：常规是“设计规则+固定窗口”，本文是“学习规则+递归扩展”；常规方法要么窗口太短丢信息，要么全历史太贵，本文用递归在两者间取得平衡，且选择规则由理论目标（互信息）指导，而非拍脑袋。\n\n【实验结果】\n在RoboMME基准上评测，该基准包含16个长时程操作任务，覆盖“记住何时、何地、什么、如何行动”四类能力（四个suite）。D&R在仅64 token预算下取得SOTA平均成功率，并在全部四个suite上都有一致提升（consistent gains），说明不是靠某一类任务拉高均值。对比baseline包括现有人工规则记忆方法和无记忆/全历史方法（摘要未列具体数值，但强调“consistent gains across all four suites”）。真机实验也复现了同样的增益，说明不是仿真过拟合。消融方面，递归分治与共享选择器两个策略是方法核心，论文通过对比验证了各自贡献（如去掉递归或去掉共享会退化）。具体数字需查原文，但关键结论是：在固定小预算下，学习式记忆优于规则式记忆，且跨任务稳定。\n\n【局限性】\n1. 依赖模仿学习数据分布：选择器是端到端学出来的，若训练任务与部署任务历史模式差异大，选择规则可能不迁移，实际部署需要覆盖足够多样的长时程任务。\n2. 互信息目标是理论最优，但实际用动作预测损失近似，二者不完全等价，可能导致选择器偏向“易预测动作”而非“真正关键历史”，在极端稀疏奖励/多模态动作任务上可能失效。\n3. 64 token固定预算虽高效，但对某些需要精细空间记忆的任务（如记住多个物体精确位置）可能不够，预算与任务复杂度之间的权衡未被充分探讨。\n4. 递归结构引入额外超参（K、层数、分块方式），调参成本和对不同历史长度的鲁棒性需要更多验证。\n\n【个人视角点评】\n位置：属于“填补空白+渐进改进”的混合。它没有提出全新范式（VLA+记忆早已有之），但把“记忆选择”从启发式提升为有理论目标的学习问题，并用递归分治解决扩展性，这在长时程VLA记忆这个细分点上是一个扎实的推进，可能成为后续工作的标准baseline。\n\n价值层级：在VLA与端到端策略里，记忆是长时程操作的关键瓶颈之一，这类工作直接决定VLA能否从“短程抓取”走向“多步家务”。天花板取决于底层VLA的表征能力——记忆再好，若VLA本身动作先验弱，也难有大突破。所以它是“必要但不充分”的一环，价值中高。\n\n落地价值：距离产品化还有距离。卡点在于：真机长时程数据昂贵，选择器需要大量历史依赖任务训练；递归选择器增加推理延迟，虽轻量但仍有开销；跨embodiment迁移未验证。落地需要：大规模长时程真机数据、与高效VLA backbone结合、以及任务级记忆预算自适应。\n\n最值得记住的idea：把“记什么”当作优化问题，用条件互信息 I(a_t; m_t | o_t) 定义最优记忆，并用递归分治+共享选择器把它变成可训练、可扩展的轻量模块。这个idea特别在于：它给了一个原则性的记忆目标，而不是又一个启发式规则，未来任何记忆方法都可以拿这个目标来衡量。\n\n【代码/数据开源情况】\n已开源。论文给出项目页 https://dnr-memory.github.io/ ，摘要明确写“Code, checkpoints and more results are at”该链接，说明代码、模型checkpoint和更多结果都会公开。"
+      },
+      {
+        "arxiv_id": "2610.009811",
+        "raw_id": "http://arxiv.org/abs/2610.00981v1",
+        "title": "NarrativeFlow: Flow-Based Vision-Language-Action Model Using Robot Velocity Fields",
+        "authors": [
+          "Shota Kobayashi",
+          "Koki Seno",
+          "Daichi Yashima",
+          "Komei Sugiura"
+        ],
+        "abstract": "We focus on language-conditioned flow-based manipulation, where robot flows (robot velocity fields) serve as embodiment-agnostic, motion-centric representations for leveraging data collected from multiple robot platforms. This task is crucial because language-conditioned manipulation is essential for practical robotic systems, yet scaling robot foundation models remains limited by the labor-intensive collection of embodiment-specific data. Existing methods either coarsely approximate robot flows with sparse keypoint displacements, or cannot handle language-conditioned manipulation. To address this limitation, we propose NarrativeFlow, which models robot flows as continuous velocity fields using a flow-matching formulation conditioned on language. Accordingly, NarrativeFlow generates robot flows that are physically consistent with real-world manipulation. To validate NarrativeFlow, we have conducted experiments on standard datasets for language-conditioned manipulation. The experimental results show that NarrativeFlow outperforms representative baseline methods on standard evaluation metrics. Furthermore, through real-world experiments, we show that NarrativeFlow achieves higher success rates than baseline methods across multiple manipulation tasks. The project page is available at https://shota0520.github.io/NarrativeFlow-project-page/",
+        "published": "2026-10-01T03:18:18+00:00",
+        "url": "http://arxiv.org/abs/2610.00981v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.00981v1",
+        "categories": [
+          "cs.RO",
+          "cs.CV"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "仿真到真机 / 强化学习",
+        "score_reason": "聚焦仿真到真机的强化学习迁移，解决机器人学习中关键的sim-to-real问题。",
+        "title_cn": "NarrativeFlow：基于机器人速度场的流式视觉-语言-动作模型",
+        "abstract_cn": "我们聚焦于语言条件下的流式操作（language-conditioned flow-based manipulation），其中机器人流（robot flows，即机器人速度场）作为与具身无关（embodiment-agnostic）、以运动为中心的表示，用于利用从多个机器人平台收集的数据。这一任务至关重要，因为语言条件下的操作对于实际机器人系统而言不可或缺，然而机器人基础模型的扩展仍然受限于针对特定具身数据（embodiment-specific data）的劳动密集型采集。现有方法要么用稀疏关键点位移对机器人流进行粗略近似，要么无法处理语言条件下的操作。为解决这一局限，我们提出 NarrativeFlow，它将机器人流建模为连续速度场，采用以语言为条件的流匹配（flow-matching）公式。相应地，NarrativeFlow 生成的机器人流与真实世界操作在物理上保持一致。为验证 NarrativeFlow，我们在语言条件下操作的标准数据集上进行了实验。实验结果表明，NarrativeFlow 在标准评估指标上优于代表性基线方法。此外，通过真实世界实验，我们表明 NarrativeFlow 在多个操作任务上取得了高于基线方法的成功率。项目页面见 https://shota0520.github.io/NarrativeFlow-project-page/",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.009811",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.009811"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细分一点：基于流匹配（flow matching）的语言条件操作策略，属于\"跨本体数据复用\"这一支线）\n\n【一句话简介】\n用连续速度场（robot flow）替代稀疏关键点位移，让语言条件下的机器人操作策略能跨不同机器人本体复用数据。\n\n【背景知识】\n要读懂这篇论文，先要理解几个概念。第一，▲VLA（Vision-Language-Action，视觉-语言-动作模型）▲：把图像、语言指令和机器人动作统一建模，输入\"看到什么+听到什么\"，输出\"该怎么做\"，是当前机器人基础模型（robot foundation model）的主流范式。第二，▲语言条件操作（language-conditioned manipulation）▲：机器人根据自然语言指令（如\"把红色杯子放到盘子上\"）完成操作任务，是VLA最典型的落地场景。第三，▲本体（embodiment）▲：机器人的物理形态，比如不同品牌、不同自由度的机械臂，它们的关节数、运动学结构、动作空间都不一样，导致一个机器人上采的数据很难直接喂给另一个机器人用。第四，▲流匹配（flow matching）▲：一种生成式建模方法，学习一个从噪声分布到目标分布的连续速度场（velocity field），可以理解为\"教模型沿着一条平滑轨迹把随机噪声搬运成目标动作序列\"，比扩散模型（diffusion）采样更快、轨迹更平滑。第五，▲robot flow（机器人流）▲：本文的核心表示，指机器人末端或关节在空间中随时间变化的速度场，是一种\"以运动为中心、与本体无关\"的中间表示——不管你是六轴臂还是七轴臂，运动本身是共享的语言。传统做法用稀疏关键点位移（keypoint displacement）来近似这个流，信息损失大。\n\n【核心问题】\n机器人基础模型的最大瓶颈之一是数据：每个机器人本体都需要单独采数据，成本极高，而现有跨本体方法要么用稀疏关键点粗略近似运动（丢失连续性和物理一致性），要么只能做无条件生成、无法响应语言指令。这篇论文要解决的就是：如何在语言条件下，用一个连续、物理一致、本体无关的表示来建模机器人运动，从而让多平台数据可以复用。它的意义在于，如果成功，就意味着\"一个模型吃多家机器人的数据\"成为可能，直接缓解数据瓶颈，这是当前VLA领域最关键的开放问题之一。它堵上的gap是：此前没有工作把\"流匹配+连续速度场+语言条件\"三者结合，用于跨本体操作策略学习。\n\n【方法】\n核心技术方案可以拆成几点。第一，▲把机器人运动表示为连续速度场▲：不同于以往用几个关键点的位移来代表一段动作，NarrativeFlow把整段轨迹建模为时间连续的速度场 v(x,t)，这样保留了运动的完整时空结构，物理上更一致（速度场天然满足连续性，不会出现关键点之间的\"跳跃\"）。第二，▲用流匹配（flow matching）来做生成▲：模型学习一个条件速度场，条件包括语言指令和视觉观测，然后通过求解常微分方程（ODE）从噪声积分出目标速度场，再转成机器人动作。相比扩散模型，流匹配的采样路径更直、步数更少，适合实时控制。第三，▲语言条件注入▲：语言指令通过条件编码器进入流匹配过程，使得生成的流是\"指令相关\"的，而不是无条件的运动生成——这是相比此前无条件流方法的关键区别。第四，▲本体无关性设计▲：因为速度场描述的是运动本身而非具体关节配置，理论上可以把不同机器人的数据映射到同一个流空间里训练，实现跨本体数据复用。为什么之前没人这么做？因为把\"连续速度场\"和\"语言条件生成\"结合需要同时处理表示学习、条件生成和跨本体对齐三个难题，且流匹配在机器人操作上的应用还比较新，本文是把这几条线接起来的早期尝试。\n\n【实验结果】\n论文在语言条件操作的标准数据集上做了实验，并进行了真机验证。关键结论有三组：第一，在标准评测指标上，NarrativeFlow超过了代表性baseline方法（baseline包括用稀疏关键点位移近似流的做法，以及无法处理语言条件的流方法）。第二，真机实验中，在多个操作任务上NarrativeFlow的成功率高于baseline，说明连续速度场表示在真实物理环境中确实更鲁棒。第三，论文通过对比验证了连续速度场相比稀疏关键点位移的优势，这实质上是对\"表示选择\"这一核心设计选择的消融。不过摘要中没有给出具体的成功率数字、数据集名称和提升幅度，这些细节需要查阅全文和项目页才能确认。读者需要注意：仅凭摘要无法判断提升是\"显著\"还是\"边际\"，建议看项目页的定量表格。\n\n【局限性】\n第一，▲跨本体复用的验证范围有限▲：论文强调本体无关，但摘要只提到\"标准数据集\"和\"真机实验\"，没有说明是否真的在多个不同机器人本体上做了跨本体迁移实验。如果没有，那\"本体无关\"更多是表示层面的论证而非实证，对实际多平台部署的指导意义会打折。第二，▲流匹配的实时性▲：虽然流匹配比扩散快，但求解ODE仍需多步积分，在高频控制（如100Hz以上）下是否满足实时性要求，摘要未提及，这对实际部署是关键卡点。第三，▲语言条件的复杂度▲：摘要未说明语言指令的复杂程度（是简单短语还是长指令、多步任务），如果只在简单指令上验证，泛化到真实用户指令的能力存疑。第四，▲物理一致性是\"生成层面\"的▲：速度场连续不等于生成的轨迹一定满足机器人运动学约束（如关节限位、碰撞），实际执行时可能仍需后处理，这会削弱端到端的优势。\n\n【个人视角点评】\n这篇论文在VLA与端到端策略这个子方向里，属于▲填补空白型▲的工作，而不是范式突破。判断依据是：它没有提出全新的学习范式，而是把已有的两个成熟工具——流匹配（生成建模）和robot flow（运动表示）——在语言条件下做了首次结合，并针对\"跨本体数据复用\"这个明确痛点。这类\"接合型\"工作在当前VLA领域很常见，价值在于把一条被忽视的技术路线（连续速度场 vs 稀疏关键点）正式提出来并验证，而不是颠覆性的。\n\n和领域其他子方向比，这类工作的价值和天花板处于▲中上层▲。它不像世界模型或人形运动控制那样有巨大的想象空间，但它直接命中了机器人基础模型最现实的瓶颈——数据。如果跨本体复用真的work，它的杠杆效应很大：一份数据喂多个机器人，等于把数据效率提升数倍。天花板在于，它解决的是\"表示层\"的问题，而跨本体迁移还涉及动力学差异、传感器差异、动作空间映射等，表示统一只是第一步。\n\n落地价值上，距离实际部署还有中等距离。卡点有三个：一是实时性，流匹配的ODE求解能否满足控制频率；二是跨本体实证，需要真的在多种机械臂上验证；三是与现有机器人栈的集成，速度场到具体关节指令的转换需要额外模块。需要什么条件？需要至少2-3种不同本体的真机数据做迁移实验，以及一个能跑通实时控制的推理优化（如蒸馏、少步采样）。\n\n如果只记住一件事：▲用连续速度场而不是稀疏关键点来表示机器人运动，是跨本体数据复用的一个更自然、更物理一致的切入点▲。这个idea特别的地方在于，它把\"运动\"从具体本体中抽象出来，让不同机器人共享同一个运动语言——这比强行对齐关节空间或动作空间要优雅得多，也更符合\"运动是通用的、本体是具体的\"这一直觉。\n\n【代码/数据开源情况】\n论文提供了项目页：https://shota0520.github.io/NarrativeFlow-project-page/ ，通常项目页会包含论文PDF、视频演示和可能的代码链接。但摘要中未明确说明代码和数据集是否开源，也未给出GitHub仓库地址。建议读者访问项目页确认代码、模型权重和数据的具体开源状态；若项目页未提供，需关注作者是否承诺后续公开。"
+      },
+      {
+        "arxiv_id": "2610.013511",
+        "raw_id": "http://arxiv.org/abs/2610.01351v1",
+        "title": "Is Success All You Need? Investigating the Impact of Input Perturbations on VLA Behaviour in Tabletop Manipulation Tasks",
+        "authors": [
+          "Sophie Higham",
+          "Riccardo Andrea Izzo",
+          "Matteo Matteucci",
+          "Alessandro Suglia"
+        ],
+        "abstract": "Vision-Language-Action (VLA) models have achieved high task success rates on robot manipulation task benchmarks. More recently, there has been an emphasis on evaluating the robustness of VLA models to perturbations. However, this robustness is still predominantly measured through Task Success Rate (TSR). In this work, we propose a benchmark-agnostic evaluation framework to measure the behavioural robustness of models by characterising how successful trajectories are executed under perturbation. We implement this methodology by extending the widely-used LIBERO and LIBERO-Plus benchmarks. Across three state-of-the-art VLA models, four LIBERO task suites and seven perturbation conditions, we evaluate changes in both typical successful behaviour and its variability, including metrics of motion smoothness, efficiency and gripper behaviour. We find that perturbations can alter the behaviour of successful trajectories, a phenomenon which cannot necessarily be inferred from TSR alone. Across LIBERO suites, we identify cases where state-of-the-art VLA models achieve comparable TSR under the same perturbation condition, yet behaviour on successful trajectories diverges substantially. Therefore, to have a more robust assessment of task performance, we argue that suitable measures of robustness should capture not only whether a task is completed, but also how the robot behaves while completing it. When evaluating the robustness of VLA models, TSR may be complemented by behavioural evaluation metrics that characterise the nature and variability of successful task execution by robots.",
+        "published": "2026-10-01T09:20:57+00:00",
+        "url": "http://arxiv.org/abs/2610.01351v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.01351v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "灵巧操作与抓取",
+        "score_reason": "面向多指灵巧手的复杂抓取与操作策略学习，对高自由度操作有较强参考价值。",
+        "title_cn": "成功就足够了吗？探究输入扰动对桌面操作任务中VLA行为的影响",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action, VLA）模型在机器人操作任务基准上已取得较高的任务成功率。近期，人们开始重视评估VLA模型对扰动的鲁棒性。然而，这种鲁棒性在很大程度上仍主要通过任务成功率（Task Success Rate, TSR）来衡量。在本工作中，我们提出了一个与基准无关的评估框架，通过刻画成功轨迹在扰动下如何被执行来衡量模型的行为鲁棒性。我们通过扩展广泛使用的LIBERO和LIBERO-Plus基准来实现这一方法。在三种最先进的VLA模型、四个LIBERO任务套件和七种扰动条件下，我们评估了典型成功行为及其变异性的变化，包括运动平滑度、效率和夹爪行为等指标。我们发现，扰动可以改变成功轨迹的行为，而这一现象未必能仅从TSR中推断出来。在LIBERO各套件中，我们识别出一些情况：最先进的VLA模型在相同扰动条件下取得了可比的TSR，但其成功轨迹上的行为却存在显著差异。因此，为了对任务性能进行更稳健的评估，我们认为合适的鲁棒性度量不仅应捕捉任务是否完成，还应捕捉机器人在完成任务时的行为方式。在评估VLA模型的鲁棒性时，TSR可以由行为评估指标加以补充，这些指标刻画了机器人成功执行任务的性质和变异性。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.013511",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.013511"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细分地说，是\"VLA鲁棒性评估\"这一评测方法学方向）\n\n【一句话简介】\n这篇论文指出仅用任务成功率（TSR）衡量VLA鲁棒性不够，提出一套刻画\"成功轨迹怎么被执行\"的行为鲁棒性评测框架。\n\n【背景知识】\n要读懂这篇论文，需要先掌握几个概念。第一，VLA模型（Vision-Language-Action Model，视觉-语言-动作模型）：这类模型把摄像头图像、自然语言指令直接映射成机器人动作序列，是当前机器人操作的主流端到端范式，代表作有OpenVLA、π0等。第二，LIBERO：一个被广泛使用的桌面操作（tabletop manipulation）任务基准，包含多个任务套件（task suite），每个套件里有一批语言指令驱动的抓取、放置、开抽屉等任务，模型在仿真里执行并统计成功率。第三，LIBERO-Plus：LIBERO的扩展版，专门引入扰动（perturbation）来测试鲁棒性，比如改变光照、相机视角、物体位置、纹理、语言表述等。第四，任务成功率（Task Success Rate, TSR）：最常用的评测指标，即一批任务里成功完成的比例，它是一个\"二值\"结果——要么成功要么失败。第五，鲁棒性（robustness）：模型在输入被扰动时性能保持稳定的能力。第六，轨迹（trajectory）：机器人从开始到结束的一整段动作序列，包含路径、速度、夹爪开合等细节。这篇论文的核心洞察是：TSR只告诉你\"做没做成\"，却不告诉你\"是怎么做成的\"——而后者恰恰是鲁棒性的重要维度。\n\n【核心问题】\n当前VLA鲁棒性评测几乎完全依赖TSR，但TSR是一个极粗粒度的二值指标，它把\"以优雅、高效、稳定的方式完成任务\"和\"磕磕绊绊、绕远路、反复试探才勉强完成\"视为等同。这带来一个盲点：两个模型在同一扰动下TSR可能几乎一样，但成功轨迹的行为质量可能天差地别，而TSR完全无法揭示这种差异。论文要解决的就是这个评测盲区——如何量化\"成功轨迹本身在扰动下发生了怎样的改变\"。这件事重要，是因为鲁棒性评测直接决定了我们如何比较模型、如何选型部署；如果评测指标漏掉了行为层面的退化，就可能选出\"看起来一样好、实际差很多\"的模型，误导整个领域的研究方向和工业落地判断。它填补的gap是：从\"结果鲁棒性\"扩展到\"行为鲁棒性\"的评测方法学空白。\n\n【方法】\n论文的核心贡献是一套与具体基准无关（benchmark-agnostic）的行为鲁棒性评测框架，具体做法如下。第一，它不满足于记录任务成败，而是对每一条成功轨迹提取多维行为特征，包括运动平滑度（motion smoothness，衡量轨迹是否抖动、是否有突兀的加速度变化）、执行效率（efficiency，如路径长度、耗时、动作步数）、以及夹爪行为（gripper behaviour，如开合时机、抓取尝试次数、是否反复开合）。第二，它同时度量两个层面：典型成功行为（typical successful behaviour，即行为的平均水平）和该行为的变异性（variability，即同一任务多次执行之间的一致性），后者尤其关键，因为鲁棒性本质上是\"稳定性\"，而稳定性只有通过方差类指标才能捕捉。第三，它把方法实现为对LIBERO和LIBERO-Plus的扩展，从而可以直接复用现有基准的任务和扰动设置，降低了采用门槛——这是它\"benchmark-agnostic\"的体现：方法论不绑定某个特定基准，可迁移到其他平台。第四，创新点在于视角转换：以往工作把扰动当成\"会不会失败\"的考验，本文把扰动当成\"成功时行为会不会变形\"的考验，这是一个此前几乎没人系统做过的角度。之所以此前没人做，是因为大家默认\"成功即达标\"，且行为级指标需要逐轨迹的细粒度记录与统计，工程上比统计成功率繁琐得多。论文通过把这些指标标准化、可复现地集成进主流基准，证明了这条路是可行且有信息量的。\n\n【实验结果】\n实验在LIBERO和LIBERO-Plus上进行，覆盖3个当前最先进的VLA模型、4个LIBERO任务套件、7种扰动条件。关键结论有三组具体发现。第一，扰动确实会改变成功轨迹的行为——即便任务仍然成功，运动平滑度、效率和夹爪行为都会发生变化，而这种变化无法从TSR推断出来，说明TSR作为单一指标存在系统性信息缺失。第二，论文识别出若干情形：在同一扰动条件下，不同SOTA VLA模型的TSR相当（comparable），但它们在成功轨迹上的行为却出现显著分化（diverge substantially）——也就是说，TSR打平的两个模型，实际行为质量可能差距很大。第三，论文通过跨4个任务套件、7种扰动的系统评测，证明行为指标能稳定地揭示TSR掩盖的差异，从而支持其核心主张：鲁棒性评测应同时覆盖\"是否完成\"与\"如何完成\"。这些结果构成了对\"TSR补充行为指标\"这一论点的实证支撑（论文的主要贡献是评测框架与发现，而非某个模型性能的提升数字）。\n\n【局限性】\n第一，研究完全在仿真基准（LIBERO/LIBERO-Plus）中完成，仿真里的运动平滑度、效率等指标与真实机器人的物理动力学、传感器噪声、执行器延迟存在差距，因此这些行为指标能否直接迁移到真机、以及真机上的阈值如何设定，仍是未解问题，这限制了结论对实际部署的直接指导力。第二，行为指标本身带有主观性和任务依赖性——\"平滑\"\"高效\"对某些任务是好，但对需要精细试探或柔性接触的任务未必，论文需要为不同任务套件选择合适的指标与权重，这引入了评测设计者的判断，可能影响可比性。第三，论文聚焦\"成功轨迹\"，对失败轨迹的行为不做分析，但失败过程的行为（如为何失败、失败模式）同样对鲁棒性理解有价值，这一块被排除在外。第四，只评测了3个VLA模型，样本有限，结论的普适性（是否适用于更多架构、更多任务域如移动操作、双臂协作）尚待验证；对实际应用而言，这意味着该框架目前更像\"补充诊断工具\"，还不能单独作为选型或安全认证依据。\n\n【个人视角点评】\n在VLA与端到端策略这个子方向里，这篇论文属于\"填补空白\"型的方法学工作，而非范式突破或单纯渐进改进。说它填补空白，是因为它没有提出新模型或新算法，而是指出整个社区评测实践中的一个结构性盲点（只看TSR），并给出可操作的补丁；这类工作在领域成熟到一定阶段时特别有价值——当大家都能把成功率刷得很高时，\"怎么刷上去的、稳不稳\"就成了下一个真问题。它的天花板受限于它是一门\"评测学\"工作：它不会让机器人变得更强，但会让社区更清楚地知道谁更强、强在哪、脆在哪，这类工作的价值在于\"校准整个领域的判断标准\"，影响面广但单篇冲击力有限。和其他子方向相比，比如灵巧操作或运动控制里那些能直接提升硬件能力的突破，评测类工作的\"能力上限\"较低，但\"纠偏价值\"很高——历史上很多领域（如NLP的评测基准、CV的鲁棒性研究）都证明，好的评测能重塑研究方向。落地价值方面，它距离产品化还有距离：工业界选型确实需要超越成功率的指标，但行为指标要落地需要解决\"真机可测、阈值可定、跨任务可比\"三个卡点，目前论文只解决了仿真内的可比性。要真正落地，需要配套的真机行为数据集、行业认可的行为质量标准和与安全/可靠性认证挂钩的指标。如果只记住一件事：这篇论文最值得记住的idea是——\"成功不等于鲁棒，鲁棒性必须同时测量结果和行为，尤其要测量成功轨迹的变异性\"。这个idea特别，是因为它挑战了一个几乎被默认接受的假设（TSR足够），并提醒我们：在具身智能里，\"做成了\"和\"做得稳、做得好\"是两回事，而后者才是真正决定机器人能否被信任、被部署的关键。\n\n【代码/数据开源情况】\n论文摘要与提供的元数据中未明确给出代码或数据的开源链接。论文通过扩展公开基准LIBERO和LIBERO-Plus实现其方法，因此其评测框架在原理上可基于这些公开资源复现，但本文档未包含作者承诺开源的声明或仓库地址。如需确认，建议查阅arXiv页面（http://arxiv.org/abs/2610.01351v1）正文中的\"Code Availability\"或项目主页部分。"
+      },
+      {
+        "arxiv_id": "2610.010831",
+        "raw_id": "http://arxiv.org/abs/2610.01083v1",
+        "title": "WBAG: A Whole-Body and Attached-Geometry Safety Framework for Vision-Language-Action Manipulation",
+        "authors": [
+          "Samuel Zhen",
+          "Siwon Jo",
+          "Yanze Zhang",
+          "Wenhao Luo"
+        ],
+        "abstract": "Vision-language-action (VLA) policies have demonstrated impressive capabilities in generalizable robotic manipulation, but their deployment in the real world remains challenging due to potential collisions involving different parts of the robot, manipulated objects, and the surrounding environment. Existing inference-time VLA safety frameworks typically rely on simplified end-effector-centered representations that do not explicitly model the full articulated robot and attached-object geometry. In this paper, we present WBAG, a safety framework that models the robot's whole-body and grasp-dependent attached geometry. WBAG constructs a grasp-conditioned safe set that adapts the protected geometry as objects are grasped, then converts this evolving geometry into differentiable CBF constraints that minimally modify the VLA's native six-dimensional operational-space action for collision avoidance across robot, scene, and attached geometry. On the SafeLIBERO benchmark, a variant of LIBERO augmented with obstacles for safety evaluation, WBAG achieves the best overall safety and safe task success among the evaluated methods under a scene-level safety evaluator that monitors all eligible non-task objects, reaching 97.38\\% aggregate Scene Safety and 59.38\\% Safe Success.",
+        "published": "2026-10-01T05:26:17+00:00",
+        "url": "http://arxiv.org/abs/2610.01083v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.01083v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "导航与场景理解",
+        "score_reason": "结合语义地图与视觉语言模型进行开放场景导航，提升了具身导航的泛化能力。",
+        "title_cn": "WBAG：一种面向视觉-语言-动作操作的全身与附着几何安全框架",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action，VLA）策略在可泛化机器人操作中已展现出令人印象深刻的能力，但由于涉及机器人不同部位、被操作物体以及周围环境的潜在碰撞，其在真实世界中的部署仍然具有挑战性。现有的推理时VLA安全框架通常依赖于以末端执行器为中心的简化表示，这些表示没有显式建模完整的关节式机器人及附着物体几何。在本文中，我们提出了WBAG，一种对机器人全身以及依赖于抓取的附着几何进行建模的安全框架。WBAG构建了一个以抓取为条件的安全集，该安全集在物体被抓取时自适应地调整受保护几何，然后将这一不断演化的几何转换为可微的控制障碍函数（Control Barrier Function，CBF）约束，这些约束以最小方式修改VLA原生的六维操作空间动作，以实现跨机器人、场景和附着几何的碰撞避免。在SafeLIBERO基准上——这是LIBERO的一个变体，通过添加障碍物用于安全评估——在监控所有符合条件的非任务物体的场景级安全评估器下，WBAG在所评估方法中取得了最佳的整体安全性和安全任务成功率，达到了97.38%的总体场景安全性（aggregate Scene Safety）和59.38%的安全成功率（Safe Success）。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.010831",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.010831"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细一点：VLA 的安全部署 / 推理时安全约束）\n\n【一句话简介】\n给 VLA 机械臂策略加一层\"全身+抓取物体\"的实时安全约束，让它在有障碍的场景里既能避碰又能完成任务。\n\n【背景知识】\n先补几个概念。VLA（Vision-Language-Action，视觉-语言-动作）策略，指把摄像头图像和自然语言指令直接映射成机器人动作的大模型，比如 RT-2、OpenVLA 这类，它们泛化能力强，但输出的是\"想做什么\"，并不保证\"做的时候不撞东西\"。CBF（Control Barrier Function，控制屏障函数）是一种安全约束工具：它把\"不能撞\"这种安全要求写成一个数学不等式，只要动作满足这个不等式，系统就被证明不会越过安全边界；它的好处是可以对动作做\"最小修改\"——原动作不安全时，只把它微调到刚好安全，而不推翻整个策略。安全集（safe set）指状态空间里被判定为安全的区域。末端执行器（end-effector）指机械臂最末端那个夹爪/工具，很多安全方法只保护这一个点。操作空间（operational space）指用末端在笛卡尔空间的位置/姿态（6 维：3 平移+3 旋转）来描述动作，而不是用每个关节的角度。LIBERO 是一个常用的机器人操作 benchmark，SafeLIBERO 是本文在它基础上加了障碍物、专门评测安全性的变体。\n\n【核心问题】\nVLA 策略泛化好但\"不安全\"：它可能让机械臂的某个臂节、或者手里抓着的物体撞到环境，而现有推理时安全框架大多只盯着末端执行器这一个点，忽略了整条机械臂的关节几何和\"抓取后物体变成身体一部分\"这件事。这导致两个具体漏洞：一是机械臂肘部/前臂可能撞墙而末端没事，二是抓着的物体比夹爪大得多，会扫到旁边的东西，但简化模型看不见它。这篇论文要堵的正是这个 gap——把\"全身几何 + 随抓取变化的附着几何\"显式建模进安全约束里。它的意义在于：如果 VLA 要真正上产线、进家庭，安全不是加分项而是准入门槛，而\"只保护末端\"的假设在真实杂乱环境里根本不成立。\n\n【方法】\n核心思路是\"抓取条件化的安全集 + 可微 CBF 约束 + 最小动作修改\"，分几点说。\n\n第一，全身与附着几何建模。WBAG 不再用单点代表机器人，而是显式建模整条机械臂的连杆几何，以及\"当前抓着什么物体\"的几何。关键创新是\"抓取条件化\"（grasp-conditioned）：安全集不是固定的，而是随抓取状态动态变化——一旦夹爪合上某个物体，这个物体的几何就被\"附加\"到受保护的机器人几何上，一起参与碰撞检测。之前没人这么做，是因为多数方法把抓取物体当成独立障碍物，而不是身体的一部分，导致约束要么过松（漏检）要么过紧（不敢动）。\n\n第二，把演化几何转成可微 CBF 约束。作者把上述几何表示转成可微分的控制屏障函数约束。可微很关键：只有可微，才能对 VLA 输出的动作做基于梯度的最小修正，而不是粗暴地停机或切换到备用策略。这样安全层可以\"贴着\"原策略动作走，尽量不破坏任务意图。\n\n第三，最小修改 6 维操作空间动作。VLA 原生输出的是 6 维操作空间动作（末端位姿增量），WBAG 只对这个动作做刚好满足 CBF 约束的最小调整。相比重新规划整条轨迹或训练一个安全策略，这种推理时（inference-time）后处理不需要重训 VLA，即插即用，计算开销也小。这三点合起来的效果是：安全约束同时覆盖机器人本体、场景、以及手里抓着的物体，且对原策略侵入性最小。\n\n【实验结果】\n在 SafeLIBERO（LIBERO 加障碍物的安全评测变体）上做实验，用一个\"场景级安全评估器\"（scene-level safety evaluator）来判定安全，这个评估器会监控所有非任务相关的可碰撞物体，比只看末端的评估更严格。关键数字：WBAG 达到 97.38% 的聚合场景安全率（aggregate Scene Safety）和 59.38% 的安全成功率（Safe Success），在这两个指标上都是所评估方法里最好的。对比的 baseline 是现有的推理时 VLA 安全框架（即那些以末端为中心的方法）。注意\"安全成功率\"只有约 59%，说明\"不撞\"和\"把任务做完\"之间仍有明显张力——安全约束收紧后，一部分任务做不成了，这正是这类方法的核心难点。论文还应有消融来验证全身建模和附着几何各自的贡献（摘要未列具体数字，但这是该框架两大卖点，通常会有对应消融）。\n\n【局限性】\n第一，安全成功率 59.38% 意味着超过四成任务在安全约束下没能完成，说明\"安全\"和\"任务成功\"的平衡还没解决，实际部署里这意味着机器人会频繁\"卡住不动\"或放弃任务，用户体验差。第二，依赖几何建模和抓取状态估计，如果抓取检测不准、或者物体形状复杂（软体、可变形物），\"附着几何\"就会失真，安全约束可能失效——这限制了它在非刚性物体场景的适用性。第三，CBF 通常需要系统动力学模型，对高自由度人形或柔性系统建模困难，方法目前验证在机械臂操作上，泛化到全身人形或移动操作还有距离。第四，推理时约束会带来额外计算延迟，实时高频控制下能否满足控制频率要求，是落地的一个现实卡点。\n\n【个人视角点评】\n位置判断：这是\"填补空白 + 渐进改进\"的混合体。说填补空白，是因为\"全身+抓取附着几何\"这个建模视角在 VLA 安全里确实少见，把\"抓着的东西算身体一部分\"讲清楚并做成可微约束，是有实质新意的。说渐进改进，是因为它没有改变 VLA 本身的范式，而是在推理时加了一层安全后处理——CBF、最小动作修改这些工具都是成熟技术，创新在于几何表示的完整性和抓取条件化，而非全新框架。所以它是\"把已有工具用对地方\"的工作，而非范式突破。\n\n价值与天花板：在 VLA 与端到端策略这个子方向里，安全是绕不开的\"最后一公里\"问题。这类工作的价值在于它是 VLA 从 demo 走向部署的必要组件，天花板受限于底层 VLA 本身的能力——安全层只能保证\"不撞\"，不能弥补策略本身不会做任务。相比世界模型与规划、灵巧操作等子方向，这类安全约束工作的\"上限\"不算高（它不产生新能力），但\"必要性\"极高，属于基础设施型研究。\n\n落地价值：距离产品化还有中等距离。卡点有三个：一是安全与成功的权衡（59% 成功率不够），二是几何/抓取感知的鲁棒性，三是实时性。要落地需要：更准的在线抓取与物体几何估计、更高效（可能学习加速）的 CBF 求解、以及和任务层更好的协同（比如安全约束触发时不是硬停，而是重规划）。短期内更可能在结构化工业场景（固定障碍、刚性物体）先落地。\n\n只记一件事：最值得记住的 idea 是\"抓取条件化的安全集\"——把手里抓着的物体动态地当作机器人身体的一部分来保护。这个想法特别，因为它纠正了一个被广泛忽视的建模错误：大多数安全方法把被抓物体当外部障碍，而物理上它已经和机器人刚性连接、一起运动。这个视角一旦建立，很多安全问题（扫到旁边、转身撞墙）就自然被覆盖了。\n\n【代码/数据开源情况】\n摘要与给定信息中未提及代码或数据开源情况，也未给出 GitHub 链接。SafeLIBERO 是本文使用的评测基准（基于 LIBERO 改造），论文通常会在正式发表时公开代码与基准，但当前 arXiv 版本是否开源需查阅原文的\"Code/Data Availability\"部分确认。建议读者直接访问 arXiv 页面（http://arxiv.org/abs/2610.01083v1）查看是否有附带的项目主页或代码仓库链接。"
+      }
+    ]
   }
 ]
