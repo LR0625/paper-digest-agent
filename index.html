@@ -82,6 +82,71 @@ body {
 <div class="header"><h1>📄 embodied_ai 论文速递</h1><p>每日自动推送 · 由 paper-digest-agent 驱动</p></div>
 <div class="container">
 <section class="day">
+<h2>📅 2026-10-04 <span class="count">(1 篇)</span></h2>
+
+<div class="paper">
+<h3>GlassGuard：面向机器人导航的经过验证的玻璃平面建图（Verified Glass Plane Mapping for Robot Navigation）</h3>
+<div class="title-en">GlassGuard: Verified Glass Plane Mapping for Robot Navigation</div>
+<div class="meta">
+<span>📂 VLA与端到端策略</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2610.02110v1" target="_blank">arXiv: 2610.021101</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.021101" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.021101" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.021101" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.021101" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">透明和镜面表面给基于LiDAR的SLAM与导航带来了严峻挑战，因为激光回波可能穿过玻璃，导致碰撞边界在地图中缺失。已有工作尝试重建缺失的表面，但不准确的障碍物放置可能造成相反的失败：对可通行自由空间的污染。认识到这一双重需求，我们提出了GlassGuard，一个面向导航的框架，用于从互补的视觉和LiDAR证据中重建平面建筑玻璃。我们以玻璃覆盖率和自由空间污染两方面来定义成功，并将这一原则贯穿于候选验证和全局地图构建之中。一个基础视觉模型提供玻璃实例掩码（glass-instance masks），结构化3D线索生成度量平面假设（metric plane hypotheses），无深度的2D投影几何在其进入统一全局地图之前检查其朝向。我们在九个建筑尺度场景中评估GlassGuard，涵盖多样的玻璃结构、空间尺度和光照条件，并包含超过一小时、2.1公里的真实世界机器人行进。GlassGuard在其全景版本上实现了总玻璃覆盖率的85%。在相同的针孔输入下，GlassGuard实现了82%的总覆盖率，而所评估的基线最多为61%，同时每帧产生的虚假体素（false voxels）少5-17倍。结合导航规划器的定性示例表明，重建的平面阻挡了穿过玻璃的路径，同时保持可通行路线开放。项目页面见 https://glassguardproject.github.io/。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>导航与场景理解（偏 SLAM 地图构建 / 机器人导航感知）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>用视觉+LiDAR 互补证据重建建筑玻璃平面，让机器人导航地图既"不漏玻璃"也"不堵通路"。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>这篇论文处在"机器人导航 + 三维感知 + SLAM 地图构建"的交叉点上。先解释几个关键概念：</p>
+<div class="spacer"></div><p class="num-item">1. <strong>LiDAR（激光雷达）与 SLAM（Simultaneous Localization and Mapping，同步定位与建图）</strong>：LiDAR 通过发射激光并测量反射时间来测距，是机器人建图和定位的主流传感器；SLAM 指机器人在未知环境中一边估计自身位置、一边构建环境地图。LiDAR 建出的地图通常以<strong>点云（point cloud）</strong>或<strong>体素（voxel，把三维空间切成小立方格）</strong>形式存储，导航规划器据此判断哪里能走、哪里有障碍。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>玻璃/镜面表面的"穿透"问题</strong>：激光打在普通墙面上会反射回来，形成障碍点；但打在<strong>透明玻璃（transparent glass）</strong>上，激光大部分直接穿过，几乎不返回；打在<strong>镜面（specular surface）</strong>上，激光被镜面反射到别处，返回的可能是虚假的"幽灵点"。结果是：明明有一堵玻璃墙，地图上却是空的，导航器会以为那里可以通行。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>自由空间污染（free-space contamination）</strong>：这是本文特别强调的反向风险。如果为了补上玻璃而粗暴地在玻璃位置放障碍物，一旦放错位置（比如把障碍放到真正的通道上），就会把本来可通行的<strong>自由空间（free space，导航中可安全通行的区域）</strong>错误标记为障碍，导致机器人"堵死"自己。所以玻璃重建是一个<strong>双向要求</strong>：既要覆盖玻璃，又不能污染自由空间。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>基础视觉模型（foundation vision model）</strong>：指在大规模数据上预训练、可迁移到多种下游任务的通用视觉模型（如分割模型 SAM 一类），本文用它来生成玻璃的实例掩码（instance mask，即标出图中哪些像素属于玻璃）。</p>
+<div class="spacer"></div><p class="num-item">5. <strong>平面假设（plane hypothesis）</strong>：把玻璃近似为一个三维平面，用参数（如法向量+距离）表示，多个观测可融合成一个全局平面。</p>
+<div class="spacer"></div><p>理解了"漏玻璃"和"堵通路"这对矛盾，就能看懂本文在解决什么。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>LiDAR-based SLAM 在玻璃环境里会丢失碰撞边界，导致机器人撞玻璃或规划出穿越玻璃的路径，这是长期存在的安全短板。已有工作尝试重建缺失的玻璃表面，但大多只关注"把玻璃补上"，忽略了补错位置会污染自由空间这一反向失败模式，可能把可通行区域误判为障碍。本文明确提出玻璃重建必须同时满足两个指标——<strong>玻璃覆盖率（glass coverage）</strong>和<strong>自由空间污染率（free-space contamination）</strong>，并把这一原则贯穿到假设验证和全局建图全过程。其意义在于：把玻璃重建从"尽量补全"的单目标问题，重新定义为"补得准、不误伤"的双目标问题，更贴近导航实际需求。同时它在九个建筑级场景、超过 1 小时、2.1 公里真实机器人行驶数据上验证，具备真实部署参考价值。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>GlassGuard 是一个面向导航的框架，核心思路是"视觉给候选、几何做验证、全局做融合"，具体要点如下：</p>
+<div class="spacer"></div><p class="num-item">1. <strong>视觉提供玻璃实例掩码</strong>：用一个基础视觉模型（foundation vision model）在图像中分割出玻璃区域，得到玻璃实例掩码。这解决了"哪里可能是玻璃"的发现问题——纯几何方法很难区分玻璃和空洞，而视觉语义能提供强先验。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>结构三维线索生成度量平面假设</strong>：利用场景中的结构 3D 线索（如与玻璃相邻的框架、边界等几何结构）生成具有<strong>度量尺度（metric，即真实物理尺寸）</strong>的平面假设。这解决了"玻璃在三维空间中的确切位置和朝向"问题，因为仅凭单张图像无法得到准确的三维平面参数。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>无深度的 2D 投影几何验证朝向</strong>：这是本文的一个关键创新点——用<strong>无深度（depth-free）的二维投影几何</strong>来检查平面假设的朝向是否正确。也就是说，不需要依赖深度估计（深度估计本身在玻璃上就不可靠），而是通过 2D 投影几何关系来验证平面方向，避免引入深度误差。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>双重准则贯穿验证与建图</strong>：论文把"玻璃覆盖"和"自由空间污染"两个指标作为验证和全局地图构建的统一原则——一个假设只有在既提升覆盖又不污染自由空间时才被接受。这直接对应了核心问题的双目标定义。</p>
+<div class="spacer"></div><p class="num-item">5. <strong>全局地图融合</strong>：通过验证的平面假设被整合进一个统一的全局地图（consolidated global map），供导航规划器使用。</p>
+<div class="spacer"></div><p>与常规做法相比，创新点在于：不是单纯"重建玻璃"，而是把"不污染自由空间"作为一等公民纳入整个流程；并且刻意避开深度估计，用 2D 投影几何做朝向验证，规避了玻璃上深度不可靠的根本困难。这种"视觉提议 + 几何验证 + 双指标筛选"的组合，是之前工作较少系统采用的。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文在<strong>九个建筑级场景</strong>中评估，涵盖多样玻璃结构、空间尺度和光照条件，累计超过 <strong>1 小时</strong>、<strong>2.1 公里</strong>的真实机器人行驶数据。关键数据：</p>
+<div class="spacer"></div><p class="num-item">1. <strong>全景版本（panoramic version）</strong>：GlassGuard 达到 <strong>85% 的总玻璃覆盖率</strong>，说明在理想输入条件下能补全绝大部分玻璃。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>相同针孔输入（pinhole inputs）对比</strong>：在完全相同的针孔相机输入下，GlassGuard 达到 <strong>82% 总覆盖率</strong>，而所有被评估的 baseline 最高只有 <strong>61%</strong>，即覆盖率提升约 21 个百分点。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>自由空间污染</strong>：GlassGuard 每帧产生的<strong>虚假体素（false voxels）比 baseline 少 5–17 倍</strong>，直接量化了"不污染自由空间"这一核心优势。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>定性验证</strong>：用导航规划器的示例显示，重建的平面能阻挡穿越玻璃的路径，同时保留可通行路线，说明重建结果对下游导航确实有效。</p>
+<div class="spacer"></div><p>这些数据同时覆盖了"覆盖率高"和"污染低"两个维度，且通过全景 vs 针孔的对比体现了方法对不同输入的适应性。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. <strong>依赖基础视觉模型的玻璃分割质量</strong>：整个流程的起点是视觉模型给出的玻璃掩码，如果模型在强反光、脏污、特殊镀膜玻璃上分割失败，后续几何验证再准也无从谈起。这意味着在视觉退化场景（如逆光、雨雾）下性能可能显著下降。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>假设玻璃为平面</strong>：方法针对"平面建筑玻璃"设计，对曲面玻璃、异形玻璃幕墙可能失效。现实建筑中曲面玻璃并不罕见，这限制了适用范围。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>需要视觉与 LiDAR 的互补证据</strong>：在纯 LiDAR 或纯视觉平台上无法直接使用，且视觉-LiDAR 标定误差会传导到平面假设的度量精度上，影响障碍物放置的准确性。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>评估场景虽多但仍限于建筑级</strong>：九个场景、2.1 公里虽具代表性，但未覆盖极端光照、动态玻璃（如开合门）等复杂情况，泛化性仍需更多验证。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<ul>
+<li><strong>子方向定位</strong>：这是一篇<strong>填补空白型</strong>的工作，而非范式突破。它没有提出全新的感知范式，但精准地指出了一个被前人忽视的关键问题——玻璃重建的"反向失败"（污染自由空间），并给出了系统性的双指标解决方案。在"玻璃感知"这个细分问题上，它把评价标准从单一覆盖率扩展为覆盖率+污染率的双维度，这是一个有价值的贡献。</li>
+</ul>
+<div class="spacer"></div><ul>
+<li><strong>价值与天花板</strong>：和 VLA、灵巧操作等子方向相比，这类"地图构建/场景理解"工作的天花板相对明确——它不追求通用智能，而是解决一个具体的、工程性强的安全问题。但恰恰因为具体，它的落地路径更短、价值更实在。在建筑巡检、商场服务、仓储物流等玻璃密集场景中，这类能力是刚需。</li>
+</ul>
+<div class="spacer"></div><ul>
+<li><strong>落地价值</strong>：距离实际部署相对较近。卡点主要在：①基础视觉模型在真实复杂光照下的鲁棒性；②视觉-LiDAR 标定的工程稳定性；③计算开销能否满足实时导航（论文未强调实时性指标）。如果这些条件满足，集成到现有 LiDAR SLAM 导航栈中是可行的。</li>
+</ul>
+<div class="spacer"></div><ul>
+<li><strong>如果只记住一件事</strong>：<strong>玻璃重建不是"补得越多越好"，而是"补得准、不误伤"</strong>——把自由空间污染作为与覆盖率同等重要的指标，这个双目标视角是本文最值得记住的 idea。它提醒我们，感知系统的失败往往有两种相反方向，只优化一个方向可能制造新的失败。</li>
+</ul>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文提供了项目主页：https://glassguardproject.github.io/ 。摘要中未明确说明代码或数据是否完全开源，建议访问项目主页确认具体的开源范围（代码、数据集、模型权重等）。从项目页存在来看，作者有公开相关资源的意向，但需以主页实际内容为准。</p></div>
+</div>
+</section>
+<section class="day">
 <h2>📅 2026-10-03 <span class="count">(5 篇)</span></h2>
 
 <div class="paper">
