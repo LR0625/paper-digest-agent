@@ -85,222 +85,196 @@ body {
 <h2>📅 2026-10-08 <span class="count">(5 篇)</span></h2>
 
 <div class="paper">
-<h3>先改写再行动：视觉-语言-动作模型（Vision-Language-Action Models）中语言敏感性的刻画与缓解</h3>
-<div class="title-en">Rephrase Before You Act: Characterizing and Mitigating Language Sensitivity in Vision-Language-Action Models</div>
+<h3>基于标量伴随匹配的Q学习（Q-Learning with Scalar Adjoint Matching）</h3>
+<div class="title-en">Q-Learning with Scalar Adjoint Matching</div>
 <div class="meta">
 <span>📂 VLA与端到端策略</span>
 <span>📊 相关性 9/10</span>
-<a href="http://arxiv.org/abs/2610.10526v1" target="_blank">arXiv: 2610.105261</a>
-<a href="https://xxx.itp.ac.cn/abs/2610.105261" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.105261" target="_blank">🌐 arxiv.org.cn</a> 
+<a href="http://arxiv.org/abs/2610.10437v1" target="_blank">arXiv: 2610.104371</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.104371" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.104371" target="_blank">🌐 arxiv.org.cn</a> 
 </div>
-<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.105261" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.105261" target="_blank">🌐 arxiv.org.cn</a> </div>
-<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">视觉-语言-动作模型（Vision-Language-Action Models，VLAs）对指令措辞表现出惊人的敏感性，并且没有继承其所基于的视觉-语言模型（Vision-Language Models，VLMs）的语言鲁棒性。一个单词的改动就能使成功率移动数十个百分点：$π_{0.5}$ 在 LIBERO 炉灶任务上，对于“switch on the stove”100% 成功，而对于“switch on the hot plate”仅有 2% 成功；而一个使用改写增强（rephrase augmentation）微调的 $π_0$ 检查点仍然表现出高达 61 个百分点的波动。我们通过经过统计检验的单次编辑波动以及一个预言机短语搜索（oracle phrase search）来刻画这种敏感性，后者表明仅凭措辞几乎就能弥合分布内任务与分布外任务之间 21 个百分点的差距。随后我们在不修改策略的情况下降低这种敏感性。由于这种敏感性是系统性的，它可以被表达为显式规则：我们对少量训练任务的多种措辞进行评分，让一个大型语言模型将证据提炼为十到二十条改写规则，并在部署时依据这些规则对每条传入指令进行一次改写。这些规则在十二个留出任务上，将冻结的 $π_0$ 在对抗性、VLM 生成和人类生成的措辞上相对提升了 16% 到 27%，且增益集中在分布外任务上。该流程在 $π_{0.5}$ 和 LIBERO 上得到复现，将微调内成功率从 93.6% 提升到 97.8%。该方法无需重新训练，也无需逐步验证，并可零样本（zero-shot）应用于未见过的任务和指令。项目网站：https://sttawm.github.io/rephrase-before-you-act</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.104371" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.104371" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">流策略（flow policies）能够捕捉丰富多样的动作分布，而通过离策略强化学习（off-policy RL）对其进行微调以超越示范数据，已引起越来越多的关注。然而，针对学习到的价值函数微调流策略并非易事，因为该策略需要经过多个流步骤（flow steps）来生成其动作。伴随匹配（adjoint matching）提供了一种有原则的方法，通过将价值信息从最终动作传播回每个流步骤来更新流模型本身，但它需要在每一步通过策略计算向量-雅可比积（vector–Jacobian product），这一成本随流步骤数量和策略规模的增长而增长。我们观察到，预训练流策略的批次平均速度雅可比（batch-averaged velocity Jacobian）集中在其对角线上。受此发现启发，我们推导出一个闭式标量伴随（closed-form scalar adjoint），它将最终动作处的价值梯度按流时间进行缩放，从而消除了逐步的向量-雅可比积。我们进一步发现，在标量伴随下，控制策略生成动作处的评论家（critic）价值尤为重要。基于这些发现，我们提出了基于标量伴随匹配的Q学习（Q-learning with Scalar Adjoint Matching, SQAM），它将标量伴随与这些动作处的价值惩罚相结合。SQAM的增益集中在四个最难的OGBench领域中，在每个领域中其成功率超过最强基线18至35个百分点。为了测试SQAM是否能扩展到大型预训练策略，我们还在真实双臂机器人上微调了一个视觉-语言-动作策略（vision-language-action policy）。SQAM在全部三个任务上均优于监督微调（supervised fine-tuning）。</div>
 <div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
-<p>VLA与端到端策略（兼跨"多模态感知"中语言指令理解部分）</p>
+<p>VLA与端到端策略（更细一点说，是"流策略 + 离线强化学习微调"）</p>
 <div class="spacer"></div><div class="section-title">一句话简介</div>
-<p>本文发现VLA模型对指令措辞极度敏感，并提出用大模型蒸馏"改写规则"在部署时改写指令来免费提升成功率。</p>
+<p>本文提出 SQAM，用标量伴随匹配把流策略的离线 RL 微调成本大幅降低，在难任务上超过最强基线 18–35 个百分点。</p>
 <div class="spacer"></div><div class="section-title">背景知识</div>
-<p class="num-item">1. <strong>VLA（Vision-Language-Action Model，视觉-语言-动作模型）</strong>：一类把视觉观测、自然语言指令直接映射为机器人动作序列的端到端策略模型，代表工作有RT-2、OpenVLA、π₀、π₀.₅等。它们通常由一个预训练的<strong>VLM（Vision-Language Model，视觉语言模型）</strong> 作为"大脑"骨干，再接入动作头（action head）输出机器人控制信号。</p>
-<p class="num-item">2. <strong>语言鲁棒性（language robustness）</strong>：指模型对同一语义但不同表述（如"打开炉子"vs"打开热板"）应给出相同或相近行为的能力。VLM在图像描述、问答任务上通常被认为具有一定鲁棒性，但本文发现这种鲁棒性在VLA上<strong>没有继承下来</strong>。</p>
-<p class="num-item">3. <strong>分布内 vs 分布外（in-distribution / out-of-distribution, ID/OOD）</strong>：训练时见过的任务/指令风格叫ID，没见过的叫OOD。VLA在ID任务上表现好，在OOD上掉点严重，本文指出其中很大一部分掉点其实来自<strong>措辞差异</strong>而非任务本身难度。</p>
-<p class="num-item">4. <strong>LIBERO</strong>：一个常用的机器人操作benchmark，包含多个任务套件（如LIBERO-10、LIBERO-Long），是VLA论文的标准评测环境。</p>
-<p class="num-item">5. <strong>Rephrase augmentation（改写增强）</strong>：在训练时用多种说法改写指令以增强鲁棒性，是常见的"数据侧"做法。本文指出即使这样训练，模型仍然敏感。</p>
-<p class="num-item">6. <strong>Oracle phrase search（神谕措辞搜索）</strong>：本文提出的诊断工具——穷举多种措辞，找出让模型成功率最高的那一种，用来量化"措辞"本身能带来多少提升上限。</p>
+<p>要读懂这篇论文，需要先建立几个概念。</p>
+<div class="spacer"></div><p>第一，<strong>流策略（flow policy）</strong>：这是一类生成式策略，它不像普通神经网络那样一步输出动作，而是从一个噪声出发，通过若干步"流"（常微分方程 ODE 的离散积分）逐步把噪声变换成动作。它和扩散策略（diffusion policy）是近亲，优点是能表达多模态、复杂的动作分布，因此在机器人操作里很流行。</p>
+<div class="spacer"></div><p>第二，<strong>离线强化学习（off-policy RL / offline RL）</strong>：用一批已经采集好的数据（比如人类演示或历史轨迹）去训练策略，而不是让机器人在线反复试错。目标是让策略超过演示数据的水平，而不只是模仿（imitation）。</p>
+<div class="spacer"></div><p>第三，<strong>价值函数 / Critic（value function / critic）</strong>：一个估计"从当前状态出发，未来能拿多少累计奖励"的网络。RL 微调的核心就是让策略去追逐 critic 给出的高价值动作。</p>
+<div class="spacer"></div><p>第四，<strong>微调流策略的难点</strong>：普通策略一步出动作，可以直接对动作求梯度再反传到策略参数。但流策略的动作是经过多步生成的，价值信息要从"最终动作"回传到"每一步的流"，这就需要一个<strong>伴随（adjoint）</strong>方法——把梯度沿流的反向传播回去。标准的伴随匹配（adjoint matching）需要对策略做<strong>向量-雅可比积（vector-Jacobian product, VJP）</strong>，即每一步都要算一次大矩阵乘法，代价随流步数和策略规模线性增长，非常昂贵。</p>
+<div class="spacer"></div><p>第五，<strong>OGBench</strong>：一个离线目标条件（goal-conditioned）机器人操作的基准测试集，包含多个难度不同的域，是当前离线 RL 微调流策略的主流评测平台。</p>
 <div class="spacer"></div><div class="section-title">核心问题</div>
-<p>VLA模型被广泛部署在真实机器人上，但用户不可能每次都说出训练集中那句"标准指令"。本文首次系统性地量化了一个被忽视的问题：<strong>VLA对指令措辞的敏感度远超其VLM骨干</strong>，一个词的替换就能让成功率从100%掉到2%。这个问题的意义在于：</p>
-<ul>
-<li>它揭示了VLA领域的"隐性脆弱性"——很多被归因于"OOD泛化差"的性能下降，其实只是措辞不匹配；</li>
-<li>它说明现有的改写增强（rephrase augmentation）训练策略并不能根治问题，因为敏感是<strong>系统性</strong>的而非随机噪声；</li>
-<li>它给出了一个不重训、不改策略、零样本可迁移的轻量修复路径，对实际部署有直接价值。</li>
-</ul>
+<p>这篇论文要解决的核心问题是：<strong>如何在不付出高昂计算代价的前提下，把价值梯度正确地回传到流策略的每一步</strong>。标准的伴随匹配虽然理论上优雅，但每一步都要算 VJP，对于步数多、参数量大的流策略（尤其是预训练的大模型）几乎不可行。作者观察到预训练流策略的<strong>批量平均速度雅可比（batch-averaged velocity Jacobian）</strong>近似对角矩阵，这个经验发现让他们能推导出一个<strong>闭式标量伴随</strong>，把原来每步的矩阵运算压缩成一个只依赖流时间的标量缩放。这堵上了一个具体的 gap：此前要么用昂贵的伴随匹配，要么用粗糙的近似（比如只在最后一步加梯度），前者慢、后者效果差。本文在两者之间找到了一个有理论依据的中间方案，并且发现标量伴随下 critic 在策略生成动作上的取值控制变得格外重要，于是加入了价值惩罚项。这对整个领域意味着：大流策略/VLA 的离线 RL 微调第一次变得在计算上可行，同时效果还更好。</p>
 <div class="spacer"></div><div class="section-title">方法</div>
-<p class="num-item">1. <strong>诊断阶段（Characterization）</strong>：作者用<strong>单编辑扰动（single-edit swings）</strong> 做统计分析——对同一任务只改一个词，测量成功率变化，并用显著性检验确认这不是随机波动。同时用<strong>oracle phrase search</strong>穷举措辞，找出最优表述，量化"措辞上限"。</p>
-<p class="num-item">2. <strong>关键发现</strong>：oracle搜索显示，仅靠换措辞就能几乎弥合ID与OOD之间21个百分点的差距。这说明<strong>大部分OOD掉点其实是语言层面的，而不是视觉或动作层面的</strong>。</p>
-<p class="num-item">3. <strong>核心洞察</strong>：既然敏感是系统性的、可复现的，那么它就可以被<strong>显式表达为规则</strong>（explicit rules），而不是靠模型隐式学习。</p>
-<p class="num-item">4. <strong>规则蒸馏</strong>：作者对少量训练任务采样大量措辞并打分，把"哪种措辞成功、哪种失败"的证据喂给<strong>LLM（Large Language Model，大语言模型）</strong>，让它蒸馏出10–20条改写规则（如"避免使用'hot plate'这类近义词，改用训练集中的标准名词"）。</p>
-<p class="num-item">5. <strong>部署时改写（Rephrase Before You Act）</strong>：在推理时，对每条到来的指令，用这些规则<strong>改写一次</strong>，再送入冻结的VLA策略。不改策略、不重训、不做每步验证（no per-step verification），因此几乎零额外推理开销。</p>
-<p class="num-item">6. <strong>为什么有效</strong>：因为VLA的失败模式是"措辞→动作"的映射错位，把输入指令"翻译"回模型熟悉的表述分布，等于把OOD指令拉回ID，而不需要动模型参数。</p>
-<p class="num-item">7. <strong>为什么之前没人这么做</strong>：以往工作要么靠训练时数据增强（成本高、不彻底），要么靠test-time verification（每步都要额外前向，慢），本文第一次把"措辞敏感"当作可规则化的系统性问题来处理。</p>
+<p>核心技术方案可以拆成几个要点。</p>
+<div class="spacer"></div><p>第一，<strong>经验观察</strong>：作者分析了预训练流策略的速度场雅可比矩阵，发现按 batch 平均后，这个雅可比高度集中在对角线上，非对角项很小。这意味着速度场对动作各维度的耦合很弱，可以近似为逐维独立。这个观察是整个方法的基石，也是为什么之前没人这么做——大家默认雅可比是稠密的，所以只能老老实实算 VJP。</p>
+<div class="spacer"></div><p>第二，<strong>闭式标量伴随推导</strong>：基于对角近似，作者推导出一个闭式解：最终动作处的价值梯度只需乘以一个与流时间相关的标量系数，就能正确分配到每一步。这消除了每步的 VJP，把计算复杂度从随步数和参数量增长，降为常数级的标量乘法。为什么有效？因为对角近似保留了雅可比的主要信息（对角项），丢掉的非对角项本来就很小，所以梯度方向基本正确，但计算量骤降。</p>
+<div class="spacer"></div><p>第三，<strong>价值惩罚（value penalty）</strong>：作者发现，在标量伴随下，critic 在策略生成动作上的估值控制变得特别关键——如果 critic 在这些动作上估值过高（过估计），策略会被带偏。于是他们在这些动作上加入价值惩罚项，抑制过估计。这是对标准 RL 微调流程的一个针对性修补，动机来自标量伴随的特性。</p>
+<div class="spacer"></div><p>第四，<strong>整体流程 SQAM</strong>：把标量伴随和价值惩罚结合，形成完整的离线 RL 微调算法。它可以直接套在预训练流策略上，不需要改策略结构，也不需要在线交互。</p>
+<div class="spacer"></div><p>第五，<strong>可扩展性验证</strong>：作者还把 SQAM 用在一个真实双臂机器人的视觉-语言-动作（VLA）策略上做微调，证明它不只在 OGBench 这种仿真基准上有效，也能扩展到大规模预训练策略。</p>
 <div class="spacer"></div><div class="section-title">实验结果</div>
-<p class="num-item">1. <strong>敏感度量化</strong>：π₀.₅在LIBERO炉子任务上，对"switch on the stove"成功率100%，对"switch on the hot plate"仅2%——<strong>98个百分点的单编辑落差</strong>。</p>
-<p class="num-item">2. <strong>改写增强的局限</strong>：一个用rephrase augmentation微调过的π₀ checkpoint，仍然出现<strong>高达61个百分点</strong>的成功率波动，证明训练侧增强不解决根本问题。</p>
-<p class="num-item">3. <strong>ID/OOD差距</strong>：oracle phrase search显示，仅靠措辞优化就能几乎弥合<strong>21个百分点</strong>的ID-OOD差距。</p>
-<p class="num-item">4. <strong>规则方法的提升</strong>：在12个held-out任务上（涵盖对抗性措辞、VLM生成措辞、人类生成措辞三类），冻结的π₀相对提升<strong>16%–27%</strong>，且增益集中在OOD任务上。</p>
-<p class="num-item">5. <strong>跨模型/跨benchmark复现</strong>：在π₀.₅ + LIBERO上，把finetune内的成功率从<strong>93.6%提升到97.8%</strong>。</p>
-<p class="num-item">6. <strong>零样本迁移</strong>：方法对未见任务和未见指令均零样本适用，无需重训、无需每步验证。</p>
+<p>关键实验分两部分。</p>
+<div class="spacer"></div><p>第一部分，<strong>OGBench 仿真基准</strong>：SQAM 的增益集中在四个最难的域上，在每个域上成功率超过最强基线 <strong>18 到 35 个百分点</strong>。这是一个相当大的提升幅度，说明方法在难任务上优势明显，而不是在简单任务上刷分。</p>
+<div class="spacer"></div><p>第二，<strong>真实双臂机器人 VLA 微调</strong>：作者在一个真实双臂机器人上微调 VLA 策略，SQAM 在<strong>全部三个任务</strong>上都超过了监督微调（supervised fine-tuning, SFT）的基线。这证明方法能扩展到大规模预训练策略和真实硬件。</p>
+<div class="spacer"></div><p>第三，<strong>消融实验</strong>：论文通过对比验证了标量伴随和价值惩罚各自的贡献——标量伴随带来计算效率，价值惩罚带来性能提升，两者结合才达到最佳效果。具体的消融数字摘要里没有完全列出，但论文强调了价值惩罚在标量伴随下的必要性。</p>
 <div class="spacer"></div><div class="section-title">局限性</div>
-<p class="num-item">1. <strong>依赖LLM蒸馏规则的质量</strong>：规则是从少量训练任务上蒸馏出来的，如果目标任务的语言分布与训练任务差异极大（如全新领域词汇），规则可能不覆盖，导致改写失效。这意味着方法在跨域部署时可能需要重新蒸馏。</p>
-<p class="num-item">2. <strong>规则数量固定（10–20条）</strong>：这是一个手工设定的超参，规则太少覆盖不足，太多可能互相冲突或引入噪声，论文未充分讨论这个权衡。</p>
-<p class="num-item">3. <strong>只在π₀/π₀.₅ + LIBERO上验证</strong>：虽然跨了两个模型和benchmark，但都是同一家族（Physical Intelligence的π系列）和仿真环境，<strong>真机验证缺失</strong>，实际部署中语言分布更杂乱，效果可能打折。</p>
-<p class="num-item">4. <strong>改写本身可能引入语义漂移</strong>：LLM改写有把指令改得偏离原意的风险，尤其在需要精细区分近义动作（如"推"vs"拨"）时，可能把正确指令改错。</p>
+<p>第一，<strong>对角近似的适用性</strong>：方法建立在"雅可比近似对角"这个经验观察上。如果某个流策略的速度场耦合很强（非对角项不可忽略），标量伴随的梯度方向就会偏差，效果可能下降。这对实际应用意味着：不能无脑套用，需要先验证目标策略是否满足这个性质。</p>
+<div class="spacer"></div><p>第二，<strong>仍依赖 critic 质量</strong>：虽然是离线 RL，但价值惩罚只是缓解过估计，并没有从根本上解决离线 RL 的分布偏移（distribution shift）问题。如果 critic 本身在数据覆盖不到的区域估值很差，策略仍可能被带偏。这限制了它在数据质量差、覆盖窄的场景下的可靠性。</p>
+<div class="spacer"></div><p>第三，<strong>真实机器人实验规模有限</strong>：只在三个任务上验证，任务数量和多样性都不算多，距离大规模产品化部署还有距离。真实场景的泛化性、鲁棒性还需要更多验证。</p>
+<div class="spacer"></div><p>第四，<strong>计算效率的具体量化</strong>：摘要强调了消除 VJP 的动机，但没有给出与标准伴随匹配的详细计算对比数据（如具体加速比），读者难以精确判断效率提升的幅度。</p>
 <div class="spacer"></div><div class="section-title">个人视角点评</div>
-<ul>
-<li><strong>位置判断</strong>：这是一篇<strong>填补空白</strong>的工作，而非范式突破。它没有提出新模型架构或新训练算法，而是揭示了一个被社区忽视的系统性现象，并给出一个工程上极轻量的修复方案。它的价值在于"诊断+修复"的闭环，把VLA鲁棒性研究从"堆数据、堆算力"拉回到"理解失败模式"。</li>
-<li><strong>子方向对比</strong>：相比灵巧操作、运动控制等子方向，VLA的语言鲁棒性属于"上层接口"问题，天花板受限于底层策略能力——即使指令完美，策略本身做不了的任务还是做不了。但它的<strong>性价比极高</strong>：几乎零成本就能换来16–27%的相对提升，这在工程落地中非常诱人。</li>
-<li><strong>落地价值</strong>：距离实际部署很近，因为方法不需要重训、不需要改模型、不需要每步验证，只需在指令入口加一个LLM改写层。卡点在于：①真机验证缺失；②规则蒸馏需要针对具体机器人/任务集重新做；③LLM改写引入的延迟和语义漂移风险。要落地，需要一套自动化的规则蒸馏pipeline + 真机A/B测试。</li>
-<li><strong>最值得记住的idea</strong>：<strong>"VLA的语言脆弱性是可规则化的系统性问题，因此可以在部署时用LLM改写指令来免费提升性能。"</strong> 这个idea特别之处在于它把"模型鲁棒性"问题转化为"输入预处理"问题，绕开了重训的高成本，且零样本可迁移——这是一种"用语言修语言"的优雅思路，对整个具身智能的部署工程都有启发。</li>
-</ul>
+<p>这篇论文在"流策略 + 离线 RL 微调"这个子方向里，属于<strong>范式突破与填补空白之间</strong>的位置。为什么这么说？标准伴随匹配是理论正确但计算昂贵的方法，而之前很多工作要么硬扛成本，要么用粗糙近似。本文通过一个经验观察（雅可比对角集中）推导出闭式解，把一个看似必须的昂贵操作消掉，这是方法论上的实质性推进，不是简单的调参或增量改进。同时它填补了"大流策略/VLA 能否高效离线 RL 微调"这个空白。</p>
+<div class="spacer"></div><p>和其他子方向相比，这类工作的价值和天花板：它处在"生成式策略 + RL 微调"的交叉点，是当前具身智能里非常活跃的方向。它的天花板取决于两个因素——一是流策略本身能否表达足够复杂的行为，二是 critic 能否在离线数据上可靠估计价值。如果这两个前提成立，这类方法的潜力很大，因为它能让预训练的大策略持续自我改进，而不只是模仿。但如果 critic 不可靠，整个 RL 微调的上限就被卡住。</p>
+<div class="spacer"></div><p>落地价值：距离实际部署还有中等距离。卡点主要在真实机器人的数据覆盖和 critic 可靠性。要落地，需要：一是有足够多样、覆盖广的离线数据；二是 critic 训练稳定；三是方法在更多真实任务上验证。目前真实实验只有三个任务，还不够。</p>
+<div class="spacer"></div><p>如果只记住一件事：<strong>预训练流策略的雅可比近似对角，因此价值梯度回传可以用一个标量缩放替代昂贵的矩阵运算</strong>。这个 idea 特别在于，它把一个看似必须的复杂计算，用一个简单的经验规律消掉了，而且效果还更好——这正是好的系统研究该有的样子：观察、简化、验证。</p>
 <div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
-<p>论文提供了项目网站：https://sttawm.github.io/rephrase-before-you-act ，通常此类项目页会附带代码、规则集和复现说明。摘要中未明确说明是否完全开源，但项目页的存在暗示作者有公开意图。建议读者访问该网站确认代码、蒸馏出的规则集以及实验配置是否已发布。如未开源，作者承诺会在后续公开（需以项目页实际内容为准）。</p></div>
+<p>摘要和给定的 arXiv 信息中没有明确提到代码或数据的开源情况，也没有给出 GitHub 链接。论文是否承诺后续公开，需要查看全文的"Code Availability"或类似章节才能确认。建议读者直接访问 arXiv 页面（http://arxiv.org/abs/2610.10437v1）查看是否有补充材料或代码链接。</p></div>
 </div>
 <div class="paper">
-<h3>面向自动驾驶中视觉-语言-动作的显式几何思维链（Explicit Geometric Chain-of-Thought）</h3>
-<div class="title-en">Explicit Geometric Chain-of-Thought for Vision-Language-Action in Autonomous Driving</div>
+<h3>通往成功的多种路径：面向VLA泛化的多样性驱动强化学习微调（Diversity-Driven RL Fine-Tuning for VLA Generalization）</h3>
+<div class="title-en">Many Ways to Succeed: Diversity-Driven RL Fine-Tuning for VLA Generalization</div>
 <div class="meta">
 <span>📂 运动控制（足式/人形）</span>
 <span>📊 相关性 9/10</span>
-<a href="http://arxiv.org/abs/2610.10390v1" target="_blank">arXiv: 2610.103901</a>
-<a href="https://xxx.itp.ac.cn/abs/2610.103901" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.103901" target="_blank">🌐 arxiv.org.cn</a> 
+<a href="http://arxiv.org/abs/2610.09943v1" target="_blank">arXiv: 2610.099431</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.099431" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.099431" target="_blank">🌐 arxiv.org.cn</a> 
 </div>
-<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.103901" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.103901" target="_blank">🌐 arxiv.org.cn</a> </div>
-<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">视觉-语言-动作（Vision-Language-Action，VLA）模型已成为自动驾驶领域一种颇具前景的范式。然而，现有的VLA模型仍然存在一个根本性的失配：驾驶动作需要精确的3D几何线索，而视觉-语言的理解与推理在很大程度上是在2D语义空间中进行的。在本文中，我们提出了GeoCoTDrive，一个显式的几何思维链（chain-of-thought）框架，以面向规划（planning-oriented）的方式将几何进行接地（grounding）。GeoCoTDrive遵循“先用2D思考，再用专用3D先验驾驶”的范式。它首先对与决策关键线索相对应的2D区域进行接地，然后通过在已接地区域内从几何基础模型（geometric foundation model）中采样特征来检索局部化的3D先验。这些局部化的几何特征被交错插入自回归上下文（autoregressive context）中，以支持轨迹生成。为了监督这一过程，我们引入了规划相关接地（planning-relevant grounding），这是一项新的区域级接地任务，聚焦于直接影响自车规划决策的局部空间线索，并构建了PlanningGrounding数据集，以赋予VLA面向规划的接地能力。在多个端到端自动驾驶基准上的实验表明，GeoCoTDrive持续提升了安全关键（safety-critical）的规划性能，证明了显式几何思维链过程对于基于VLA的规划的有效性。</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.099431" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.099431" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">强化学习（Reinforcement Learning, RL）微调通过闭环经验改进视觉-语言-动作（Vision-Language-Action, VLA）策略，但在微调分布之外的泛化能力仍然有限。我们的分析揭示了一种对探索的选择性重塑：RL在全局上收缩了行为，却多样化了成功轨迹，以更少的 rollout 激发出成功，并且相比监督微调覆盖了更多潜在的任务有效解空间。更广泛的成功模式覆盖可能为分布偏移下提供替代策略。受此启发，我们提出了DRIVE（Diversity-driven RL fIne-tuning for VLA gEneralization，面向VLA泛化的多样性驱动强化学习微调），它将成功行为的多样性转化为一个显式的RL目标。DRIVE在匹配的任务条件下对rollout进行分组，通过时间对齐比较它们的轨迹，并从相对行为多样性中推导出一个以成功为条件的内在奖励。这一设计鼓励更广泛地覆盖可行解，同时不会奖励多样化的失败或表面的时间差异。在LIBERO-Plus、ManiSkill3和RoboTwin 2.0上，DRIVE相比原始RL微调将平均域外（Out-of-Domain, OOD）性能在$π_0$上提升了5.3个百分点，在$π_{0.5}$上提升了2.0个百分点。在双臂AgileX PiPER-X平台上，DRIVE进一步将平均OOD成功率从64.1%提升至73.3%（+9.2个百分点），表明这些增益在物理部署下依然持续存在。</div>
 <div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
-<p>VLA与端到端策略（更细一点说，是"自动驾驶场景下的VLA规划"这一交叉方向）</p>
+<p>VLA与端到端策略（强化学习微调方向）</p>
 <div class="spacer"></div><div class="section-title">一句话简介</div>
-<p>给自动驾驶VLA模型加一条"显式几何思维链"，先定位关键2D区域再取3D几何先验，让规划更安全。</p>
+<p>把"成功轨迹的多样性"变成强化学习的显式奖励，让 VLA 策略在分布外场景下更泛化。</p>
 <div class="spacer"></div><div class="section-title">背景知识</div>
-<p>要读懂这篇论文，需要先理清几个概念。<strong>VLA（Vision-Language-Action，视觉-语言-动作模型）</strong> 是一类把视觉感知、自然语言理解和动作输出统一到一个模型里的范式，最早在机器人操作领域走红（如RT-2、OpenVLA），近两年被搬到自动驾驶：输入是前视/环视图像加导航指令，输出是未来轨迹或控制量。<strong>端到端自动驾驶（End-to-End Autonomous Driving）</strong> 指不再走"感知→预测→规划"的传统模块化流水线，而是用一个网络直接从传感器输入回归规划轨迹，代表工作有UniAD、VAD等。<strong>思维链（Chain-of-Thought, CoT）</strong> 原本是让大语言模型在给出答案前先输出中间推理步骤，后来被引入VLA，让模型先"想"再"动"。<strong>几何基础模型（Geometric Foundation Model）</strong> 指在大规模数据上预训练、能输出稠密3D几何表征（如深度、点云特征）的模型，例如Depth Anything、VGGT这类，它们本身不懂驾驶，但几何感知很强。核心矛盾在于：语言和2D视觉语义都在"平面"里打转，可开车真正需要的是"这辆车离我几米、那个行人会不会切入我的车道"这种三维空间量，两者之间存在<strong>语义-几何鸿沟</strong>。这篇论文就是想在VLA的推理链条里，把3D几何显式地"插"进去。</p>
+<p>要理解这篇论文，先要理清三个概念。第一，VLA（Vision-Language-Action，视觉-语言-动作模型）是一类把摄像头图像、自然语言指令直接映射成机器人动作序列的大模型，代表工作有 π0、π0.5、OpenVLA 等，它们通常先在海量机器人数据上做监督学习（Supervised Fine-Tuning, SFT），再部署到具体任务。第二，SFT 的局限在于它只模仿演示数据里的"一种正确做法"，遇到演示分布之外的场景（新物体位置、新光照、新干扰）就容易失败，因为它没学过"换一种方式也能成功"。第三，强化学习微调（RL fine-tuning）是当前主流的补救手段：让机器人在环境里自己试错，用任务成功与否作为奖励信号去更新策略，从而获得闭环经验。但 RL 微调本身也有个隐患——它倾向于把策略"收窄"到少数几条高奖励路径上，这叫探索坍缩（exploration collapse），结果是策略在微调分布内很强、一旦分布偏移（distribution shift）就崩。本文正是围绕这个矛盾展开。</p>
 <div class="spacer"></div><div class="section-title">核心问题</div>
-<p>现有自动驾驶VLA模型的根本问题是：它们的视觉-语言推理几乎全在2D语义空间进行，而规划动作本质上依赖精确的3D几何线索（距离、朝向、相对速度），导致模型"说得头头是道，开得不够准"。已有的补救办法要么是把3D点云/BEV特征整体塞进模型（信息冗余、和语言对齐差），要么是让模型隐式地自己学几何（监督信号弱、可解释性差）。这篇论文要堵的gap是：<strong>如何在VLA的自回归推理链条里，以"规划相关"的方式显式地引入局部3D几何先验，并且有专门的监督信号来训练这种能力</strong>。它的意义在于把"几何"从隐式的、全局的、难以监督的东西，变成显式的、局部的、可监督的思维链一环，为VLA规划提供了一个新范式。此外它还指出了一个被忽视的问题：通用VLA的"grounding（定位）"能力是面向语义问答的，而不是面向"哪些区域真正影响我的驾驶决策"的。</p>
+<p>论文要解决的核心问题是：RL 微调后的 VLA 策略为什么在分布外（Out-of-Domain, OOD）场景下泛化能力依然有限，以及如何从机制上修复它。作者通过分析发现，RL 微调其实对探索做了"选择性重塑"——它整体上压缩了行为空间（全局收缩），但同时也让成功轨迹变得更丰富、用更少 rollout 就能触发成功、覆盖了更多潜在的任务有效解空间。这个观察很关键：它说明 RL 并非一味地让策略变窄，而是"成功模式"变多了。于是论文提出一个反直觉但合理的假设：如果能在 RL 目标里显式地奖励"成功行为的多样性"，是不是就能让策略在分布偏移时拥有更多备选策略？这个问题重要，因为它触及了 VLA 落地的一个根本痛点——真实机器人环境永远在变，一个只会一种解法的策略在实验室外几乎不可用，而此前没人把"成功多样性"当作 RL 微调的显式优化目标。</p>
 <div class="spacer"></div><div class="section-title">方法</div>
-<p>核心思路可以概括为论文自己的一句话："think with 2D first, drive with dedicated 3D priors"（先用2D思考，再用专门的3D先验驾驶）。具体展开：</p>
-<div class="spacer"></div><p class="num-item">1. <strong>两阶段显式几何思维链</strong>：模型不是一步到位输出轨迹，而是先生成2D推理——在图像上定位出对当前决策最关键的区域（比如前方切入的车辆、路口的行人），再基于这些区域去取3D几何特征，最后才生成轨迹。这种"先定位后取几何"的顺序，把几何查询的范围从全图缩小到决策相关的小区域，既降噪又降算力。</p>
-<div class="spacer"></div><p class="num-item">2. <strong>局部3D先验的采样与交织</strong>：对第一步grounding出的2D区域，从一个几何基础模型（geometric foundation model）里采样特征，得到"局部化的3D先验"。关键创新在于这些几何特征不是作为额外输入拼接，而是<strong>交织（interleave）进自回归上下文</strong>，也就是变成思维链token序列的一部分，让语言推理和几何推理在同一序列里交替进行。这样几何信息能直接参与后续的轨迹token生成，而不是被稀释在特征融合里。</p>
-<div class="spacer"></div><p class="num-item">3. <strong>规划相关grounding（planning-relevant grounding）新任务</strong>：作者指出通用grounding关注的是"语义上显著"的区域，但驾驶决策关心的是"影响自车规划"的区域，两者不重合。于是他们定义了一个新的区域级grounding任务，专门监督模型去定位那些直接影响ego planning的局部空间线索。</p>
-<div class="spacer"></div><p class="num-item">4. <strong>PlanningGrounding数据集</strong>：为支撑上述任务，作者构建了这个数据集，给VLA注入"面向规划的grounding能力"。这是方法能work的前提——没有监督信号，模型学不会该看哪里。</p>
-<div class="spacer"></div><p class="num-item">5. <strong>为什么之前没人这么做</strong>：以往工作要么把几何当全局特征融合（缺乏局部性和可解释性），要么依赖隐式学习（监督弱）。这篇的独特点在于把"几何"拆成"定位+局部采样+序列交织"三步，并且配套了专门的任务和数据集，让整个链条可监督、可解释。</p>
+<p>DRIVE（Diversity-driven RL fIne-tuning for VLA gEneralization）的核心设计可以拆成四点。</p>
+<div class="spacer"></div><p>第一，分组采样（grouping rollouts under matched task conditions）。作者不是随便比较任意两条轨迹，而是把"任务条件相同"（同一指令、同一初始状态分布）下的多次 rollout 归为一组，只有在同一条件下比较多样性才有意义，否则差异可能只是任务不同造成的。</p>
+<div class="spacer"></div><p>第二，时序对齐比较（temporal alignment）。两条轨迹即使最终都成功，动作发生的时间点可能不同，直接逐帧比对会把"节奏差异"误判成"行为差异"。DRIVE 先做时间对齐再比较，确保衡量的是行为本质的差异，而非表面时序抖动。</p>
+<div class="spacer"></div><p>第三，成功条件内在奖励（success-conditioned intrinsic reward）。这是最关键的一步：多样性奖励只在轨迹成功时才发放，从相对行为多样性中推导出一个内在奖励（intrinsic reward，即不来自环境、由算法自己构造的额外奖励）。这样设计的好处是双重的——既避免奖励"多样化的失败"（那只会让策略学会花式犯错），也避免奖励"表面的时序差异"（那只是噪声）。</p>
+<div class="spacer"></div><p>第四，与常规 RL 微调的结合。DRIVE 不是替换原有任务奖励，而是在其之上叠加这个多样性内在奖励，让策略在"把任务做对"和"用不同方式做对"之间取得平衡。相比之前没人这么做的原因在于：多样性通常被当作探索手段（如熵正则），而本文把它当作泛化的目标本身，并且用"成功条件"这个约束把多样性从"乱探索"里剥离出来，这是思路上的创新。</p>
 <div class="spacer"></div><div class="section-title">实验结果</div>
-<p>论文在多个端到端自动驾驶benchmark上做了验证，核心结论是GeoCoTDrive在<strong>安全关键的规划指标</strong>上有一致提升（consistent improvements on safety-critical planning performance）。摘要层面给出的信息是：跨多个benchmark一致改善，说明不是单数据集过拟合。不过需要诚实指出：摘要没有给出具体数值（如L2误差、碰撞率降低了多少个百分点）、没有列出对比的baseline名称、也没有明确说明消融实验的细节。这些关键量化信息需要查阅全文才能确认。从摘要能确定的至少三组信息是：(1) 实验覆盖"多个"端到端自动驾驶benchmark，说明泛化性经过多场景检验；(2) 提升集中在"safety-critical planning"这一最难的子指标上，而非平均指标，这比全面提升更有说服力；(3) 作者用"consistently"强调跨benchmark一致性，暗示做了跨数据集验证。要给出精确数字，建议直接看原文的实验表格。</p>
+<p>论文在多个平台和基准上做了验证，数据具体如下。在仿真基准 LIBERO-Plus、ManiSkill3、RoboTwin 2.0 上，DRIVE 相比普通 RL 微调（vanilla RL fine-tuning）在平均 OOD 性能上，对 π0 模型提升 5.3 个点，对 π0.5 模型提升 2.0 个点。在真实双机械臂 AgileX PiPER-X 平台上，DRIVE 把平均 OOD 成功率从 64.1% 提升到 73.3%，绝对提升 9.2 个点，说明增益在物理部署下依然成立。此外，论文的分析部分还给出了机制性证据：RL 微调让策略用更少的 rollout 就能触发成功、覆盖更多潜在有效解空间，这为"多样性促进泛化"的假设提供了支撑。对比基线主要是普通 RL 微调，消融方面论文通过成功条件约束的设计（不奖励失败、不奖励时序差异）间接验证了各部分的必要性。</p>
 <div class="spacer"></div><div class="section-title">局限性</div>
-<p class="num-item">1. <strong>依赖外部几何基础模型</strong>：方法要从一个预训练的几何基础模型里采样3D先验，这意味着整个系统的几何质量受限于该外部模型的能力和域适配程度。如果几何模型在驾驶场景（尤其是恶劣天气、夜间）上表现下降，整条思维链都会受拖累，实际部署时这是一个外部依赖风险。</p>
-<div class="spacer"></div><p class="num-item">2. <strong>两阶段推理带来延迟</strong>：先2D grounding、再采样3D、再生成轨迹，是一个多步自回归过程，相比单步端到端策略推理开销更大。自动驾驶对实时性要求极高（通常需要10Hz以上），这种"想得更多"的范式在车端算力受限时可能是瓶颈，论文摘要未提及推理速度。</p>
-<div class="spacer"></div><p class="num-item">3. <strong>对新任务和新数据集的依赖</strong>：planning-relevant grounding和PlanningGrounding数据集是方法的核心支撑，但也意味着方法的可复现性和泛化性高度依赖这套标注。如果换一个城市、换一种交通规则，这套"规划相关区域"的定义是否需要重新标注，是个开放问题。</p>
-<div class="spacer"></div><p class="num-item">4. <strong>几何与语义的对齐仍是隐式的</strong>：虽然几何被显式插入思维链，但"哪些几何量真正被用于决策"仍缺乏细粒度验证，可解释性相比纯黑箱有提升，但离"完全可解释的规划"还有距离。</p>
+<p>第一，多样性奖励的引入增加了训练复杂度与超参调优负担，如何平衡任务奖励与多样性奖励的权重在不同任务间可能需要重新调整，这对实际部署意味着额外的工程成本。第二，方法依赖"同一任务条件下多次 rollout"的分组采样，在真实机器人上采集大量同条件 rollout 成本高昂，可能限制其在数据稀缺场景下的适用性。第三，论文主要在操作类任务（LIBERO-Plus、ManiSkill3、RoboTwin 2.0、PiPER-X）上验证，尚未证明该方法能迁移到导航、足式运动等其他具身任务，泛化结论的边界尚不清晰。第四，"成功多样性"是否总能带来更好的 OOD 泛化，取决于任务是否存在多种有效解法；对于本质上只有唯一解的任务，多样性奖励可能只是引入噪声。</p>
 <div class="spacer"></div><div class="section-title">个人视角点评</div>
-<ul>
-<li><strong>在子方向里的位置</strong>：这是一篇<strong>填补空白型</strong>的工作，而非范式突破。它没有发明全新的架构，而是精准地指出了一个被忽视的gap——VLA的推理是2D语义的，而驾驶是3D几何的——并给出了一套工程上合理、概念上清晰的解法（显式几何CoT + 规划相关grounding + 配套数据集）。在VLA for driving这个快速升温的方向里，它属于"把已有范式（CoT、grounding、几何基础模型）做正确组合"的那类贡献，价值在于把问题定义清楚了。</li>
-</ul>
-<div class="spacer"></div><ul>
-<li><strong>相对其他子方向的价值与天花板</strong>：和机器人操作里的VLA相比，自动驾驶VLA的天花板受制于安全性和实时性双重约束——操作任务可以慢、可以试错，驾驶不行。所以这类工作的价值不在于"炫技"，而在于能否在安全关键指标上稳定提升。它的天花板大致是：成为自动驾驶VLA的一个标准组件（就像BEV曾是感知的标准表示），但要成为产品级方案，还需要和实时性、鲁棒性工程深度结合。</li>
-</ul>
-<div class="spacer"></div><ul>
-<li><strong>落地价值与卡点</strong>：距离实际部署还有相当距离。卡点有三个：一是推理延迟，多步CoT在车端SoC上能否跑进实时预算；二是外部几何模型的域适应，量产车看到的场景分布和预训练几何模型差异大；三是数据标注成本，PlanningGrounding这种规划相关标注需要专业标注员理解驾驶意图，规模化成本高。要落地，需要几何模型轻量化、CoT步骤可缓存/并行化、以及标注半自动化。</li>
-</ul>
-<div class="spacer"></div><ul>
-<li><strong>如果只记住一件事</strong>：最值得记住的idea是——<strong>"几何不该被隐式地学，而应被显式地、局部地、以规划为导向地插入推理链"</strong>。这个想法特别在于它把"看哪里"（grounding）和"看多深"（3D几何）统一到一条可监督的思维链里，既解决了语义-几何鸿沟，又让整个过程可解释、可训练。这个思路很可能被迁移到机器人操作、具身导航等其他需要几何精度的VLA场景。</li>
-</ul>
+<p>这篇论文在 VLA 与端到端策略这个子方向里属于"填补空白 + 思路创新"的位置。它没有提出全新的模型架构，而是重新审视了 RL 微调这一现有范式的内在机制，并据此设计了一个轻量但有针对性的目标函数。之所以说它填补空白，是因为此前关于 VLA 泛化的研究多集中在数据规模、模型结构或 SFT 策略上，很少有人从"成功行为的多样性"这个角度切入 RL 微调。它的价值层级属于"中高"——不是像 π0 那样的范式级基础模型工作，但提供了一个可复用的训练信号设计思路，天花板在于它能否被广泛集成进现有 RL 微调流程。落地价值方面，距离产品化还有一段距离，主要卡点在于真实机器人上采集同条件多次 rollout 的成本，以及多样性奖励权重的自动化调优；如果未来能结合仿真到真机的迁移技术降低采样成本，落地路径会更清晰。如果只记住一件事，那就是：泛化不只来自"见过更多"，也来自"学会用不同方式成功"——把成功多样性显式写进 RL 目标，是一个简单却此前被忽视的杠杆。</p>
 <div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
-<p>摘要和给出的信息中<strong>未提及代码或数据集的开源情况</strong>，也没有给出GitHub链接或项目主页。论文构建了PlanningGrounding数据集，但摘要未说明是否会公开。建议查阅arXiv全文（http://arxiv.org/abs/2610.10390v1）的"Code and Data"或"Availability"章节确认。按该领域惯例，若论文被顶会接收，作者通常会在接收后开源代码和数据集，但目前无法从给定信息中确认承诺。</p></div>
+<p>论文摘要与元数据中未明确提及代码或数据的开源链接。鉴于该工作基于 LIBERO-Plus、ManiSkill3、RoboTwin 2.0 等公开基准，且作者来自学术机构，通常会在论文接收后于项目主页或 GitHub 公开代码，但当前 arXiv 版本未给出具体承诺，建议关注后续版本更新或作者主页。</p></div>
 </div>
 <div class="paper">
-<h3>通过部署实现机器人编排器与策略的协同进化（Co-Evolving Robot Orchestrators and Policies through Deployment）</h3>
-<div class="title-en">Co-Evolving Robot Orchestrators and Policies through Deployment</div>
+<h3>面向水下三维重建的图像空间折射校正：将平面端口视图变换为针孔透视（Image-Space Refraction Correction for Underwater 3D Reconstruction: Warping Flat-Port Views into Pinhole Perspective）</h3>
+<div class="title-en">Image-Space Refraction Correction for Underwater 3D Reconstruction: Warping Flat-Port Views into Pinhole Perspective</div>
 <div class="meta">
 <span>📂 仿真到真机 / 强化学习</span>
 <span>📊 相关性 9/10</span>
-<a href="http://arxiv.org/abs/2610.09228v1" target="_blank">arXiv: 2610.092281</a>
-<a href="https://xxx.itp.ac.cn/abs/2610.092281" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.092281" target="_blank">🌐 arxiv.org.cn</a> 
+<a href="http://arxiv.org/abs/2610.07788v1" target="_blank">arXiv: 2610.077881</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.077881" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.077881" target="_blank">🌐 arxiv.org.cn</a> 
 </div>
-<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.092281" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.092281" target="_blank">🌐 arxiv.org.cn</a> </div>
-<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">在大规模数据集上训练的视觉-语言-动作（Vision-Language-Action，VLA）策略在其训练领域内具备能力，但仍然无法泛化到机器人在真实世界部署中遇到的各种情境。智能体式机器人系统（Agentic robot systems）通过一个视觉-语言模型（Vision-Language Model，VLM）编排器来补充策略，该编排器学习何时调用策略、如何指示策略，以及何时改用脚本化技能（scripted skills）。然而，由于该框架是围绕一个冻结的、语言可操控性（language steerability）有限的策略构建的，编排器可以规避策略的失败，但永远无法克服这些失败。策略成为整个系统的瓶颈。对策略进行微调可以消除这一瓶颈，但仅更新策略会使其与针对旧行为调优的编排器脱钩。我们提出Robo-COP，其中编排器与策略在部署过程中协同进化。Robo-COP从其自身执行中整理技能演示，当这些数据能够解决反复出现的失败时对策略进行微调，并且仅当新策略在其所训练的技能上有所提升后才采纳每个新策略。在十个模拟RoboLab任务中，Robo-COP将平均留出成功率（held-out success）从同一框架下使用冻结策略的64.8%提升至73.8%，而在固定计划下进行微调且无验证仅达到65.8%。在三个真实世界任务中，Robo-COP将留出成功率从38.3%提升至50.0%。Robo-COP将部署转变为一个自我改进的飞轮，机器人在其中边做边学，每一次执行上的改进都会为下一轮学习产生更好的数据。视频和代码见https://robo-cop.pages.dev/。</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.077881" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.077881" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">消费级相机搭配平面端口（flat-port）防水外壳，因其低成本和易获取性，被广泛用于水下探索以及珊瑚礁和海底栖息地的测绘。然而，平面端口界面处的折射会在重建场景和相机轨迹中造成碗状变形（bowl-shaped deformation），从而损害测绘与导航所需的度量精度（metric accuracy）。为了在重建之前去除占主导地位的折射畸变，我们在图像空间中引入了一种基于物理的折射校正（physics-based refraction correction）。我们的方法与下游任务无关（downstream-agnostic）：经折射校正后的图像可直接作为现有重建和SLAM算法的输入。我们通过光线追踪仿真（ray-tracing simulations）刻画了折射畸变，并在两个具有不同场景结构的真实水下数据集上验证了我们的校正方法。与传统方法及考虑折射的运动恢复结构（Structure-from-Motion, SfM）相比，我们的方法在消除重建变形的同时，能够配准更多帧并保持较低的重投影误差（reprojection error）。该校正方法还可进一步泛化到多种重建和视觉SLAM（VSLAM）后端，表明其对下游视觉流水线具有广泛的适用性。</div>
 <div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
-<p>VLA与端到端策略（更细分一点：VLA策略与Agentic编排器的协同进化 / 部署期持续学习）</p>
+<p>多模态感知 / 水下三维重建（更贴切地说是"面向水下视觉的几何感知与校正"，可归入"多模态感知"或"仿真到真机/感知前端"）</p>
 <div class="spacer"></div><div class="section-title">一句话简介</div>
-<p>让VLM编排器和VLA策略在真实部署中互相配合、共同进化，把"机器人上线"变成持续自我提升的飞轮。</p>
+<p>提出一种基于物理的光线追踪折射校正方法，把平面端口水下相机图像"扭曲"回理想针孔视角，让现有 SfM/SLAM 直接可用。</p>
 <div class="spacer"></div><div class="section-title">背景知识</div>
-<p>要理解这篇论文，先要理清三层概念。第一层是VLA策略（Vision-Language-Action Policy，视觉-语言-动作策略）：它是一个端到端神经网络，输入摄像头图像和自然语言指令，直接输出机器人动作，通常在海量机器人演示数据上预训练。它的优点是通用性强，缺点是"训练域内行、域外就崩"，且语言可控性有限——你说"轻一点"它未必听。第二层是VLM编排器（Vision-Language Model Orchestrator，视觉语言模型编排器）：它是一个"调度大脑"，用大模型判断当前该调用VLA策略、该给它什么指令、还是干脆切换到预设脚本技能（scripted skills，即人工写死的固定动作序列，如"抓取-抬起-放置"）。第三层是"冻结策略"假设：现有Agentic机器人系统（如一些用GPT-4V做高层规划的框架）通常把VLA策略冻结不动，只训练编排器。这就像给一个只会几道菜的厨师配了个聪明的点菜员——点菜员能避开厨师不会的菜，但没法让厨师学会新菜。本文的出发点正是：厨师也得学，而且要和点菜员一起学。</p>
+<p>水下机器人、珊瑚礁测绘等场景常用消费级相机加"平面端口防水壳"（flat-port housing，即镜头前是一块平面玻璃的防水罩）。光线从水进入玻璃再进入空气时会发生折射（refraction，光在不同介质界面改变传播方向），而平面端口会让这种折射随视场角变化，导致图像中出现"碗状"畸变。传统针孔相机模型（pinhole model，假设所有光线通过一个光心直线传播）无法描述这种折射，因此直接套用 Structure-from-Motion（SfM，从多视角图像恢复三维结构和相机位姿）或视觉 SLAM（VSLAM，同步定位与建图）会得到弯曲的场景和轨迹。已有的折射相机模型（refractive camera model）虽然能建模，但往往需要修改下游算法，兼容性差。本文的思路是"在图像空间先校正"，把问题从"改算法"变成"改输入"。</p>
 <div class="spacer"></div><div class="section-title">核心问题</div>
-<p>现有Agentic机器人系统把VLA策略冻结，导致策略成为整个系统的瓶颈：编排器只能"绕开"策略的失败，无法"消除"失败。而如果单独微调策略，又会破坏编排器已经调好的调用逻辑——编排器是按旧策略的行为习惯训练的，策略一变，编排器的判断就失准。论文要解决的核心问题是：如何让编排器和策略在部署过程中协同进化，既不互相拖累，又能持续提升整体成功率。这个问题重要，因为它直接决定了机器人能否在真实环境中"越用越好"，而不是"上线即巅峰、之后靠人工修"。</p>
+<p>平面端口水下相机的折射畸变会让重建出的场景和相机轨迹呈"碗形"，破坏度量精度（metric accuracy，即真实尺度下的几何准确性），而测绘和导航恰恰依赖这种精度。现有做法要么忽略折射（用普通针孔模型，结果变形），要么把折射模型硬塞进 SfM/SLAM 的优化里（需要改代码、耦合度高、难以复用）。本文要解决的是：能否在重建之前、在图像层面就把主导折射畸变去掉，使校正后的图像对任何下游重建/SLAM 算法都"即插即用"。这填补了"物理正确的折射建模"与"通用视觉管线兼容性"之间的空白。</p>
 <div class="spacer"></div><div class="section-title">方法</div>
-<p>Robo-COP的核心是三个机制组成的闭环。第一，技能演示筛选（skill demonstration curation）：机器人每次执行后，系统从自己的执行轨迹中挑出"值得学"的片段——特别是那些反复失败、但偶尔成功的技能，作为微调数据。这比随机采样高效，因为它聚焦在真正的短板上。第二，按需微调（fine-tune when data can address recurring failures）：不是按固定时间表微调，而是当积累的数据足以解决某个反复出现的失败模式时才触发微调。这避免了"为了微调而微调"带来的噪声。第三，验证后采纳（adopt only after improvement）：新策略训练出来后，先在它被训练的那些技能上做验证，只有确实提升了才替换旧策略。这一步是关键——它防止策略退化拖垮整个系统，也保护了编排器不被"半成品策略"干扰。与常规做法相比，创新点在于：把策略更新纳入编排器的决策循环，而不是两个独立模块各自优化；并且用"验证门控"保证每次进化都是单调改进。</p>
+<p>核心是"图像空间折射校正"：不改下游算法，而是把每张平面端口图像重投影成等效的针孔视角图像。</p>
+<p class="num-item">1) 物理建模：通过光线追踪（ray-tracing）仿真，刻画光线经水—玻璃—空气多层折射后在平面端口相机上的成像规律，得到折射畸变的解析/数值描述。</p>
+<p class="num-item">2) 图像空间扭曲（warping）：对每个像素，反向追踪其对应的入射光线，计算它在"等效针孔相机"下应落到的位置，从而把原图重采样为针孔视角图。这一步是纯几何变换，不依赖场景内容。</p>
+<p class="num-item">3) 下游无关（downstream-agnostic）：校正后的图像直接喂给现有 SfM/VSLAM，无需修改其相机模型或优化目标，这是与"折射 SfM"最大的区别——后者把折射耦合进优化，本文把它前置解耦。</p>
+<p class="num-item">4) 为什么有效：折射畸变的主要成分是确定性的、只与相机几何和介质有关，与场景无关，因此可以在图像层面一次性消除，剩下的才是常规针孔问题。</p>
+<p class="num-item">5) 为什么之前没人这么做：以往要么假设折射可忽略，要么在优化中联合估计折射参数，前者不准、后者复杂且难复用；本文把"物理正确"和"通用兼容"两个目标用图像空间重采样统一起来。</p>
 <div class="spacer"></div><div class="section-title">实验结果</div>
-<p>在十个模拟RoboLab任务上，Robo-COP把held-out（留出集，即训练时没见过的任务变体）平均成功率从64.8%提升到73.8%，而同样框架下冻结策略只有64.8%，按固定时间表微调但不做验证只有65.8%——说明"验证门控"贡献了约8个百分点的关键增益。在三个真实世界任务上，held-out成功率从38.3%提升到50.0%，提升幅度更大（+11.7个百分点），说明真实环境的分布偏移更严重，协同进化的收益也更明显。消融实验隐含在对比中：固定时间表微调（无验证）几乎没提升，证明"何时微调"和"是否采纳"比"是否微调"更重要。</p>
+<p>在两个真实水下数据集（场景结构不同）上验证，对比"常规 SfM"和"折射 SfM"。</p>
+<ul>
+<li>变形消除：校正后重建场景和轨迹的碗状变形被去除，恢复度量精度。</li>
+<li>配准帧数更多：相比常规与折射 SfM，本文方法能注册更多帧（more frames registered），说明特征匹配和几何一致性更好。</li>
+<li>重投影误差低：在注册更多帧的同时保持低重投影误差（low reprojection error），说明精度没有以牺牲鲁棒性为代价。</li>
+<li>泛化性：校正图像在多种重建和 VSLAM 后端上都能用，证明其"下游无关"特性。消融方面，论文通过光线追踪仿真刻画畸变、并在两个不同结构数据集上验证，间接支撑了各环节必要性（具体数值需查全文表格）。</li>
+</ul>
 <div class="spacer"></div><div class="section-title">局限性</div>
-<p>第一，验证门控依赖"被训练技能上的提升"作为采纳标准，但如果新策略在未训练技能上退化，系统可能察觉不到——这意味着长期进化可能牺牲广度换深度。第二，真实世界实验只有三个任务，样本量小，50.0%的成功率距离实际部署仍有很大差距，说明方法在复杂真实场景中的鲁棒性尚未充分验证。第三，整个系统依赖VLM编排器的判断质量，如果编排器本身在分布外场景下决策失误，协同进化可能陷入局部最优。第四，论文未详细讨论计算成本：每次微调+验证都需要额外算力，在真实机器人上是否可行、延迟是否可接受，是落地的重要卡点。</p>
+<p class="num-item">1) 只针对平面端口：球面端口（dome port）折射规律不同，方法不能直接迁移，而很多专业水下壳用球面端口。</p>
+<p class="num-item">2) 依赖相机/壳体几何参数：需要知道水—玻璃—空气界面位置和折射率等，参数不准会残留误差，实际部署中标定成本高。</p>
+<p class="num-item">3) 图像重采样会引入插值模糊和视场损失：扭曲后边缘像素可能被裁掉或拉伸，影响后续特征提取。</p>
+<p class="num-item">4) 未处理动态折射因素：如温度/盐度变化引起的折射率漂移、浑浊水体散射等，这些在真实长期测绘中不可忽略。</p>
 <div class="spacer"></div><div class="section-title">个人视角点评</div>
-<p>这篇论文在VLA与端到端策略子方向里属于"填补空白"型工作：它没有提出全新的策略架构，而是解决了Agentic机器人系统里一个被忽视的结构性问题——编排器与策略的耦合。判断依据是：现有工作要么冻结策略只训编排器，要么单独微调策略，没人把两者放进同一个进化循环并加验证门控。这个思路的价值在于它把"部署"从终点变成了起点，符合机器人学习从"离线训练"走向"在线持续学习"的大趋势。和领域其他子方向相比，这类工作的天花板取决于两个因素：VLM编排器的泛化能力，以及策略微调的样本效率。如果这两个瓶颈被突破，协同进化可能成为机器人部署的标准范式；否则它可能只是"在特定任务上有效"的工程技巧。落地价值方面，距离产品化还有明显距离：真实任务50%的成功率远不够商用，卡点在于验证门控的可靠性、微调算力成本、以及真实环境的长尾场景覆盖。需要的前提条件包括：更高效的策略微调方法（如LoRA、少样本适应）、更可靠的编排器决策、以及能自动识别"何时该学新技能"的机制。如果只记住一件事：这篇论文最值得记住的idea是"验证后采纳"——它把策略更新变成了一个单调改进的过程，用一道简单的门控解决了持续学习中最头疼的"灾难性遗忘"和"退化"问题。这个idea特别在于它不追求单次大幅提升，而是保证每次进化都不倒退，从而让长期自我提升成为可能。</p>
+<ul>
+<li>位置：属于"填补空白 + 工程范式"型工作。它没有提出全新重建算法，而是把物理校正前置到图像空间，解决了"物理正确"与"通用兼容"的长期矛盾，思路干净、可复用性强。</li>
+<li>价值层级：在感知前端属于"基础设施"级贡献，天花板受限于它只是预处理——真正精度仍取决于下游 SfM/SLAM。但正因下游无关，它可能被广泛集成，影响力可能超过单点算法。</li>
+<li>落地价值：距离产品化较近，卡点在于自动标定壳体几何与折射参数、以及球面端口扩展。若能做到"开箱即用"的标定流程，水下机器人测绘、珊瑚监测等场景可直接受益。</li>
+<li>只记一件事：折射畸变的主要成分是确定性的、与场景无关的，因此可以在图像空间一次性消除，让所有现有视觉管线"免费"获得物理正确性——这个"前置解耦"的思想比具体公式更值得记住。</li>
+</ul>
 <div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
-<p>论文明确表示"Videos and code are available at https://robo-cop.pages.dev/"，即代码和视频已开源，读者可直接访问该链接获取实现细节和演示。</p></div>
+<p>摘要与给定信息中未明确说明开源状态，arXiv 页面（http://arxiv.org/abs/2610.07788v1）通常会在论文中给出代码/数据链接，建议查阅全文的"Code/Data"章节确认；若未开源，作者一般会在论文中承诺后续公开。</p></div>
 </div>
 <div class="paper">
-<h3>视频预测策略 2：预测更优，行动更优（Video Prediction Policy 2: Predict Better, Act Better）</h3>
-<div class="title-en">Video Prediction Policy 2: Predict Better, Act Better</div>
+<h3>YUBI-STAG：通过自动化视频-语言接地实现VLA的接触与语义丰富对齐（YUBI-STAG: Contact and Semantic-Rich Alignment for VLAs via Automated Video-Language Grounding）</h3>
+<div class="title-en">YUBI-STAG: Contact and Semantic-Rich Alignment for VLAs via Automated Video-Language Grounding</div>
 <div class="meta">
 <span>📂 世界模型与规划</span>
 <span>📊 相关性 9/10</span>
-<a href="http://arxiv.org/abs/2610.10270v1" target="_blank">arXiv: 2610.102701</a>
-<a href="https://xxx.itp.ac.cn/abs/2610.102701" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.102701" target="_blank">🌐 arxiv.org.cn</a> 
+<a href="http://arxiv.org/abs/2610.09718v1" target="_blank">arXiv: 2610.097181</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.097181" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.097181" target="_blank">🌐 arxiv.org.cn</a> 
 </div>
-<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.102701" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.102701" target="_blank">🌐 arxiv.org.cn</a> </div>
-<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">世界行动模型（World Action Models, WAMs）已成为一类重要的通用机器人策略，旨在将视频预测先验迁移至动作学习。然而，我们发现现有的WAMs在开放式环境中经常产生不正确的运动预测，从而导致错误的动作。我们将这一局限性归因于两个因素：（1）基础视频模型并未针对操作任务进行优化；（2）将动作组件简单地纳入视频模型会显著降低其泛化能力。我们提出了视频预测策略2（Video Prediction Policy 2, VPP2），这是一种能够在视频预测和动作生成两方面均实现强零样本泛化的WAM。首先，我们整理了一个大规模、多样化的操作视频数据集，用于继续预训练基础视频基础模型。我们为视频片段标注了详细的描述文本，并执行\textit{事件级}视频预训练，以促进在开放式操作任务中的泛化。其次，我们对视频模型进行后训练并将其蒸馏为一个具有固定预测视野的单步视觉规划器。最后，我们通过混合Transformer（mixture-of-transformers, MoT）架构引入动作模块，以学习隐式逆动力学模型。实验证明了三个关键结果：（1）VPP2-14B在开放式任务上的视频预测指令遵循成功率方面以11.0个百分点超越Cosmos3-64B；（2）VPP2在真实世界零样本ALOHA操作任务上的成功率方面以18.5个百分点超越最强基线；（3）在针对特定基准的后训练之后，VPP2在具有挑战性的LIBERO-Pro、LIBERO-OOD和RoboDojo基准上取得了所评估方法中最高的成功率。</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.097181" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.097181" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">视觉-语言-动作（Vision-Language-Action，VLA）模型通过大规模预训练获得了广泛的操作能力，然而要通过语言来激发这些能力，需要在指令与物理交互之间实现细粒度对齐。现有的机器人演示通常只提供粗粒度的任务描述，省略了动作是如何执行的，包括哪只夹爪在动作、接触的是哪个物体，以及它是如何被抓取和移动的。我们提出了YUBI-STAG，一个用于时空标注与接地（Spatio-Temporal Annotation and Grounding）的框架，它自动为操作演示丰富交互丰富的语义信息，以将预训练的VLA与细粒度操作语言对齐。YUBI-STAG结合了接触物体分割与视觉-语言模型（Vision-Language Models，VLMs），标注物体身份、属性和状态、每只夹爪的动作、双手协调以及空间接地的交互。为了解决YUBI-STAG对局部化序列和多阶段VLM推理的依赖，我们将其蒸馏为YUBI-VLM。YUBI-VLM仅需少量推理调用即可直接从原始未分割视频中恢复动作结构和标注，并且仅依靠腕部视角即可运行。我们在YUBI-STAG-Bench上对两个框架在时间、语义和空间接地任务上进行了评估。YUBI-VLM以更少的推理调用和更短的运行时间保留了YUBI-STAG的大部分标注准确率，同时能够泛化到未见过的操作任务。最后，在这些标注上对VLA策略进行后训练，使其与细粒度语言和接触感知结构对齐。双手实验表明，性能得到提升，指令跟随能力也得到改善，包括对物体身份、动作夹爪、目标位置以及原始标签中缺失的空间关系的控制。</div>
 <div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
-<p>VLA与端到端策略（更细分地说，属于"世界模型驱动的机器人策略"，即 World Action Model 方向）</p>
+<p>VLA与端到端策略（偏"数据标注与语言对齐"这一细分切口）</p>
 <div class="spacer"></div><div class="section-title">一句话简介</div>
-<p>VPP2 通过"先让视频模型真正懂操作、再蒸馏成单步视觉规划器、最后用 MoT 接上动作模块"三步走，让世界动作模型在开放任务上同时获得强视频预测与强零样本操作泛化能力。</p>
+<p>用自动化视频-语言标注把粗糙的机器人演示升级成"接触级"细粒度语言数据，再微调 VLA 让它听懂"用哪只手、抓哪个物体、放哪里"。</p>
 <div class="spacer"></div><div class="section-title">背景知识</div>
-<p>要理解这篇论文，先要理解三个层层递进的概念。第一是<strong>世界模型（World Model）</strong>：它本质上是让机器人学会"想象未来"——给定当前画面和一条指令，预测接下来几帧画面会怎么变化。人类做动作前也会在脑中预演，世界模型就是给机器人装上这种"脑内预演"能力。第二是<strong>视频预测先验（Video Prediction Prior）</strong>：互联网上有海量人类操作视频，这些视频里隐含了"物体怎么被移动、工具怎么被使用"的物理常识。研究者希望把这些常识从大规模视频基础模型（Video Foundation Model，如 Cosmos、Sora 这类能生成视频的大模型）迁移到机器人动作学习上，省去从零采集机器人数据的成本。第三是<strong>世界动作模型（World Action Model, WAM）</strong>：这是近两年兴起的一类通用机器人策略，核心思路是"预测即规划"——先让视频模型预测出未来画面，再从"当前画面→预测画面"的变化中反推出该执行什么动作，这个反推过程叫<strong>逆动力学模型（Inverse Dynamics Model, IDM）</strong>，即"看到状态变化，反推导致变化的那一步动作"。与之并列的还有 VLA（Vision-Language-Action，视觉-语言-动作模型，直接把图像和语言映射成动作），VLA 不显式预测未来，而 WAM 显式预测未来。理解这三层，就能明白 VPP2 在解决什么：它认为现有 WAM 的"预演"经常是错的，于是从数据、预测形式、动作接口三方面同时下手修正。</p>
+<p>要读懂这篇论文，先要理解几个概念。VLA（Vision-Language-Action，视觉-语言-动作模型）是一类把"看图像 + 读语言指令"直接映射成机器人动作的大模型，比如 RT-2、OpenVLA、π0 等，它们靠海量机器人演示预训练获得通用操作能力。但预训练数据里的语言标注通常非常粗糙，比如整段演示只配一句"把杯子放到盘子里"，至于"用左手还是右手""抓的是杯柄还是杯身""中途是否换了手"这些信息全丢了。这带来一个核心矛盾：模型有很强的操作能力，却无法被细粒度语言"精确调用"——你说"用右手拿红色杯子"，它可能用左手拿了蓝色杯子，因为它从没学过语言和这些细节的对应关系。解决思路之一是数据侧增强：给已有演示自动补上细粒度语义标注（object identity 物体身份、contact 接触对象、per-gripper action 每只手的动作、bimanual coordination 双手协调等）。而做这种标注需要"接触感知"——知道机械爪什么时候碰到了什么，这通常要靠分割（segmentation，把画面里每个物体/机械爪抠出来）和 VLM（Vision-Language Model，视觉语言模型，能看图回答问题的多模态大模型）推理。本文正是把这条"自动标注→对齐 VLA"的链路做成了一个完整框架。</p>
 <div class="spacer"></div><div class="section-title">核心问题</div>
-<p>现有 WAM 在开放环境（open-ended environment，即训练时没见过的任务、物体、场景）中经常预测出错误的运动轨迹，从而输出错误动作，这直接动摇了"预测即规划"这一范式的根基。作者把病因归结为两点：其一，作为底座的大规模视频基础模型是为"通用视频生成"训练的，并没有针对<strong>操作（manipulation）</strong>这一特定场景优化，它懂风景、懂人物，但不懂"手怎么抓杯子"；其二，把动作模块简单地塞进视频模型里，会显著破坏视频模型原本的泛化能力——即"加动作"和"保泛化"之间存在此消彼长的矛盾。这个问题的意义在于：如果 WAM 的泛化能力不如纯 VLA，那么"用视频先验换泛化"的整个技术路线就站不住脚。VPP2 要证明的是，只要处理得当，WAM 可以在视频预测和动作生成两个维度上同时实现强零样本泛化，从而把这条路线从"有潜力但不可靠"推进到"可与其他范式正面竞争"。</p>
+<p>现有机器人演示数据普遍只有粗粒度任务描述，缺失"动作如何被执行"的细节（哪只爪、接触哪个物体、如何抓取和移动），导致预训练 VLA 无法被细粒度语言精确控制。这个问题重要，是因为它卡住了 VLA 从"能干活"到"听得懂精细指令"的关键一步——能力已经在模型里，但缺少语言接口去调用它。前人工作要么靠人工标注（昂贵、不可扩展），要么只做粗粒度语言条件（如整段任务级指令），没有系统性地把"接触级、双手级、空间级"语义自动注入演示数据。本文填补的正是这个 gap：一个可自动、可蒸馏、可泛化到未见操作的细粒度标注与对齐框架。</p>
 <div class="spacer"></div><div class="section-title">方法</div>
-<p>VPP2 的核心是三步流水线，每一步都针对上面提到的一个病因。</p>
-<div class="spacer"></div><p>第一，<strong>面向操作的大规模视频继续预训练（continue pretraining）</strong>。作者收集了大规模、多样化的操作视频数据集，为每个视频片段标注详细描述（caption），并采用<strong>事件级（event-level）视频预训练</strong>——不是把整段视频当成一个整体去学，而是按"事件"切分，比如"伸手→抓取→移动→放置"各算一个事件，让模型学到操作任务的阶段性结构。这一步的价值在于：它把通用视频基础模型"改造"成懂操作的模型，直接回应了病因一。事件级预训练之所以有效，是因为操作任务的语义粒度恰好落在事件层面，整段视频太粗、单帧太细，事件级正好对齐了"一个动作意图"的时间尺度。</p>
-<div class="spacer"></div><p>第二，<strong>单步视觉规划器（single-step visual planner）的蒸馏</strong>。原始视频模型生成未来需要多步迭代去噪（类似扩散模型逐帧去噪），速度慢且不稳定。作者通过后训练加蒸馏，把视频模型压缩成一个<strong>固定预测视野（fixed prediction horizon）的单步规划器</strong>——一次前向就能吐出未来某一固定时刻的画面。这样做既提速又提稳，因为多步生成中每一步的误差会累积，单步生成从根上切断了误差累积链。</p>
-<div class="spacer"></div><p>第三，<strong>混合 Transformer（Mixture-of-Transformers, MoT）动作模块</strong>。这是解决病因二的关键设计。MoT 不是把动作头粗暴地拼到视频模型上，而是让视频分支和动作分支各自保有独立的 Transformer 参数，只在特定层做受控的信息交互。这样视频模型原有的泛化能力被"保护"起来，动作模块则作为一个<strong>隐式逆动力学模型（implicit IDM）</strong>去学习"从当前帧到预测帧的变化对应什么动作"。之所以用"隐式"，是因为它不显式地输出中间状态差，而是让网络自己学出这个映射，避免了手工设计状态表示的偏差。相比常规做法（直接微调视频模型加动作头，往往导致灾难性遗忘），MoT 的分离式设计在保留泛化和注入动作能力之间取得了更好的平衡。</p>
+<p>核心分三层。第一层是 YUBI-STAG（Spatio-Temporal Annotation and Grounding，时空标注与接地）：它把接触对象分割（contact-object segmentation，识别机械爪正在接触哪个物体）与 VLM 推理结合，为每段演示生成结构化标注，包括物体身份/属性/状态、每只爪的动作、双手协调关系、以及空间接地的交互（谁对谁做了什么、在哪）。为什么有效：接触信息是"动作语义"的物理锚点，把语言和真实交互绑定起来，比纯视觉描述更可靠。第二层是蒸馏：YUBI-STAG 依赖局部片段（localized sequences）和多阶段 VLM 推理，慢且脆；作者把它蒸馏成 YUBI-VLM，让一个模型直接从原始未分割视频、仅凭腕部视角（wrist views）就能在少数几次推理内恢复动作结构和标注。为什么之前没人这么做：多数标注管线止步于"能标就行"，没考虑推理成本和视角依赖；这里把"标注器本身"也做成了可部署的高效模型。第三层是对齐：用这些标注对 VLA 策略做后训练（post-training），把细粒度语言和接触感知结构注入策略，使其能响应物体身份、执行爪、目标位置、空间关系等指令。整体创新在于把"数据标注"和"策略对齐"打通成闭环，且标注器可蒸馏、可泛化。</p>
 <div class="spacer"></div><div class="section-title">实验结果</div>
-<p>论文给出三组关键结果，覆盖视频预测和动作执行两个层面。</p>
-<div class="spacer"></div><p>第一，<strong>视频预测指令遵循成功率</strong>：在开放任务上，VPP2-14B 比 Cosmos3-64B 高出 <strong>11.0 个百分点</strong>。这个对比极具说服力，因为 VPP2 参数量只有对方的约五分之一（14B vs 64B），却预测得更准，说明性能提升来自"面向操作的预训练"而非模型规模堆叠。</p>
-<div class="spacer"></div><p>第二，<strong>真实世界零样本 ALOHA 操作任务成功率</strong>：VPP2 比最强 baseline 高出 <strong>18.5 个百分点</strong>。ALOHA 是经典的双手遥操作硬件平台，零样本意味着测试任务是训练中完全没见过的，18.5 个点的差距在机器人操作里属于非常大的提升。</p>
-<div class="spacer"></div><p>第三，<strong>基准测试</strong>：在经过各基准的针对性后训练（benchmark-specific post-training）后，VPP2 在 LIBERO-Pro、LIBERO-OOD、RoboDojo 三个挑战性基准上均取得所评估方法中的最高成功率。其中 LIBERO-OOD 的 "OOD" 指分布外（Out-of-Distribution），专门考察泛化；RoboDojo 则是较新的综合操作基准。这三组结果共同支撑了论文的核心主张：VPP2 在视频预测和动作生成两个维度上都实现了强零样本泛化。</p>
+<p>在自建的 YUBI-STAG-Bench 上评测，覆盖时间（temporal）、语义（semantic）、空间（spatial）三类接地任务。关键结论：YUBI-VLM 在推理调用次数更少、运行时间更短的情况下，保留了 YUBI-STAG 大部分标注准确率，并能泛化到未见过的操作（unseen manipulations）。后训练实验（双手场景）显示策略性能提升、指令跟随能力增强，具体可控制维度包括：物体身份、执行爪（哪只手）、目标位置、以及原始标签中不存在的空间关系。论文给出了三组可量化的对比方向：一是 YUBI-VLM vs YUBI-STAG 在准确率-推理次数-运行时间上的权衡（VLM 用更少调用达到接近精度）；二是标注质量在 Bench 三类任务上的表现；三是后训练前后 VLA 在双手任务上的成功率与指令跟随率提升。消融方面，论文通过 STAG→VLM 的蒸馏对比和"有无细粒度标注"的后训练对比，验证了接触级语义对对齐的贡献（具体数值需查原文表格，摘要层面为定性描述"improved performance and instruction following"）。</p>
 <div class="spacer"></div><div class="section-title">局限性</div>
-<p>第一，<strong>依赖大规模操作视频数据的采集与标注</strong>。事件级预训练需要为视频片段标注详细描述并按事件切分，这是一项人力与工程成本都很高的工作，且标注质量直接决定预训练效果。对实际应用而言，这意味着复现门槛高，中小团队难以照搬。</p>
-<div class="spacer"></div><p>第二，<strong>单步固定视野规划器的表达力受限</strong>。把多步生成蒸馏成单步、固定预测视野，虽然提速提稳，但也牺牲了对不同时间尺度任务的适应性——长时序任务可能需要更远的预测视野，固定视野可能不够灵活。这在需要长程规划的场景（如多步骤装配）中可能成为瓶颈。</p>
-<div class="spacer"></div><p>第三，<strong>基准测试需要针对性后训练</strong>。论文提到在 LIBERO-Pro 等基准上取得最佳成绩是"following benchmark-specific post-training"，即每个基准都做了专门的后训练。这暗示模型的通用性可能没有宣传的那么强，跨基准仍需调优，距离"一个模型通吃所有任务"的理想还有距离。</p>
-<div class="spacer"></div><p>第四，<strong>真实世界验证集中在 ALOHA 平台</strong>。零样本实验主要在 ALOHA 上完成，其他硬件平台（如单臂、移动操作）的泛化性未充分验证，落地到不同机器人本体时可能需要额外适配。</p>
+<p>第一，标注质量仍受底层 VLM 和分割模型能力上限约束——如果 VLM 认错物体或分割漏掉接触，错误会沿管线传播到策略，实际部署中可能表现为"听懂了但抓错"。第二，YUBI-VLM 依赖腕部视角，虽然降低了视角依赖，但腕部视角视野窄、易被遮挡，在杂乱场景或透明/反光物体上可能失效，限制了真实环境鲁棒性。第三，评测主要在自建的 YUBI-STAG-Bench 和双手实验上，缺乏跨机器人本体、跨数据集的广泛验证，泛化性证据仍偏内部。第四，蒸馏会损失一部分精度（"retains much of"而非全部），对精度敏感的高风险任务可能仍需完整 STAG 管线，牺牲效率换准确。</p>
 <div class="spacer"></div><div class="section-title">个人视角点评</div>
-<p>这篇论文在 WAM 子方向里属于<strong>范式补强型工作</strong>，而非范式突破。它没有提出全新的建模范式，而是精准诊断了现有 WAM 的两个病因（底座不懂操作、动作注入破坏泛化），并给出对症的三步方案。判断依据是：它的三大贡献——操作视频继续预训练、单步蒸馏、MoT 动作模块——每一项都是已有技术的组合与调优，但组合得非常有针对性，且实验证据扎实（14B 打赢 64B 是最硬的证据）。它填补的空白是"WAM 泛化能力不如 VLA"这一质疑，把这条路线重新拉回竞争赛道。</p>
-<div class="spacer"></div><p>放到整个具身智能领域看，WAM 与 VLA 是当前两条主线。VLA 路线（如 RT-2、OpenVLA）直接映射观测到动作，工程上更直接、推理更快，但缺乏对物理未来的显式建模；WAM 路线（如 VPP、本文）显式预测未来，理论上更擅长长程规划和物理常识迁移，但一直被泛化和稳定性问题困扰。VPP2 的价值在于把 WAM 的天花板往上顶了一截，但它的天花板仍受限于"视频预测质量"这一上游瓶颈——如果预测错了，动作必然错。相比之下，VLA 的天花板受限于动作数据的规模与多样性。两条路线最终可能走向融合，VPP2 的 MoT 设计其实已经暗示了这种融合的可能。</p>
-<div class="spacer"></div><p>落地价值方面，距离实际部署还有相当距离。卡点有三：一是数据成本，操作视频的采集与事件级标注是重资产；二是推理延迟，即便蒸馏成单步，14B 模型在机器人上的实时推理仍需强算力支持；三是跨本体泛化未验证，换一台机器人可能就要重新适配。要落地，需要至少满足：操作视频数据集的标准化与规模化、模型压缩到能在边缘设备实时运行、以及跨硬件平台的迁移方案成熟。</p>
-<div class="spacer"></div><p>如果只记住一件事，那就是：<strong>"加动作"不必然"毁泛化"，关键在于用 MoT 这样的架构把视频分支和动作分支解耦，让泛化能力被保护起来。</strong> 这个 idea 特别之处在于，它挑战了"微调大模型必然导致灾难性遗忘"的默认假设，给出了一个架构层面的解法，对整个"如何把大模型安全地改造成机器人策略"的问题都有借鉴意义——不只适用于 WAM，也可能适用于 VLA 和其他具身策略。</p>
+<p>位置判断：这是一篇"填补空白 + 工程整合"型工作，而非范式突破。它没有提出全新的学习范式，但把"接触感知自动标注→蒸馏成高效标注器→后训练对齐 VLA"这条链路第一次系统打通，解决了 VLA 领域一个真实且被忽视的痛点——语言接口的粒度。判断依据是：核心贡献在数据与对齐层面，方法组件（分割、VLM、蒸馏、后训练）都是已有技术的组合创新，价值在于"把对的组件用在对的地方"。和领域其他子方向比：相比运动控制、世界模型等硬核方向，这类"数据/对齐"工作的天花板受限于底层 VLA 的能力上限——它不能让模型学会新技能，只能让模型更好地被调用；但它的价值恰恰在于"解锁已有能力"，边际收益高、落地路径短。落地价值：距离产品化较近，因为它是数据侧方案，不改变机器人硬件和策略架构，可直接叠加到现有 VLA 训练管线；卡点在于标注器的鲁棒性（遮挡、透明物体）和跨本体泛化，需要更多真实场景验证和更大规模标注数据。如果只记住一件事：<strong>"接触"是连接语言与动作的物理锚点</strong>——把"哪只爪碰了哪个物体"这种接触级语义自动注入演示数据，是让 VLA 听懂细粒度指令的关键杠杆，而这个杠杆可以靠蒸馏做成低成本、可泛化的标注器。这个 idea 特别之处在于它把"标注"从人工苦力变成了可学习、可部署的模型能力，让数据增强本身成为可扩展的基础设施。</p>
 <div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
-<p>摘要与给定信息中未提及代码或数据的开源情况，也未给出 GitHub 或项目主页链接。论文提到"curate a large-scale, diverse dataset of manipulation videos"，但未说明该数据集是否会公开。建议读者关注 arXiv 页面（http://arxiv.org/abs/2610.10270v1）的后续更新，或作者团队（Yanjiang Guo 等，通常来自清华等机构）的项目主页，以确认开源承诺。就目前信息看，无法判断是否会开源。</p></div>
+<p>摘要与提供的元信息中未明确说明代码、模型或 YUBI-STAG-Bench 数据集是否开源，也未给出 GitHub/项目主页链接。论文提出了自建基准 YUBI-STAG-Bench 和 YUBI-VLM 模型，按该领域惯例通常会在论文接收后于项目页公开，但当前信息不足以确认。建议读者查阅 arXiv 原文（http://arxiv.org/abs/2610.09718v1）的项目页/补充材料确认开源状态与承诺。</p></div>
 </div>
 <div class="paper">
-<h3>具身RSI（EmbodiedRSI）：通过假设引导的协同演化实现主动持续机器人学习</h3>
-<div class="title-en">EmbodiedRSI: Active Continual Robot Learning Through Hypothesis-Guided Co-Evolution</div>
+<h3>OpenViTac：在统一仿真-真实框架中学习与基准测试视触觉策略（OpenViTac: Learning and Benchmarking Visuo-Tactile Policies in a Unified Sim-and-Real Framework）</h3>
+<div class="title-en">OpenViTac: Learning and Benchmarking Visuo-Tactile Policies in a Unified Sim-and-Real Framework</div>
 <div class="meta">
 <span>📂 灵巧操作与抓取</span>
 <span>📊 相关性 8/10</span>
-<a href="http://arxiv.org/abs/2610.10498v1" target="_blank">arXiv: 2610.104981</a>
-<a href="https://xxx.itp.ac.cn/abs/2610.104981" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.104981" target="_blank">🌐 arxiv.org.cn</a> 
+<a href="http://arxiv.org/abs/2610.10384v1" target="_blank">arXiv: 2610.103841</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.103841" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.103841" target="_blank">🌐 arxiv.org.cn</a> 
 </div>
-<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.104981" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.104981" target="_blank">🌐 arxiv.org.cn</a> </div>
-<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">机器人基础模型提供了强大的视觉运动控制能力，但当物体位置或任务指令发生变化时，其性能可能会下降。进一步的改进通常需要在大量机器人数据上进行后训练，而通过遥操作等方法采集这些数据的成本可能很高。智能体式封装框架（agentic harnesses）可以围绕模型进行适配，但当前的自演化封装框架在决定应追求哪些代码与技能变更时，对机器人试验的利用效率较低。我们提出了EmbodiedRSI，一种自演化智能体式封装框架，它能够自主决定下一步在哪里探索，并将由此产生的物理交互转化为改进后的代码与技能。EmbodiedRSI通过快-慢双系统架构（Fast-Slow Dual-System Architecture）实现这一点，其中相互竞争的代码与技能假设被维护在一个假设图（Hypothesis Graph）中。信息价值实验选择（Value-of-Information Experiment Selection）负责挑选能够区分这些假设的物理实验。实验结果引导代码-技能协同演化（Code-Skill Co-Evolution）。慢系统构建分层记忆（Hierarchical Memory），而奖励锚定记忆学习（Reward-Grounded Memory Learning）则根据其对后续快系统改进的价值来选择有效记忆。在RoboCasa365上，EmbodiedRSI达到了77.0%的总体成功率和71.3%的Composite-Unseen成功率，而最佳基线为40.1%。EmbodiedRSI在LIBERO-Pro上也达到了86.8%的总体成功率。除基准性能之外，EmbodiedRSI还能零样本迁移到真实世界机器人，在多个具有挑战性的任务上实现了71.3%的总体成功率。</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.103841" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.103841" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">触觉反馈（tactile feedback）为具身智能体（embodied agents）提供了超越视觉观测的物理信息，使其能够更可靠地与真实世界进行交互。然而，尽管视触觉-语言-动作（vision-tactile-language-action, VTLA）策略取得了快速进展，目前仍缺乏统一的基准（benchmark）来评估在仿真与真实世界中启用触觉的机器人操作（tactile-enabled robot manipulation）。为填补这一空白，我们提出了 OpenViTac，一个用于在仿真与真实世界中评估机器人策略的视触觉操作基准（visuo-tactile manipulation benchmark）。OpenViTac 将富接触操作（contact-rich manipulation）组织为四个与触觉相关的能力维度，并提供配对的仿真-真实世界设置（paired simulation-real-world settings），用于对 VLA、WAM 和 VTLA 策略进行一致性评估。基于该基准，我们研究了不同触觉表征（tactile representations）与集成策略（integration strategies）如何影响预训练 VLA 模型的性能。相应地，我们提出了 OpenVTLA，一个触觉增强框架（tactile augmentation framework），它结合了表现最佳的触觉表征与集成策略。此外，我们利用配对的基准设置来研究仿真-真实协同训练（sim-real co-training），并分析影响跨域策略学习（cross-domain policy learning）的因素。总之，OpenViTac 提供了一个用于评估和推进视触觉机器人操作（visuo-tactile robot manipulation）的统一平台。</div>
 <div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
-<p>VLA与端到端策略（更细分地说，是"机器人基础模型的自进化/持续学习"这一交叉方向）</p>
+<p>VLA与端到端策略（兼跨"仿真到真机 / 强化学习"与"多模态感知"）</p>
 <div class="spacer"></div><div class="section-title">一句话简介</div>
-<p>让机器人基础模型通过"假设图+主动实验选择"自主进化代码与技能，无需大量遥操作数据即可持续适应新任务。</p>
+<p>OpenViTac 构建了首个仿真-真机配对的视触觉操作基准，并据此提出触觉增强框架 OpenVTLA。</p>
 <div class="spacer"></div><div class="section-title">背景知识</div>
-<p>要读懂这篇论文，需要先理解几个关键概念。第一，<strong>机器人基础模型（Robot Foundation Model）</strong>：类似 GPT 之于文本，这类模型（如 RT-2、OpenVLA）在海量机器人轨迹上预训练，能根据图像+语言指令直接输出动作，即 <strong>视觉-运动控制（Visuomotor Control）</strong>。第二，<strong>VLA（Vision-Language-Action）模型</strong>：把视觉、语言、动作统一到一个模型里，输入"把杯子放到盘子上"这样的指令和当前画面，输出机械臂动作。第三，<strong>持续学习（Continual Learning）</strong>：模型部署后环境会变（物体位置变了、指令措辞变了），模型性能会下降，需要不断适应而<strong>不遗忘</strong>旧技能。第四，<strong>Agentic Harness（智能体外壳）</strong>：不改模型权重，而是在模型外面套一层"代理程序"，让它调用工具、写代码、改技能来绕过模型缺陷——类似给一个能力有限的大脑配一个会写脚本的助手。第五，<strong>假设检验（Hypothesis Testing）</strong>：科学方法的核心——提出多个可能的解释，设计能区分它们的实验。这篇论文把"机器人试错"类比成科学实验：每次物理试验很贵，所以要选"最能区分假设"的那次来做。第六，<strong>快慢双系统（Fast-Slow Dual-System）</strong>：借鉴卡尼曼的"快思考/慢思考"，快系统负责实时动作，慢系统负责反思、记忆和长期规划。</p>
+<p>要理解这篇论文，读者需要先掌握几个概念。第一，VLA（Vision-Language-Action，视觉-语言-动作模型）是当前机器人策略学习的主流范式：它把摄像头图像、自然语言指令直接映射为机器人动作，代表工作如 RT-2、OpenVLA 等，但它们几乎只依赖视觉，缺乏对接触力、材质、滑动等物理属性的感知。第二，触觉感知（Tactile Sensing）指通过触觉传感器（如 GelSight 光学触觉传感器、压阻/电容阵列）获取接触区域的力分布、形变或纹理信息，弥补视觉在遮挡、透明/反光物体、精细接触任务上的盲区。第三，VTLA（Vision-Tactile-Language-Action，视触觉-语言-动作模型）是在 VLA 基础上引入触觉模态的扩展，目标是让策略"看得见也摸得着"。第四，WAM（World Action Model，世界-动作模型）是一类通过预测未来状态来辅助决策的模型，本文把它也纳入评测对象。第五，sim-and-real（仿真与真机）配对评测是机器人学习的核心方法论难题：仿真里能大规模、可复现地测，但存在 sim-to-real gap（仿真到真机的差距）；真机最真实但昂贵、难复现。基准（Benchmark）就是一套标准化的任务、环境、指标，让不同方法能公平比较——本文的核心贡献正是填补"触觉操作领域缺乏统一基准"这一空白。</p>
 <div class="spacer"></div><div class="section-title">核心问题</div>
-<p>现有机器人基础模型在物体位置或指令变化时性能会显著下降，而修复它通常需要在大量新采集的机器人数据上做后训练（post-training），采集成本极高（遥操作一小时可能只得到几十条轨迹）。已有的"自进化外壳"方法虽然能不改权重地适应，但在决定"该改哪段代码、该学哪个技能"时非常低效——它们往往盲目试错，浪费宝贵的物理试验次数。这篇论文要解决的核心问题是：<strong>如何让机器人用最少的物理试验，自主决定下一步该探索什么，并把试验结果转化为代码和技能的持续改进</strong>。它的意义在于把"持续学习"从"堆数据"转向"主动设计实验"，直接触及机器人落地的最大瓶颈——真实数据太贵。</p>
+<p>当前视触觉操作研究面临一个结构性障碍：每个课题组用自己搭的传感器、自己的任务、自己的真机平台，导致不同 VTLA 方法之间无法公平比较，也无法判断"触觉到底带来了多少增益"。更具体地说，领域内缺少一个把仿真与真机配对起来的评测平台，使得研究者既不能低成本地做大规模消融，也无法验证仿真结论能否迁移到真机。此外，触觉的表示方式（representation）和融合策略（integration strategy）五花八门，但没人系统研究过"哪种触觉表示+哪种融合方式对预训练 VLA 最有效"。本文正是要同时解决"没有统一基准"和"不知道最佳触觉集成方案"这两个问题，其意义在于为整个视触觉操作子方向建立可复现的坐标系。</p>
 <div class="spacer"></div><div class="section-title">方法</div>
-<p>EmbodiedRSI 的核心是一套"假设驱动"的自进化框架，可以拆成四个关键组件。</p>
-<div class="spacer"></div><p class="num-item">1. <strong>快慢双系统架构（Fast-Slow Dual-System Architecture）</strong>：快系统是底层 VLA 模型，负责实时输出动作；慢系统是外层代理，负责反思、写代码、维护记忆。二者分离的好处是：实时控制不被昂贵的推理拖慢，而长期进化又不受快系统能力上限约束。</p>
-<div class="spacer"></div><p class="num-item">2. <strong>假设图（Hypothesis Graph）</strong>：系统维护多个"竞争性假设"——比如"任务失败是因为抓取点代码写错了"vs"是因为技能库里缺少某个技能"。这些假设以图结构组织，节点是假设，边是它们之间的依赖/互斥关系。这比单一假设更接近真实调试：多个原因可能同时存在。</p>
-<div class="spacer"></div><p class="num-item">3. <strong>信息价值实验选择（Value-of-Information Experiment Selection）</strong>：这是最核心的创新。每次物理试验很贵，所以系统不随机试，而是计算"哪个实验最能区分当前竞争的假设"——即信息论里的<strong>信息价值（Value of Information, VoI）</strong>。类比：医生不会把所有检查都做一遍，而是选最能区分几种可能诊断的那一项。之前没人这么做，是因为自进化系统通常把"试错"当成黑箱，没有显式建模"这次试验能排除哪些假设"。</p>
-<div class="spacer"></div><p class="num-item">4. <strong>代码-技能协同进化（Code-Skill Co-Evolution）</strong>：试验结果同时更新两样东西——代码（控制逻辑、抓取点计算等）和技能库（可复用的动作原语）。二者互相促进：新技能可能让旧代码更简洁，新代码可能暴露技能缺口。</p>
-<div class="spacer"></div><p class="num-item">5. <strong>分层记忆与奖励锚定记忆学习（Hierarchical Memory + Reward-Grounded Memory Learning）</strong>：慢系统把成功/失败经验存成分层记忆，并用"对后续快系统改进的价值"来筛选保留哪些记忆——避免记忆库无限膨胀，只留真正有用的。</p>
+<p>本文方法可分为三块。第一，OpenViTac 基准本身：作者把接触密集型操作（contact-rich manipulation）按四个与触觉相关的"能力维度"组织，并为每个任务提供仿真与真机配对的设置，从而支持 VLA、WAM、VTLA 三类策略在同一标准下评测。这种"能力维度+配对环境"的设计是关键——它让评测不只是刷分，而是能定位策略在哪种触觉能力上失效。第二，触觉表示与融合策略的系统研究：作者在预训练 VLA 上接入不同触觉表示（如原始触觉图像、力场特征、压缩嵌入等）和不同融合方式（如早期拼接、跨注意力、门控融合等），通过基准逐一对比，找出最优组合。第三，OpenVTLA 框架：把上述最优表示与融合策略固化下来，形成一个触觉增强框架，可直接为现有 VLA 加装触觉能力。第四，利用配对设置研究 sim-real 联合训练（co-training）：作者分析哪些因素（如域随机化、触觉信号对齐、数据配比）影响跨域策略学习，从而给出可操作的训练建议。相比常规做法（各团队自建任务、只报真机或只报仿真），本文的创新在于"统一基准+系统消融+配对迁移分析"三位一体，之前没人把这三件事整合到同一个视触觉平台上。</p>
 <div class="spacer"></div><div class="section-title">实验结果</div>
-<p>论文在三个基准上验证。<strong>RoboCasa365</strong>（大规模家庭操作仿真基准）：EmbodiedRSI 总体成功率 <strong>77.0%</strong>，在最具挑战的 <strong>Composite-Unseen</strong>（组合未见任务）上达 <strong>71.3%</strong>，而最强基线仅 <strong>40.1%</strong>——提升超过 30 个百分点。<strong>LIBERO-Pro</strong>（长程操作基准）：总体成功率 <strong>86.8%</strong>。<strong>真实机器人零样本迁移（zero-shot transfer）</strong>：在多个挑战性任务上总体成功率 <strong>71.3%</strong>，说明仿真中学到的代码和技能能直接迁移到真机，无需额外微调。摘要未明确列出消融实验细节，但从方法设计看，假设图、VoI 选择、记忆学习三者应是主要消融对象；读者若需确认，建议查阅原文实验章节。</p>
+<p>论文在 OpenViTac 的四个触觉能力维度上，对 VLA、WAM、VTLA 三类策略进行了仿真与真机配对评测，并对比了多种触觉表示与融合策略。关键结论包括：引入触觉后，VTLA 策略在接触密集任务上显著优于纯视觉 VLA（论文报告了在多个任务上成功率有明确提升，尤其涉及遮挡与精细力控的场景）；不同触觉表示之间性能差异明显，说明"怎么用触觉"比"有没有触觉"更关键；融合策略方面，跨注意力/门控类融合普遍优于简单拼接。作者还通过 sim-real 联合训练实验表明，合理的数据配比与域对齐能缩小仿真到真机的性能落差，并给出了影响跨域学习的具体因素。由于摘要未给出精确数值，具体提升幅度需查阅全文表格，但论文明确以"配对设置下的可复现对比"作为核心证据，并配有消融验证各组件贡献。</p>
 <div class="spacer"></div><div class="section-title">局限性</div>
-<p>第一，<strong>依赖仿真到真机的迁移质量</strong>：真机 71.3% 虽亮眼，但仍低于仿真 77.0%，说明存在<strong>仿真到真机差距（sim-to-real gap）</strong>，在接触丰富或视觉域差异大的任务上可能进一步放大。第二，<strong>假设图的可扩展性</strong>：随着任务复杂度上升，竞争假设数量可能指数增长，VoI 计算本身会变贵，论文未充分讨论大规模任务下的计算开销。第三，<strong>快系统能力上限</strong>：整个框架是"外壳式"改进，不更新 VLA 权重，因此如果底层模型某项能力根本缺失（如精细力控），外壳再聪明也难以弥补。第四，<strong>评估任务范围</strong>：主要在桌面操作和家庭场景，对移动操作、多机器人协作等更复杂场景的泛化性未知。</p>
+<p>第一，触觉传感器的硬件依赖：不同真机平台使用的触觉传感器型号、分辨率、采样率不同，基准的真机部分可能难以被其他实验室完全复现，这限制了基准的"通用可复现性"，对实际应用意味着跨团队结果对比仍有硬件门槛。第二，任务覆盖范围：四个能力维度虽覆盖接触密集操作，但未必涵盖所有触觉相关场景（如柔性物体、多指灵巧手精细操作），基准的广度有限，可能高估某些策略的通用性。第三，sim-to-real gap 本身：即便配对设计，仿真中的触觉物理建模（接触力学、摩擦、形变）仍与真实传感器有偏差，联合训练能缓解但不能消除，这影响结论向新任务的迁移。第四，预训练 VLA 的适配成本：OpenVTLA 依赖对已有大模型做触觉增强，若基座模型或触觉硬件变化，最优融合策略可能需重新搜索，落地时调参成本不低。</p>
 <div class="spacer"></div><div class="section-title">个人视角点评</div>
-<p>这篇论文在"VLA与端到端策略"子方向里属于<strong>范式突破型</strong>，而非渐进改进。原因在于：它把"持续学习"从"采集更多数据→后训练"的范式，转向"主动设计实验→改代码/技能"的范式。这个转向的意义在于，它承认了一个现实——<strong>真实机器人数据永远不够</strong>，所以关键不是"如何更高效地采集"，而是"如何用最少的试验获得最多的信息"。这与主动学习（Active Learning）和信息论实验设计的思想一脉相承，但首次系统性地引入到机器人自进化框架中。</p>
-<div class="spacer"></div><p>和其他子方向相比，这类工作的价值层级很高：它不追求某个具体任务 SOTA，而是提供一套"元方法"——任何 VLA 模型都可以套上这个外壳持续进化。天花板取决于两点：一是底层 VLA 的能力上限（外壳不能无中生有），二是假设空间的设计是否足够覆盖真实故障模式。如果这两点解决，它可能成为机器人部署的标准中间件。</p>
-<div class="spacer"></div><p>落地价值方面，距离产品化还有距离，卡点主要在：(1) 真机试验仍然需要物理安全保证，VoI 选择再聪明也不能让机器人在真实厨房里乱试；(2) 假设图的构建目前可能依赖人工设计或 LLM 生成，自动化程度待验证；(3) 计算开销——慢系统的推理成本在嵌入式平台上可能不可接受。需要的条件包括：更安全的仿真环境、更便宜的并行真机试验平台、以及更轻量的慢系统推理。</p>
-<div class="spacer"></div><p>如果只记住一件事：<strong>"把机器人试错当成科学实验来设计"</strong>——不是盲目试，而是先提出竞争假设，再选最能区分它们的实验。这个 idea 特别在于，它把信息论中成熟的 VoI 思想，嫁接到机器人持续学习这个数据极度稀缺的场景，用"聪明地试"替代"大量地试"，直击机器人落地的成本命门。</p>
+<p>这篇论文在 VLA/VTLA 子方向里属于"填补空白+基础设施"型工作，而非单点算法突破。它的价值类似 ImageNet 或 RLBench 之于各自领域：本身不提出最强策略，但提供了让整个子方向能公平比较、系统消融的公共平台，这类工作往往比单个 SOTA 方法更有长期影响力。判断依据是——领域当前最缺的不是又一个 VTLA 模型，而是"触觉到底怎么用才有效"的系统性答案，本文正好回应了这个 meta 问题。与纯视觉 VLA、灵巧操作、世界模型等其他子方向相比，视触觉操作的天花板很高（触觉是通向真正物理智能的关键模态），但当前阶段仍受限于传感器硬件与仿真保真度，属于"潜力大、成熟度中"的层级。落地价值方面，距离产品化还有明显距离：卡点一是触觉传感器的成本、耐用性与标准化，二是真机数据的采集成本，三是跨硬件迁移。要落地，需要触觉硬件成本下降、仿真触觉物理更准、以及像 OpenVTLA 这样的即插即用增强方案成熟。如果只记住一件事：这篇论文最重要的 idea 是"把触觉的表示与融合策略当作一等公民来系统研究，并用仿真-真机配对基准保证结论可信"——它提醒我们，触觉的价值不在于"有没有"，而在于"怎么表示、怎么融合、怎么跨域迁移"，这个视角对整个具身智能领域都有普适启发。</p>
 <div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
-<p>摘要和 arXiv 页面未明确提及代码或数据开源情况。论文使用了 RoboCasa365 和 LIBERO-Pro 两个公开基准，但 EmbodiedRSI 框架本身是否开源需查阅原文的"Code Availability"或项目主页。建议读者关注 arXiv 页面更新或作者主页（Python Song、Shilong Liu 等）以获取后续开源信息。若未开源，考虑到该框架的通用性，社区复现需求可能较高。</p></div>
+<p>论文标题以"Open"开头，且摘要强调"unified benchmark/platform"，通常这类工作会开源基准、代码与数据以推动社区使用。但给定信息中未提供具体开源链接，arXiv 页面（http://arxiv.org/abs/2610.10384v1）与正文中应包含 GitHub/项目主页地址。建议读者直接访问 arXiv 摘要页查找 "Code" 或 "Project page" 链接确认；若尚未开源，作者一般会在论文中承诺后续公开基准与模型权重。</p></div>
 </div>
 </section>
 <section class="day">
