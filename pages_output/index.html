@@ -82,6 +82,233 @@ body {
 <div class="header"><h1>📄 embodied_ai 论文速递</h1><p>每日自动推送 · 由 paper-digest-agent 驱动</p></div>
 <div class="container">
 <section class="day">
+<h2>📅 2026-10-10 <span class="count">(5 篇)</span></h2>
+
+<div class="paper">
+<h3>PLaW-VLA：面向视觉-语言-动作策略的预测性潜在世界建模（Predictive Latent World Modeling for Vision-Language-Action Policies）</h3>
+<div class="title-en">PLaW-VLA: Predictive Latent World Modeling for Vision-Language-Action Policies</div>
+<div class="meta">
+<span>📂 VLA与端到端策略</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2610.12285v1" target="_blank">arXiv: 2610.122851</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.122851" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.122851" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.122851" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.122851" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">学习预测世界如何演化，可以为视觉-语言-动作（Vision-Language-Action，VLA）策略提供用于长时程控制的预测性上下文，但其有效性取决于所建模的未来表征是什么，以及它如何对动作生成进行条件化。我们提出了PLaW-VLA，它在预训练的面向预测的表征空间中建模与任务相关的未来状态，从而减少了对预测与控制无关的视觉细节的需求。PLaW-VLA构建于混合Transformer（Mixture-of-Transformers）架构之上，通过结构化的因果注意力，使动作生成以观测历史、当前任务语义以及预测的未来状态为条件。实验表明，在RoboTwin Hard Horizon III上，相较于反应式策略取得了+11.8个百分点（percentage-point，pp）的提升；在零样本LIBERO-Plus上，相较于面向重建的潜在预测取得了+1.77个百分点的提升，分别支持了长时程控制的改进以及分布偏移下泛化能力的提升。通过避免低层视觉重建，PLaW-VLA降低了未来预测的负担，使得一个轻量级潜在世界模型能够进行并行未来预测，并在策略性能相当的情况下，其推理延迟约为生成式世界-动作建模的1/19。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更细一点：世界模型增强的VLA策略，即把"预测未来"作为中间表征来辅助动作生成）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>用预训练表征空间里的轻量"未来预测器"给VLA策略提供预测上下文，让长程操作更稳、泛化更好、推理更快。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，先要理解三个概念。第一，VLA（Vision-Language-Action，视觉-语言-动作模型）：它把摄像头图像、自然语言指令直接映射成机器人动作，是当前机器人学习最主流的端到端范式，代表工作如RT-2、OpenVLA、π0。第二，世界模型（World Model）：让模型学会"预测未来会发生什么"，比如预测下一帧画面或下一时刻的状态，从而给决策提供前瞻信息；在机器人里，它常被用来缓解"只看当前帧就做动作"的短视问题。第三，表征空间（representation space）：指模型内部的高维特征向量空间，而不是原始像素空间；在这类空间里做预测，可以避开重建每一个像素的负担。此外，论文还涉及两个关键设计概念：Mixture-of-Transformers（混合Transformer，一种让不同模态/不同任务用不同Transformer分支、再通过注意力交互的架构）和causal attention（因果注意力，即每个位置只能看到它之前的信息，保证时间顺序上的因果性）。最后，"长程控制（long-horizon control）"指的是任务需要连续多步、且早期动作会影响很久之后成败的场景，这正是VLA最容易失败的环节。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>当前VLA策略大多是"反应式（reactive）"的：看到当前观测就直接输出动作，没有对未来的显式预期，因此在长程任务中容易走错一步就全盘崩溃。已有工作尝试引入世界模型来提供预测上下文，但存在两个未解难题：一是"预测什么"——很多方法在像素空间重建未来画面，导致模型把大量容量浪费在控制无关的视觉细节（比如背景纹理、光照）上；二是"怎么用"——预测出的未来如何与当前观测、语言指令一起条件化动作生成，缺乏清晰的结构化设计。这篇论文正是要同时回答这两个问题：在什么样的未来表征上预测、以及如何把预测结果接入动作生成。它堵上的gap是：让世界模型对VLA真正有用，而不是变成一个昂贵又跑偏的"视频生成器"。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>核心思路可以拆成四点。第一，预测空间的选择：PLaW-VLA不在像素空间预测未来帧，而是在一个预训练的、面向预测任务（prediction-oriented）的表征空间里预测"任务相关的未来状态"。原理是：预训练表征已经压缩掉了控制无关的视觉细节，只保留语义和动态信息，因此预测负担大幅降低，模型不必再学"怎么画图"，只需学"任务会怎么发展"。第二，轻量潜在世界模型（latent world model）：因为预测目标已经是压缩表征，世界模型可以做得很小，并且支持并行预测多个未来时刻（parallel future prediction），而不是像自回归视频生成那样一帧一帧串行生成——这正是它推理延迟极低的关键。第三，Mixture-of-Transformers架构：用不同的Transformer分支分别处理观测历史、语言指令（任务语义）和预测的未来状态，再通过结构化因果注意力（structured causal attention）把它们融合起来条件化动作生成。这样设计的好处是各模态信息不会互相污染，同时因果注意力保证动作只依赖"过去和当前"，不会偷看未来造成信息泄漏。第四，与生成式世界-动作模型（generative world-action modeling）的对比：后者需要生成未来画面再据此决策，计算量巨大；PLaW-VLA绕开生成，直接在潜在空间预测，因此延迟只有前者的约1/19。创新点在于"预测什么"和"怎么用"的联合设计——之前没人把预训练预测表征、轻量并行潜在预测、以及结构化多模态注意力这三者组合到VLA里。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文在多个基准上验证。第一，在RoboTwin Hard Horizon III（一个强调长程难度的操作基准）上，PLaW-VLA相比反应式策略（reactive policies，即不做未来预测的基线）提升了+11.8个百分点，说明预测上下文对长程控制确实有效。第二，在零样本LIBERO-Plus（考察分布偏移下的泛化）上，相比"重建导向的潜在预测（reconstruction-oriented latent prediction）"方法提升+1.77个百分点，说明"在预测导向表征空间预测"比"在重建导向空间预测"泛化更好。第三，效率方面：在策略性能相当的情况下，PLaW-VLA的推理延迟约为生成式世界-动作模型的1/19，这是一个数量级的差距，直接决定了能否实时部署。论文还通过架构设计（Mixture-of-Transformers + 结构化因果注意力）隐含做了消融，验证了各模态分支和预测条件的贡献。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p>第一，依赖预训练的预测导向表征：如果这个预训练表征本身与目标任务不匹配（比如跨域差异极大），预测质量会下降，而论文没有充分讨论表征选择的鲁棒性。第二，实验主要集中在仿真基准（RoboTwin、LIBERO-Plus），真机验证缺失，仿真到真机的迁移（sim-to-real gap）仍是未知数，这对实际部署是硬伤。第三，+1.77pp的泛化提升幅度相对温和，说明在分布偏移下预测上下文的收益有限，可能只在特定类型的偏移上有效。第四，轻量世界模型虽然快，但"预测未来状态"本身仍需要一定的模型容量和训练数据，在数据稀缺的真实场景中能否学到可靠未来仍是问题。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>这篇论文在VLA与端到端策略子方向里属于"填补空白+渐进改进"的混合体：它没有提出全新的范式（世界模型增强VLA已有先例），但精准地回答了"预测什么、怎么用"这两个被忽视的关键设计问题，并用1/19延迟这个硬指标证明了实用价值。判断依据是：它的贡献不是发明新架构，而是把已有组件（预训练表征、潜在预测、MoT）以正确的方式组合，并给出可量化的效率优势。和领域其他子方向相比，这类工作的价值在于"让VLA更实用"——它不追求SOTA的绝对性能，而是追求性能与效率的平衡，天花板受限于VLA本身的泛化能力。落地价值方面：1/19的延迟是产品化的关键门槛，但真机验证缺失是最大卡点；要落地需要补充真机实验、验证跨域表征鲁棒性、并证明在真实数据稀缺时仍能训练。如果只记住一件事：<strong>不要预测像素，要预测任务相关的未来表征</strong>——这个idea特别在于它把"世界模型"从昂贵的视频生成器变成了轻量的语义预测器，让预测真正服务于控制而非炫技。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文摘要和元数据中未明确提及代码或数据开源链接。arXiv页面（http://arxiv.org/abs/2610.12285v1）通常会在正文或附录中给出项目主页，但当前提供的信息不足以确认。建议读者直接访问arXiv页面查看是否有"Code"或"Project page"链接；若未开源，需关注作者是否承诺后续公开。</p></div>
+</div>
+<div class="paper">
+<h3>具有联合状态–动作生成能力的人形世界动作模型（Humanoid World Action Model With Joint State--Action Generation）</h3>
+<div class="title-en">Humanoid World Action Model With Joint State--Action Generation</div>
+<div class="meta">
+<span>📂 运动控制（足式/人形）</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2610.12026v1" target="_blank">arXiv: 2610.120261</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.120261" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.120261" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.120261" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.120261" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">人形机器人是通用操作中一个很有前景的平台。近期的视觉–语言–动作（Vision-Language-Action，VLA）策略直接从多模态观测中学习动作，而世界动作模型（World Action Models，WAMs）则进一步引入未来视觉预测来改进动作生成。然而，在分层人形系统中，VLA和WAM策略输出的是参考动作，这些参考动作随后通过全身控制、机器人动力学、平衡与接触来实现。这种分层结构造成了一个动作–执行鸿沟（action--execution gap）：策略产生的参考动作可能与机器人实际实现的运动不同。若不对实际实现的身体状态进行显式建模，未来视觉预测就必须同时解释场景演化以及参考动作与执行运动之间的差异，从而难以将某个动作与其物理结果关联起来。我们提出了HWAM，一种具有联合状态–动作生成能力的人形世界动作模型（Humanoid World Action Model with joint state--action generation），它将机器人执行后的本体感受状态作为一个显式预测目标。通过联合生成参考动作及其实际实现的身体状态，HWAM将已执行运动的监督直接纳入动作学习之中。HWAM通过三条互补的条件路径进行训练。策略路径（Policy path）仅以当前观测为条件，对状态–动作轨迹进行联合去噪，从而与部署条件相匹配。前向动力学建模（Forward Dynamics Modeling，FDM）以动作和执行后状态为条件，预测未来视觉观测，而逆动力学建模（Inverse Dynamics Modeling，IDM）则从视觉转移中重建关节轨迹。这些路径共同将策略参考、实际实现的身体运动与视觉结果连接起来。在LimX OLI人形机器人上的三个真实机器人任务中，HWAM在所评估的基线方法中取得了最高成功率。在Candy Picking任务上，HWAM取得了70.6%的成功率，而Fast-WAM为43.3%。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更细分地说，是"世界模型 + VLA"交叉的人形全身操作策略学习）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>HWAM 把人形机器人执行后的本体状态也当作预测目标，与参考动作联合生成，缩小"策略输出"与"实际执行"之间的差距。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要理解这篇论文，需要先理清几个层层递进的概念。第一层是 VLA（Vision-Language-Action，视觉-语言-动作模型）：它把摄像头图像和语言指令直接映射成机器人动作，是当前"端到端操作"的主流范式。第二层是 WAM（World Action Model，世界动作模型）：在 VLA 基础上，额外让模型预测"未来画面会变成什么样"，相当于给动作学习加了一个"想象后果"的监督信号，从而学得更好。第三层是"分层人形系统"：在人形机器人上，策略网络通常只输出一个<strong>参考动作（reference action）</strong>，这个参考动作还要经过<strong>全身控制（Whole-Body Control, WBC）</strong>——一套负责平衡、动力学、接触力、关节协调的底层控制器——才能真正变成机器人关节的运动。这里的关键概念是<strong>本体状态（proprioceptive state）</strong>：机器人自己感知到的关节角度、姿态等"身体此刻是什么样"的信息。问题就出在：策略输出的参考动作 ≠ 机器人实际执行出来的动作，因为中间隔着 WBC、动力学、平衡约束这一层"翻译"，二者之间存在一个<strong>动作—执行鸿沟（action–execution gap）</strong>。传统 WAM 在预测未来画面时，必须同时解释"场景本身怎么变"和"参考动作与真实执行的差异"，这让"某个动作到底导致了什么物理结果"变得难以对应。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>这篇论文要解决的是分层人形系统中"动作—执行鸿沟"导致的世界模型监督信号被污染的问题。具体来说：当策略输出的参考动作和机器人实际执行的动作不一致时，未来视觉预测就不得不去解释这种不一致，于是"动作→结果"的因果关联被稀释，动作学习拿不到干净的监督。前人工作（如 Fast-WAM 等）要么只预测视觉未来、要么只学动作，都没有显式地把"执行后的真实本体状态"作为预测目标，因此无法把执行层的反馈纳入动作学习。这个问题在人形机器人上尤其重要，因为人形的高维全身控制、平衡与接触约束使鸿沟比固定基座机械臂大得多。堵上这个 gap 的意义在于：让世界模型的预测目标与机器人真正能执行的运动对齐，从而提升真实任务成功率。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>HWAM（Humanoid World Action Model）的核心思想是：把机器人执行后的本体状态变成显式的预测目标，与参考动作<strong>联合生成（joint state–action generation）</strong>。具体技术要点如下。</p>
+<div class="spacer"></div><p class="num-item">1. <strong>联合状态—动作生成</strong>：模型不是只生成动作，而是同时生成"参考动作 + 执行后的本体状态"这一对轨迹。为什么有效？因为一旦模型必须预测真实执行出的身体状态，它就不得不学习"我发出的参考动作经过 WBC 后会变成什么"，等于把执行层的信息内化进了策略。之前没人这么做，是因为大家默认策略只需输出参考动作，执行是底层控制器的事，没人想到把执行结果当作策略的学习目标。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>三条互补的条件路径（conditional paths）</strong>，这是方法的关键结构：</p>
+<ul>
+<li><strong>Policy 路径</strong>：仅以当前观测为条件，联合去噪（denoise）出状态—动作轨迹。这条路径与部署时的真实条件完全一致——部署时你只有当前观测，没有未来信息，所以这条路径直接对应实际使用场景。</li>
+<li><strong>FDM（Forward Dynamics Modeling，前向动力学建模）</strong>：以动作和执行后状态为条件，预测未来的视觉观测。这相当于问"给定我做了什么、身体变成什么样，画面会如何演变"，把动作、本体状态和视觉结果三者绑定起来。</li>
+<li><strong>IDM（Inverse Dynamics Modeling，逆向动力学建模）</strong>：从视觉转移（前后两帧画面）反推出联合轨迹。这相当于问"画面这样变化，对应的动作和身体状态应该是什么"，从结果反推原因。</li>
+</ul>
+<div class="spacer"></div><p class="num-item">3. <strong>三路径协同的意义</strong>：Policy 路径保证部署一致性，FDM 建立"动作+状态→视觉"的正向因果，IDM 建立"视觉→动作+状态"的反向映射。三者共同把"策略参考→真实身体运动→视觉结果"这条链条打通，使动作学习获得来自执行层的直接监督。这种"正/逆动力学 + 策略"三路径设计，是把世界模型与动作学习耦合起来的一种较新颖的架构选择。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>训练方式</strong>：采用扩散/去噪式的联合轨迹生成（从摘要"jointly denoises"可推断），在统一框架下同时优化三条路径，使模型既能生成动作、又能预测未来、还能从视觉反推动作。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文在真实机器人 LimX OLI 人形平台上做了三个真实任务（real-robot tasks）的评测。关键结果：HWAM 在所有评测 baseline 中取得最高成功率。以 Candy Picking（糖果抓取）任务为例，HWAM 成功率为 <strong>70.6%</strong>，而对比方法 Fast-WAM 仅为 <strong>43.3%</strong>，绝对提升约 <strong>27.3 个百分点</strong>，相对提升超过 60%。这说明显式建模执行后本体状态带来的监督信号，确实显著改善了真实任务表现。摘要提到"three real-robot tasks"和"evaluated baselines"（复数），说明对比了多个基线，但摘要只给出了 Candy Picking 一组具体数字。关于消融实验：三条条件路径（Policy / FDM / IDM）本身就是方法的核心设计，通常这类工作会通过去掉某条路径来验证其贡献，但摘要未明确给出消融数据，需查阅全文确认。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. <strong>依赖真实机器人数据采集</strong>：方法需要"执行后本体状态"作为监督，这意味着训练数据必须在真实人形上采集（或至少要有可信的执行状态记录），数据获取成本高、规模受限，难以像纯仿真或纯视频数据那样大规模扩展。这对实际应用意味着泛化到新任务、新场景的速度会受数据瓶颈制约。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>强绑定于特定分层控制栈</strong>：HWAM 学习的是"参考动作→特定 WBC 执行结果"的映射。一旦更换底层控制器、动力学参数或机器人硬件，学到的执行层映射可能失效，需要重新采集数据训练。这限制了方法的可移植性。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>任务与平台覆盖有限</strong>：目前只在 LimX OLI 一个平台上、三个真实任务上验证，任务种类（如摘要提到的抓取类）相对单一，尚不清楚在更复杂的长程操作、多物体交互、动态环境中的表现。对产品化而言，通用性证据不足。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>世界模型预测误差累积</strong>：FDM 预测未来视觉、IDM 反推轨迹，都依赖视觉预测的准确性；在长时程或视觉变化剧烈的场景中，预测误差可能累积并污染动作学习，这一点摘要未涉及但值得警惕。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>这篇论文在"VLA与端到端策略"子方向里属于<strong>填补空白型</strong>的工作，而非范式突破。判断依据：VLA 和 WAM 都已是成熟范式，HWAM 并没有推翻它们，而是精准地识别出分层人形系统里一个被忽视的结构性问题——"参考动作≠执行动作"，并给出一个合理且直接的解法（把执行后本体状态作为预测目标）。这个洞察本身很有价值，但技术路线（联合生成 + 正/逆动力学三路径）是已有思路的组合与迁移，创新度中等偏上。</p>
+<div class="spacer"></div><p>和领域其他子方向相比，这类工作的价值层级属于"中高"：它直接服务于真实人形操作这一硬核场景，落地导向明确；但天花板受限于数据与平台——它不像基础模型那样有跨任务泛化潜力，更像是"在特定控制栈上把世界模型用对了"的工程性突破。它的意义更多是方法论层面的提醒：<strong>做世界模型时，别忘了建模执行层</strong>。</p>
+<div class="spacer"></div><p>落地价值方面，距离产品化还有明显距离。卡点有三：一是真实人形数据采集成本，二是对特定 WBC 的强依赖导致换硬件就要重训，三是任务覆盖太窄。要落地，需要（a）建立可跨控制器/跨硬件的执行状态建模方式，（b）扩大任务与场景多样性，（c）降低对真实数据的依赖（如仿真+真机混合）。短期内它更可能作为"提升特定人形平台任务成功率"的技术组件，而非通用方案。</p>
+<div class="spacer"></div><p>如果只记住一件事：<strong>把机器人执行后的本体状态当作显式预测目标，是弥合"策略输出"与"真实执行"鸿沟的关键一招。</strong> 这个 idea 特别之处在于它反直觉——大家习惯把执行交给底层控制器、策略只管发指令，而 HWAM 说"策略必须学会预测自己指令的真实后果"，从而让世界模型的监督信号变干净。这个视角对整个分层机器人系统都有启发。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>摘要与给定信息中未提及代码或数据开源情况，也未给出开源链接。arXiv 页面（http://arxiv.org/abs/2610.12026v1）通常会在论文中或项目主页说明是否开源，建议查阅全文或作者项目页确认。目前无法从所给材料判断论文是否承诺后续公开代码/数据。</p></div>
+</div>
+<div class="paper">
+<h3>CMP-IRRT*：一种面向四足机器人的感知辅助高度自适应规划器</h3>
+<div class="title-en">CMP-IRRT*: A Perception-Assisted Height-Adaptive Planner for Quadruped Robots</div>
+<div class="meta">
+<span>📂 仿真到真机 / 强化学习</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2610.10470v1" target="_blank">arXiv: 2610.104701</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.104701" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.104701" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.104701" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.104701" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">四足机器人能够跨越低矮障碍物，但许多二维规划流程仍将障碍物建模为二值占据区域，并依赖基于采样的搜索，这在有限预算下可能效率低下。我们提出了一种基于CMP-IRRT*的感知辅助高度自适应规划框架，CMP-IRRT*是一种通道Mamba PointNet引导的Informed RRT*规划器。给定经过标定的俯视RGB观测，感知模块估计障碍物区域，并将深度预测转换为相对于地面的高度图。随后，规划器执行高度条件化的碰撞检测，将高障碍物视为阻塞，同时允许低障碍物被跨越，并利用CMP引导将采样偏向有希望的区域，同时保留标准自由空间采样和informed采样作为回退机制。在二维规划基准上的实验表明，与经典基线和神经引导基线相比，CMP-IRRT*减少了探索节点数和迭代次数，并且一项受控消融实验支持了基于Mamba的引导模块的贡献。在构建的可通行性感知场景中，当低障碍物可跨越时，所提出的规划器将路径长度最多减少16.3%，并且Unitree Go2的演示进一步展示了可执行的绕行与跨越行为。我们的代码公开于https://github.com/MingfanZhao/height-adaptive-planner。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>导航与场景理解（偏“感知辅助的运动规划 / 足式机器人导航”）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>用俯视RGB感知生成“可跨越高度图”，再引导RRT*采样，让四足机器人能跨矮障碍、绕高障碍地规划路径。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>四足机器人（quadruped robot）与轮式/履带机器人最大的不同，是它具备“抬腿跨越”的能力：一个 15 cm 高的台阶对轮式机器人是死路，对四足机器人却可能只是“抬一下腿”的事。但传统 2D 导航栈（如 ROS 的 costmap + A* / RRT*）把世界压成一张二值栅格图（binary occupancy grid），每个格子只有“占用/空闲”两种状态，于是所有障碍——无论 10 cm 还是 1 m——都被一视同仁地当成不可通过，四足机器人的越障能力被白白浪费。要解决这个问题，需要两件事：一是把“障碍有多高”估计出来，即高度图（height map，每个像素/格子记录相对地面的高度值）；二是让规划器（planner）在搜索时能区分“可跨越的低障碍”和“必须绕开的高障碍”，这被称为高度条件碰撞检测（height-conditioned collision checking）。规划器方面，RRT*（Rapidly-exploring Random Tree Star，一种基于随机采样的渐近最优路径规划算法）是经典方法，但它盲目采样、在有限计算预算下收敛慢；Informed RRT* 通过“椭圆子集采样”加速收敛，但仍需大量节点。近年来有工作用神经网络学习“采样引导”（neural-guided sampling），把采样点往有希望的区域偏置，但如何把感知信息与这种引导结合、并保持理论上的完备性回退，仍是一个开放问题。Mamba 是一种基于状态空间模型（State Space Model, SSM）的序列建模架构，相比 Transformer 有线性复杂度，PointNet 是处理点云/深度数据的经典网络，二者结合可高效处理空间感知输入。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>这篇论文要解决的核心矛盾是：四足机器人硬件上能跨越矮障碍，但现有 2D 规划管线在软件层面把这种能力“抹平”了，导致规划出的路径要么不必要地绕远，要么在有限算力下搜索效率低下。具体来说，它填补了三个 gap：第一，多数 2D 规划器缺乏“高度感知”的碰撞模型，无法区分可跨越与不可跨越障碍；第二，即便有高度信息，如何把它转化为规划器可用的采样引导仍是难题；第三，神经引导的采样方法往往牺牲了经典 RRT* 的完备性保证，一旦网络预测不准就可能规划失败。这项工作的意义在于，它试图把“感知—高度建模—引导采样—安全回退”串成一条完整链路，让四足机器人的越障能力真正在规划层面被利用起来，这对野外巡检、灾后救援、室内配送等需要穿越复杂低矮障碍场景的应用至关重要。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>整体框架名为 CMP-IRRT*（Channel Mamba PointNet-guided Informed RRT*），核心思路是“感知估计高度 → 高度条件碰撞检测 → 神经引导采样 + 经典回退”。</p>
+<div class="spacer"></div><p class="num-item">1. <strong>感知模块与高度图生成</strong>：给定一张标定过的俯视 RGB 图像（top-view RGB observation），感知模块先估计障碍区域，再把深度预测（depth prediction）转换为“相对地面的高度图”。这一步的关键在于“ground-relative”——不是绝对深度，而是相对于局部地面的高度，这样矮障碍（如 5–15 cm 的台阶、线缆、矮栏）就能被标记为“可跨越”，高障碍（如墙壁、大树）标记为“阻塞”。相比直接用 2D 占据栅格，这保留了机器人决策所需的高度维度。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>高度条件碰撞检测（height-conditioned collision checking）</strong> ：规划器在扩展树节点时，不再简单查询“该格子是否被占用”，而是查询“该格子高度是否超过机器人可跨越阈值”。高障碍视为 blocked，低障碍允许 traversed。这是让四足机器人“抬腿通过”而非“绕行”的核心机制，也是与常规 2D 规划管线最本质的区别。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>CMP 引导采样</strong>：CMP（Channel Mamba PointNet）是一个神经网络引导器，利用 Mamba 的线性复杂度序列建模能力和 PointNet 对空间点集的处理能力，学习“哪些区域更可能有解”，从而把 RRT* 的采样点往有希望的区域偏置。相比纯随机采样，这能显著减少探索节点数和迭代次数；相比 Transformer 引导，Mamba 在长序列/大场景下计算更高效。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>Informed 采样与自由空间回退</strong>：为了避免神经引导“带偏”导致规划失败，作者保留了标准自由空间采样（free-space sampling）和 Informed 采样（椭圆子集采样）作为回退（fallback）。这意味着即使 CMP 预测不准，规划器仍能退化为经典 Informed RRT*，保持概率完备性。这种“神经引导 + 经典保底”的设计，是让方法既高效又可靠的关键。</p>
+<div class="spacer"></div><p class="num-item">5. <strong>创新点对比</strong>：常规做法要么是纯 2D 二值规划（浪费越障能力），要么是纯神经端到端规划（缺乏可解释性和完备性保证）。本文的创新在于把“高度感知”显式引入碰撞模型，并用 Mamba 架构做采样引导，同时用回退机制守住经典算法的底线——这种“感知—规划紧耦合但保留经典保障”的组合，此前较少被系统实现。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文在 2D 规划基准（2D planning benchmarks）和自建的“可穿越性感知场景”（traversability-aware scenarios）上做了评估，并与经典及神经引导的 baseline 对比。</p>
+<div class="spacer"></div><p class="num-item">1. <strong>搜索效率</strong>：在 2D 规划基准上，CMP-IRRT* 相比经典 RRT* / Informed RRT* 以及神经引导 baseline，减少了探索节点数（explored nodes）和迭代次数（iterations）。这说明 CMP 引导确实把采样集中到了有希望的区域，而不是盲目撒点。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>消融实验</strong>：作者做了受控消融（controlled ablation），验证了基于 Mamba 的引导器（Mamba-based guide）的贡献。即去掉 CMP 引导后，性能下降，证明该模块不是装饰性的，而是真正在起作用。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>路径长度</strong>：在构造的可穿越性感知场景中，当低障碍可跨越时，所提规划器把路径长度最多减少了 16.3%。这个数字直接对应“不再无谓绕行矮障碍”带来的收益，是论文最核心的量化卖点。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>真机演示</strong>：在 Unitree Go2 四足机器人上做了演示，展示了可执行的“绕行（bypassing）”和“跨越（traversal）”行为。这说明方法不只是仿真/基准上的数字，而是能落到真实硬件上跑通。</p>
+<div class="spacer"></div><p>总体来看，实验覆盖了“搜索效率—模块贡献—路径质量—真机验证”四个层面，逻辑比较完整。不过基准规模、场景复杂度、对比方法的数量等细节，需要看全文才能进一步判断。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. <strong>依赖俯视RGB与深度预测精度</strong>：感知模块从单张俯视 RGB 估计障碍区域和深度，再转高度图。如果深度预测在反光、透明、纹理缺失表面上出错，高度图就会失真，进而导致碰撞检测误判——把高障碍当矮的会撞上，把矮障碍当高的会无谓绕行。对实际部署意味着：在光照剧烈变化或材质复杂的户外场景，可靠性会打折扣。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>“可跨越”阈值是预设的，缺乏动态适应性</strong>：高度条件碰撞检测依赖一个“机器人能跨多高”的阈值。但四足机器人实际越障能力受步态、负载、地面摩擦、动态平衡影响，固定阈值可能过于保守或过于激进。对应用意味着：换一台机器人、换一种步态、加一个负载，可能就需要重新调参。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>2D 规划基准与真实 3D 越障之间有 gap</strong>：论文主要在 2D 规划基准上量化搜索效率，但四足越障本质是 3D 运动规划问题（抬腿轨迹、落足点、机身姿态）。把高度压成 2D 高度图虽然简化了规划，但也丢失了三维几何信息，可能在某些复杂障碍（如悬空横杆、斜坡）上失效。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>真机演示规模有限</strong>：Unitree Go2 演示展示了“可执行”，但未说明场景数量、成功率、重复次数等统计指标。对产品化而言，单次演示不足以证明鲁棒性，还需要大量随机场景下的成功率数据。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p><strong>在子方向中的位置</strong>：这篇论文属于“填补空白 + 渐进改进”的混合体。说它填补空白，是因为“把高度感知显式引入四足 2D 规划碰撞模型，并用 Mamba 做采样引导”这个组合此前确实少见，它堵上了“2D 规划浪费四足越障能力”这个实际 gap。说它渐进，是因为它的每个组件——高度图、RRT*、神经引导采样、Informed 回退——都不是全新发明，创新主要在“组合方式”和“工程实现”。它不太像范式突破（比如从 2D 到 3D 端到端 VLA 那种级别），而更像是在经典规划框架内做了一次有针对性的感知增强。</p>
+<div class="spacer"></div><p><strong>与其他子方向相比的价值层级</strong>：在具身智能的大版图里，这类工作属于“导航与场景理解”中的“感知辅助规划”分支。它的天花板受限于 2D 表示本身——只要还把世界压成高度图，就难以处理真正复杂的三维越障（比如需要机身扭转、动态落足的场景）。相比之下，VLA 与端到端策略方向试图直接从感知到动作，理论上限更高但数据需求大、可解释性差；运动控制方向专注底层步态，越障能力更强但缺乏全局规划。本文的价值在于“用较低的计算成本，把已有的四足越障能力在规划层面释放出来”，是一个性价比很高的工程改进，但很难成为定义领域方向的里程碑。</p>
+<div class="spacer"></div><p><strong>落地价值</strong>：距离实际部署不算远，但有几个卡点。第一，感知鲁棒性——俯视 RGB 深度估计在户外复杂光照下不够稳，需要多传感器融合（如 LiDAR、双目）兜底。第二，阈值自适应——需要根据机器人状态在线估计“当前能跨多高”，而不是固定值。第三，与底层运动控制接口——规划器输出的是“可跨越”的路径点，但底层步态控制器能否真的跨过去，需要联合验证。如果这三个卡点解决，在巡检、仓储、室内配送等场景有较快落地可能；如果要上野外救援，还需要更强的感知和动态越障能力。</p>
+<div class="spacer"></div><p><strong>如果只记住一件事</strong>：最值得记住的 idea 是“<strong>别再把障碍当成二值的——给规划器一个高度维度，四足机器人的越障能力就能在规划层面被兑现</strong>”。这个 idea 特别在于，它不追求炫酷的端到端大模型，而是用最小的表示改动（2D 栅格 → 高度图）加上一个高效的神经引导器（Mamba），就撬动了实实在在的路径长度收益（16.3%）。它提醒我们：具身智能的进步不一定来自更大的模型，也可能来自“把机器人已有的能力，在算法层面正确地建模出来”。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文明确声明代码已公开，链接为：https://github.com/MingfanZhao/height-adaptive-planner 。读者可以直接查看实现细节、复现实验，或在此基础上做扩展。数据集方面摘要未提及单独开源的数据集，感知模块的训练数据来源需看全文确认。</p></div>
+</div>
+<div class="paper">
+<h3>CAPABLE：通过行为潜在编码实现能力感知的策略自适应（Capability-Aware Policy Adaptation via Behavioral Latent Encoding）</h3>
+<div class="title-en">CAPABLE: Capability-Aware Policy Adaptation via Behavioral Latent Encoding</div>
+<div class="meta">
+<span>📂 世界模型与规划</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2610.11971v1" target="_blank">arXiv: 2610.119711</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.119711" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.119711" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.119711" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.119711" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">视觉-语言-动作（Vision-Language-Action，VLA）策略假设其训练时所基于的具身形态（embodiment），并且当关节故障改变了指令动作在物理上的执行方式时，这类策略可能会失败。现有的故障恢复方法通常需要任务特定的重新训练、故障标签、显式诊断或特权具身信息。我们提出了CAPABLE，这是一个面向冻结VLA的统一能力感知自适应框架，它将自监督能力推断与残差强化学习（residual reinforcement learning）相结合。CAPABLE在线推断能力——即每个关节实际实现了多少指令运动，以及该运动如何贡献于末端执行器行为——其输入为指令-响应历史与运动学，并借助跨关节共享的时间编码器（temporal encoder）、雅可比接地（Jacobian grounding）、跨关节注意力（cross-joint attention）以及自监督物理预测。所得表示为一个残差策略提供条件，该策略在无需故障标签或故障关节标识符的情况下，对VLA机械臂动作施加有界修正。在28项LIBERO任务中，CAPABLE将一个被排除在故障训练之外的执行器的成功率从24.8%提升至59.3%，以17.4个百分点的优势超越了参数匹配的全局历史基线，同时保持了健康状态下的性能。跨六个关节的留一执行器（leave-one-actuator-out）实验表明，这种迁移并非特定于某一个执行器，额外的评估刻画了向未见故障家族的迁移，并在物理Franka Panda上展示了恢复效果。https://capable-vla.github.io/</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更细分一点：VLA 的鲁棒性/故障自适应，属于“VLA + 残差强化学习”的交叉）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>让冻结的 VLA 在关节故障时靠在线“能力推断 + 残差修正”继续干活，不用故障标签或重训。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要理解这篇论文，先要建立几个概念。<strong>VLA（Vision-Language-Action，视觉-语言-动作模型）</strong> 是近年机器人学习的主流范式：把摄像头图像、自然语言指令一起喂给一个大模型，直接输出机械臂的关节动作序列，代表作有 RT-2、OpenVLA、π0 等。它的核心假设是“<strong>具身一致性（embodiment consistency）</strong>”——训练时用的机器人身体和执行时是同一个，关节怎么响应指令是固定的。但真实机器人会磨损、卡死、电机退化，某个关节可能“你让它转 10 度，它只转了 3 度”，这叫<strong>关节故障（joint fault）</strong>或<strong>执行器退化（actuator degradation）</strong>。此时 VLA 输出的动作在物理上被扭曲执行，整条任务链就崩了。传统<strong>故障恢复（fault recovery）</strong>方法要么需要故障标签、要么需要显式诊断出“哪个关节坏了”、要么需要特权信息（如真实关节力矩），在真实部署中往往拿不到。<strong>残差强化学习（residual RL）</strong> 是一种常见补救思路：不动原策略，只学一个小的“修正量”叠加到原动作上，代表工作是 RAIL、Residual Policy Learning。<strong>雅可比（Jacobian）</strong> 描述关节速度到末端执行器速度的映射，是机器人学里连接“关节空间”和“任务空间”的桥梁，本文用它把“关节能力”翻译成“末端行为影响”。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>VLA 在训练具身上表现好，但一旦某个关节的“指令-响应”关系变了（故障），策略就会系统性失效，而现有恢复方法都依赖故障标签、显式诊断或特权信息，这些在真实部署中通常不可得。本文要解决的是：<strong>在完全没有故障标签、不知道哪个关节坏了、也不重训 VLA 的前提下，让冻结的 VLA 在线自适应到关节故障</strong>。这件事重要在于，它是 VLA 从“实验室 demo”走向“长期部署”的关键一环——机器人不可能永远健康，鲁棒性不是加分项而是入场券。更关键的是，它把“能力推断”和“策略修正”统一到一个框架里，而不是先诊断再修复的两段式流程。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>CAPABLE 的核心是“先在线推断每个关节的能力，再用这个能力去条件化一个残差策略”。具体拆开看：</p>
+<div class="spacer"></div><p class="num-item">1. <strong>能力定义（capability）</strong>：不是简单判断“好/坏”，而是量化“指令动作有多少被真正执行”以及“这个执行对末端行为贡献多少”。前者是关节层面的缩放，后者通过雅可比映射到任务空间，这让表示对下游修正更有用。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>自监督能力推断</strong>：用一个<strong>时序编码器（temporal encoder）</strong> 在所有关节间共享，输入是“指令-响应历史”（发了什么指令、关节实际怎么动），输出每个关节的能力隐变量。共享编码器意味着参数高效，且能跨关节迁移。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>雅可比接地（Jacobian grounding）</strong>：把关节空间的能力通过雅可比矩阵投影到末端执行器空间，让表示不只是“这个关节弱了”，而是“这个关节弱了对抓取/移动意味着什么”。这是让残差策略能泛化到未见故障的关键——它学的是任务空间的影响，不是某个关节的特定模式。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>跨关节注意力（cross-joint attention）</strong>：关节之间是耦合的，一个关节坏了会改变其他关节的有效贡献，注意力机制让表示能捕捉这种耦合。</p>
+<div class="spacer"></div><p class="num-item">5. <strong>自监督物理预测</strong>：让编码器预测未来的物理响应，作为辅助损失，逼表示学到真实的动力学而非记忆故障模式。</p>
+<div class="spacer"></div><p class="num-item">6. <strong>残差策略</strong>：以上表示条件化一个残差 RL 策略，输出<strong>有界修正量</strong>叠加到 VLA 的机械臂动作上。有界保证不会破坏健康时的表现，残差保证不动冻结的 VLA。</p>
+<div class="spacer"></div><p>创新点在于：以往要么需要故障标签做监督、要么需要显式诊断模块，本文用自监督 + 雅可比接地把“能力”变成一个可在线推断、可跨关节共享、可跨故障族迁移的连续表示，并且直接喂给残差策略，端到端地绕开了“先诊断再修复”的脆弱流程。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>在 <strong>LIBERO</strong>（一个常用的机器人操作 benchmark，含 28 个任务）上评测。关键数字：</p>
+<div class="spacer"></div><ul>
+<li>在一个<strong>被排除出故障训练集的执行器</strong>上，成功率从 <strong>24.8% 提升到 59.3%</strong>，说明能力表示能泛化到训练时没见过的故障关节。</li>
+<li>相比<strong>参数匹配的全局历史 baseline</strong>（同样用历史但不用能力分解），高出 <strong>17.4 个百分点</strong>，证明“按关节分解能力 + 雅可比接地”确实带来增益，而非只是多了参数。</li>
+<li><strong>留一执行器（leave-one-actuator-out）</strong> 实验覆盖 6 个关节，验证这种迁移不是某个关节的偶然现象。</li>
+<li>额外评测显示能迁移到<strong>未见故障族</strong>（不同故障类型），并在<strong>真实 Franka Panda</strong> 上完成恢复，说明不只是仿真有效。</li>
+<li>健康状态下性能保持，说明残差有界设计没有牺牲正常表现。</li>
+</ul>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. <strong>故障类型仍有限</strong>：论文测的是关节层面的执行退化，对传感器故障、通信延迟、末端工具更换等更广泛的“具身变化”未必适用。这意味着实际部署中遇到非关节类故障时，框架可能失效。</p>
+<p class="num-item">2. <strong>依赖在线历史与运动学</strong>：需要能拿到指令-响应历史和雅可比，这对某些黑盒机器人或没有关节反馈的平台是门槛，限制了通用性。</p>
+<p class="num-item">3. <strong>残差 RL 的样本效率</strong>：残差策略仍需在线交互学习，虽然比全量重训便宜，但在真实机器人上采样成本高，恢复速度可能不够快。</p>
+<p class="num-item">4. <strong>任务范围</strong>：主要在 LIBERO 操作任务和 Franka 上验证，对移动操作、人形、多臂等更复杂具身的迁移性未充分证明。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>这篇论文处在 VLA 子方向的<strong>“鲁棒性/自适应”这一填补空白的位置</strong>，不是范式突破，但也不是纯渐进改进。VLA 主战场目前还在“怎么训得更强、泛化更好”，而“部署后坏了怎么办”是被严重低估的问题。CAPABLE 的价值在于它把“能力推断”从监督/诊断问题转成自监督表示学习问题，并用雅可比把它接到任务空间，这个思路是干净的、可复用的。</p>
+<div class="spacer"></div><p>和领域其他子方向比，这类工作的天花板受限于“故障模型”本身——它假设故障是关节级的、可在线观测的。如果未来 VLA 走向真正的长期自主，鲁棒性模块会像今天的 SLAM 一样成为标配，那时这类工作会被吸收进更大的系统里，而不是独立存在。它的价值层级属于“让 VLA 能上产线的必要组件”，不是“让 VLA 更聪明的核心算法”。</p>
+<div class="spacer"></div><p>落地价值：距离产品化还有距离，卡点在三处——一是真实机器人上在线学习残差策略的采样成本，二是对运动学和关节反馈的依赖，三是故障族的覆盖范围。要落地需要：更样本高效的残差学习、更通用的具身变化建模（不只关节）、以及在多任务多具身上的验证。</p>
+<div class="spacer"></div><p>如果只记住一件事：<strong>“能力”可以被自监督地在线推断成一个连续表示，并通过雅可比接地到任务空间，从而让冻结的 VLA 在无标签、无诊断的情况下自适应故障。</strong> 这个 idea 特别在于它把“诊断”和“修复”合并成一个表示学习问题，绕开了传统故障恢复里最脆弱的环节——显式诊断。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文提供了项目主页 https://capable-vla.github.io/ ，通常此类页面会附带代码、视频和补充材料。摘要中未明确说明代码是否完全开源，建议访问该主页确认；若主页未提供代码链接，则需关注作者是否承诺后续公开。</p></div>
+</div>
+<div class="paper">
+<h3>ContourVLA：一种用于广义指代分割的闭环感知-动作轮廓策略（ContourVLA: A Closed-Loop Perception-Action Contour Policy for Generalized Referring Expression Segmentation）</h3>
+<div class="title-en">ContourVLA: A Closed-Loop Perception-Action Contour Policy for Generalized Referring Expression Segmentation</div>
+<div class="meta">
+<span>📂 灵巧操作与抓取</span>
+<span>📊 相关性 8/10</span>
+<a href="http://arxiv.org/abs/2610.12107v1" target="_blank">arXiv: 2610.121071</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.121071" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.121071" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.121071" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.121071" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">广义指代分割（Generalized Referring Expression Segmentation, GRES）要求在动态平衡高层语义与细粒度视觉证据之间取得协调，前者用于识别数量可变的由语言指定的指代对象，后者用于精确的边界描绘。这一要求对现有的级联式视觉-语言架构构成了挑战，这类架构通常依赖静态特征接口和单次掩码预测，从而限制了自适应感知与几何校正能力。我们提出了ContourVLA，一种视觉-语言-动作策略（vision-language-action policy），将GRES重新构建为一个闭环视觉运动过程（closed-loop visuomotor process），其中可编辑轮廓作为显式策略状态，既用于条件化多模态感知，又由几何动作块（geometric action chunks）进行更新。演化感知语义调度（Evolution-Aware Semantic Scheduling, EASS）将轮廓引导的双向边界采样与基于状态的多层级多模态特征路由相耦合，使感知能够适应每一个轮廓状态。在监督初始化之后，垃圾桶增强熵信用传输GRPO（Dustbin-Augmented Entropic Credit Transport GRPO, DECT-GRPO）以实例级信用联合优化离散定位与连续轮廓动作。其 rollout 奖励和信用来源于软预测-目标对应关系，该对应关系考虑了假阳性和漏检目标。ContourVLA在gRefCOCO val、testA和testB上分别将gIoU相较于评估中最强基线提升了8.7、2.8和2.7个百分点，并在全部八个RefCOCO、RefCOCO+和RefCOCOg划分上取得了最高的mIoU。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更准确地说，是"把视觉-语言-动作闭环策略范式迁移到视觉感知任务"的交叉工作，也可自拟为"视觉-语言-动作式分割"）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>把指代分割重构成"可编辑轮廓+闭环动作"的VLA策略，用强化学习联合优化定位与边界，刷新GRES与RefCOCO系列指标。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p class="num-item">1. 指代分割（Referring Expression Segmentation, RES）：给定一张图和一句自然语言（如"左边那只戴红项圈的白猫"），输出被指代目标的像素级掩码。它是"语言理解+像素级定位"的联合任务，是视觉-语言理解落地（如机器人抓取、图像编辑、人机交互）的基础能力。</p>
+<p class="num-item">2. 广义指代分割（Generalized RES, GRES）：RES的升级版，允许一句话指代<strong>任意数量</strong>的目标（0个、1个、多个），甚至允许"没有匹配目标"的情况。这更贴近真实场景，但也让模型必须动态决定"分割几个、分割谁"。</p>
+<p class="num-item">3. 级联视觉-语言架构（cascaded vision-language architecture）：主流做法是"视觉编码器+语言编码器→多模态融合→一次性输出掩码"。特征是<strong>静态特征接口</strong>（融合完就固定）和<strong>单次掩码预测</strong>（single-pass mask prediction），没有"看一眼→改一改→再看一眼"的迭代纠错能力。</p>
+<p class="num-item">4. 视觉-语言-动作模型（Vision-Language-Action, VLA）：源自机器人领域，指模型把感知（视觉+语言）直接映射为动作序列，并在环境中闭环执行。典型代表如RT-2、OpenVLA。核心思想是"感知—动作—再感知"的闭环，而非一次性预测。</p>
+<p class="num-item">5. 轮廓（contour）作为策略状态（policy state）：把目标边界表示为一串可编辑的点/多边形，作为策略的显式状态变量，每一步动作（action chunk）去更新它。这类似"用笔逐段描边"，而不是"一次性盖章"。</p>
+<p class="num-item">6. GRPO（Group Relative Policy Optimization）：一种强化学习算法（DeepSeek提出），用一组采样的相对奖励来估计优势，无需价值网络，适合离散+连续混合动作的优化。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>现有GRES方法把"识别几个目标"（高层语义）和"边界画多准"（低层几何）压进一次前向传播，导致两个矛盾无法调和：语义需要全局抽象，几何需要局部精细，二者在同一静态特征里互相牵制。级联架构的静态特征接口意味着一旦融合完成，模型无法根据"当前分割得怎么样"回头调整感知，缺乏自适应感知与几何纠错能力。GRES本身要求目标数量可变（含0目标），单次预测很难处理"漏检/误检"这类结构性错误，只能靠后处理或阈值硬调。这篇论文的意义在于：把机器人领域成熟的"闭环感知-动作"范式引入分割，让模型能"边看边改"，从范式层面堵上"分割缺乏迭代纠错"这个gap。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p class="num-item">1. 整体重构：把GRES建模为闭环视觉运动过程（closed-loop visuomotor process），可编辑轮廓作为显式策略状态，每一步策略根据当前轮廓条件化地重新感知，再输出几何动作块（action chunk）更新轮廓。核心创新是"感知被动作状态调制"，而非传统"感知决定动作"的单向流。</p>
+<p class="num-item">2. Evolution-Aware Semantic Scheduling（EASS，演化感知语义调度）：将轮廓引导的双向边界采样（contour-guided bidirectional boundary sampling，沿轮廓内外两侧采样以获取边界附近证据）与"状态条件化的多层级多模态特征路由"结合。原理是：不同轮廓演化阶段需要不同粒度的特征——粗阶段要全局语义，细阶段要局部边缘——EASS让感知随轮廓状态动态切换特征层级，这是静态融合做不到的。</p>
+<p class="num-item">3. 动作空间设计：离散动作负责"定位/选择哪个指代目标"（grounding），连续动作负责"轮廓点如何移动"（contour refinement），二者联合优化，避免传统方法把"选目标"和"画边界"割裂成两个模块。</p>
+<p class="num-item">4. DECT-GRPO（Dustbin-Augmented Entropic Credit Transport GRPO）：在GRPO基础上做三处改造——(a) 引入"垃圾桶"（dustbin）机制处理"无匹配目标"和误检，让模型学会"主动放弃"；(b) 熵引导的信用传输（entropic credit transport）在离散与连续动作间合理分配信用；(c) 实例级信用（instance-level credits），按每个实例的预测-目标软对应关系分配奖励，而非整图一个标量奖励。这解决了GRES中"多目标、变数量"下奖励稀疏和信用分配难的问题。</p>
+<p class="num-item">5. 软预测-目标对应（soft prediction-target correspondences）：奖励和信用不基于硬匹配，而是基于软对应，显式考虑假阳性（false positives）和漏检（missed targets），使奖励信号更平滑、更贴合GRES的评价方式。</p>
+<p class="num-item">6. 训练流程：先监督初始化（supervised initialization）让策略有基本的分割能力，再用DECT-GRPO做强化学习微调，避免从零RL的冷启动问题。</p>
+<p class="num-item">7. 为什么之前没人这么做：分割社区长期把任务当作"前馈预测"，而VLA社区关注机器人动作，两者少有交叉；把"轮廓"当作可编辑策略状态、并用GRPO同时优化离散定位与连续几何，是一个跨范式的组合创新。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p class="num-item">1. 在GRES基准gRefCOCO上，ContourVLA相比最强对比baseline，gIoU分别提升8.7（val）、2.8（testA）、2.7（testB）个百分点。gIoU是GRES的核心指标，专门惩罚"目标数量预测错误"，8.7个点的提升在val上属于显著跨越。</p>
+<p class="num-item">2. 在经典RES基准RefCOCO、RefCOCO+、RefCOCOg的全部8个split上，取得最高mIoU，说明闭环范式不仅改善GRES的"数量决策"，也没有牺牲单目标分割精度，反而全面提升。</p>
+<p class="num-item">3. 消融方面（据方法描述推断）：EASS、DECT-GRPO、软对应奖励、dustbin机制等组件应有对应消融，用于验证"闭环感知调度"和"实例级信用"各自的贡献；监督初始化与RL微调的对比也用于说明冷启动的必要性。</p>
+<p class="num-item">4. 对比baseline包括主流级联视觉-语言分割模型（如LISA、GSVA、PSALM等GRES/RES强基线），论文声称在两类任务上同时领先，说明方法具有跨任务泛化性。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. 闭环迭代带来推理开销：每一步都要重新感知并更新轮廓，相比单次前馈模型，推理延迟和计算量更高。对实时应用（如机器人高频控制、视频分割）意味着需要额外工程优化（如动作块并行、缓存），否则难以直接部署。</p>
+<p class="num-item">2. 依赖强化学习训练稳定性：DECT-GRPO虽然做了信用分配改造，但RL本身对超参、奖励设计敏感，复现和调参成本高。对资源有限的研究者或小团队，落地门槛高于纯监督方法。</p>
+<p class="num-item">3. 轮廓表示的表达力上限：用可编辑轮廓表示掩码，对高度非凸、多连通、有孔洞的复杂目标（如树枝、镂空物体）可能不如像素级掩码灵活，存在几何表示瓶颈。</p>
+<p class="num-item">4. 评测集中在静态图像基准：gRefCOCO/RefCOCO系列都是静态图，论文未展示视频、机器人真实闭环场景的实验，"visuomotor"更多是类比而非真实机器人验证，距离"具身"落地还有距离。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<ul>
+<li>位置判断：这是一篇<strong>范式迁移型</strong>工作，而非单纯刷点。它把VLA的"闭环感知-动作"思想搬到分割，并用GRPO解决离散+连续混合动作优化，属于"用新范式重做老任务"。判断依据是：它不是改backbone或加模块，而是重构了任务的求解形式（从单次预测→闭环策略），且指标提升幅度（val +8.7 gIoU）超出渐进改进的典型范围。</li>
+<li>与其他子方向对比：在具身智能版图里，这类工作处于"感知层"而非"控制层"，天花板受限于"感知精度"本身。它的价值在于为VLA提供更可靠的视觉前端（精确掩码是抓取、导航的基础），但本身不解决决策与运动问题。相比真正的端到端VLA（如RT-2），它的"动作"是虚拟的轮廓编辑，不是物理动作，因此更接近"感知增强"而非"具身智能"。</li>
+<li>落地价值：距离产品化中等偏近。优势是无需真机、纯视觉任务、指标可量化；卡点在于推理延迟和RL训练成本。要落地需要：(a) 推理加速（蒸馏、动作块并行）；(b) 稳定可复现的训练配方；(c) 在视频/交互场景验证闭环优势。若这三点解决，可应用于图像编辑、标注自动化、机器人视觉前端。</li>
+<li>只记一件事：<strong>"把分割的掩码变成可编辑的轮廓状态，让感知随状态闭环更新"</strong>。这个idea特别在于它打破了"分割=一次性预测"的思维定式，把分割变成"边看边描"的过程，且用RL把"选哪个目标"和"边界怎么画"统一优化——这是一个可以迁移到检测、跟踪、编辑等多个任务的通用范式。</li>
+</ul>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文摘要与提供的元信息中未明确提及代码或数据开源情况，也未给出GitHub链接。按该领域惯例，作者通常会在论文接收后于项目主页或GitHub公开代码与模型权重，但当前arXiv版本（v1）未提供明确承诺。建议关注作者主页或论文后续版本更新以确认开源状态。</p></div>
+</div>
+</section>
+<section class="day">
 <h2>📅 2026-10-09 <span class="count">(5 篇)</span></h2>
 
 <div class="paper">
