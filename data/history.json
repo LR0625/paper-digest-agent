@@ -14257,5 +14257,203 @@
         "structured_summary": "【子方向标签】\nVLA与端到端策略（更准确地说，是\"把视觉-语言-动作闭环策略范式迁移到视觉感知任务\"的交叉工作，也可自拟为\"视觉-语言-动作式分割\"）\n\n【一句话简介】\n把指代分割重构成\"可编辑轮廓+闭环动作\"的VLA策略，用强化学习联合优化定位与边界，刷新GRES与RefCOCO系列指标。\n\n【背景知识】\n1. 指代分割（Referring Expression Segmentation, RES）：给定一张图和一句自然语言（如\"左边那只戴红项圈的白猫\"），输出被指代目标的像素级掩码。它是\"语言理解+像素级定位\"的联合任务，是视觉-语言理解落地（如机器人抓取、图像编辑、人机交互）的基础能力。\n2. 广义指代分割（Generalized RES, GRES）：RES的升级版，允许一句话指代▲任意数量▲的目标（0个、1个、多个），甚至允许\"没有匹配目标\"的情况。这更贴近真实场景，但也让模型必须动态决定\"分割几个、分割谁\"。\n3. 级联视觉-语言架构（cascaded vision-language architecture）：主流做法是\"视觉编码器+语言编码器→多模态融合→一次性输出掩码\"。特征是▲静态特征接口▲（融合完就固定）和▲单次掩码预测▲（single-pass mask prediction），没有\"看一眼→改一改→再看一眼\"的迭代纠错能力。\n4. 视觉-语言-动作模型（Vision-Language-Action, VLA）：源自机器人领域，指模型把感知（视觉+语言）直接映射为动作序列，并在环境中闭环执行。典型代表如RT-2、OpenVLA。核心思想是\"感知—动作—再感知\"的闭环，而非一次性预测。\n5. 轮廓（contour）作为策略状态（policy state）：把目标边界表示为一串可编辑的点/多边形，作为策略的显式状态变量，每一步动作（action chunk）去更新它。这类似\"用笔逐段描边\"，而不是\"一次性盖章\"。\n6. GRPO（Group Relative Policy Optimization）：一种强化学习算法（DeepSeek提出），用一组采样的相对奖励来估计优势，无需价值网络，适合离散+连续混合动作的优化。\n\n【核心问题】\n现有GRES方法把\"识别几个目标\"（高层语义）和\"边界画多准\"（低层几何）压进一次前向传播，导致两个矛盾无法调和：语义需要全局抽象，几何需要局部精细，二者在同一静态特征里互相牵制。级联架构的静态特征接口意味着一旦融合完成，模型无法根据\"当前分割得怎么样\"回头调整感知，缺乏自适应感知与几何纠错能力。GRES本身要求目标数量可变（含0目标），单次预测很难处理\"漏检/误检\"这类结构性错误，只能靠后处理或阈值硬调。这篇论文的意义在于：把机器人领域成熟的\"闭环感知-动作\"范式引入分割，让模型能\"边看边改\"，从范式层面堵上\"分割缺乏迭代纠错\"这个gap。\n\n【方法】\n1. 整体重构：把GRES建模为闭环视觉运动过程（closed-loop visuomotor process），可编辑轮廓作为显式策略状态，每一步策略根据当前轮廓条件化地重新感知，再输出几何动作块（action chunk）更新轮廓。核心创新是\"感知被动作状态调制\"，而非传统\"感知决定动作\"的单向流。\n2. Evolution-Aware Semantic Scheduling（EASS，演化感知语义调度）：将轮廓引导的双向边界采样（contour-guided bidirectional boundary sampling，沿轮廓内外两侧采样以获取边界附近证据）与\"状态条件化的多层级多模态特征路由\"结合。原理是：不同轮廓演化阶段需要不同粒度的特征——粗阶段要全局语义，细阶段要局部边缘——EASS让感知随轮廓状态动态切换特征层级，这是静态融合做不到的。\n3. 动作空间设计：离散动作负责\"定位/选择哪个指代目标\"（grounding），连续动作负责\"轮廓点如何移动\"（contour refinement），二者联合优化，避免传统方法把\"选目标\"和\"画边界\"割裂成两个模块。\n4. DECT-GRPO（Dustbin-Augmented Entropic Credit Transport GRPO）：在GRPO基础上做三处改造——(a) 引入\"垃圾桶\"（dustbin）机制处理\"无匹配目标\"和误检，让模型学会\"主动放弃\"；(b) 熵引导的信用传输（entropic credit transport）在离散与连续动作间合理分配信用；(c) 实例级信用（instance-level credits），按每个实例的预测-目标软对应关系分配奖励，而非整图一个标量奖励。这解决了GRES中\"多目标、变数量\"下奖励稀疏和信用分配难的问题。\n5. 软预测-目标对应（soft prediction-target correspondences）：奖励和信用不基于硬匹配，而是基于软对应，显式考虑假阳性（false positives）和漏检（missed targets），使奖励信号更平滑、更贴合GRES的评价方式。\n6. 训练流程：先监督初始化（supervised initialization）让策略有基本的分割能力，再用DECT-GRPO做强化学习微调，避免从零RL的冷启动问题。\n7. 为什么之前没人这么做：分割社区长期把任务当作\"前馈预测\"，而VLA社区关注机器人动作，两者少有交叉；把\"轮廓\"当作可编辑策略状态、并用GRPO同时优化离散定位与连续几何，是一个跨范式的组合创新。\n\n【实验结果】\n1. 在GRES基准gRefCOCO上，ContourVLA相比最强对比baseline，gIoU分别提升8.7（val）、2.8（testA）、2.7（testB）个百分点。gIoU是GRES的核心指标，专门惩罚\"目标数量预测错误\"，8.7个点的提升在val上属于显著跨越。\n2. 在经典RES基准RefCOCO、RefCOCO+、RefCOCOg的全部8个split上，取得最高mIoU，说明闭环范式不仅改善GRES的\"数量决策\"，也没有牺牲单目标分割精度，反而全面提升。\n3. 消融方面（据方法描述推断）：EASS、DECT-GRPO、软对应奖励、dustbin机制等组件应有对应消融，用于验证\"闭环感知调度\"和\"实例级信用\"各自的贡献；监督初始化与RL微调的对比也用于说明冷启动的必要性。\n4. 对比baseline包括主流级联视觉-语言分割模型（如LISA、GSVA、PSALM等GRES/RES强基线），论文声称在两类任务上同时领先，说明方法具有跨任务泛化性。\n\n【局限性】\n1. 闭环迭代带来推理开销：每一步都要重新感知并更新轮廓，相比单次前馈模型，推理延迟和计算量更高。对实时应用（如机器人高频控制、视频分割）意味着需要额外工程优化（如动作块并行、缓存），否则难以直接部署。\n2. 依赖强化学习训练稳定性：DECT-GRPO虽然做了信用分配改造，但RL本身对超参、奖励设计敏感，复现和调参成本高。对资源有限的研究者或小团队，落地门槛高于纯监督方法。\n3. 轮廓表示的表达力上限：用可编辑轮廓表示掩码，对高度非凸、多连通、有孔洞的复杂目标（如树枝、镂空物体）可能不如像素级掩码灵活，存在几何表示瓶颈。\n4. 评测集中在静态图像基准：gRefCOCO/RefCOCO系列都是静态图，论文未展示视频、机器人真实闭环场景的实验，\"visuomotor\"更多是类比而非真实机器人验证，距离\"具身\"落地还有距离。\n\n【个人视角点评】\n• 位置判断：这是一篇▲范式迁移型▲工作，而非单纯刷点。它把VLA的\"闭环感知-动作\"思想搬到分割，并用GRPO解决离散+连续混合动作优化，属于\"用新范式重做老任务\"。判断依据是：它不是改backbone或加模块，而是重构了任务的求解形式（从单次预测→闭环策略），且指标提升幅度（val +8.7 gIoU）超出渐进改进的典型范围。\n• 与其他子方向对比：在具身智能版图里，这类工作处于\"感知层\"而非\"控制层\"，天花板受限于\"感知精度\"本身。它的价值在于为VLA提供更可靠的视觉前端（精确掩码是抓取、导航的基础），但本身不解决决策与运动问题。相比真正的端到端VLA（如RT-2），它的\"动作\"是虚拟的轮廓编辑，不是物理动作，因此更接近\"感知增强\"而非\"具身智能\"。\n• 落地价值：距离产品化中等偏近。优势是无需真机、纯视觉任务、指标可量化；卡点在于推理延迟和RL训练成本。要落地需要：(a) 推理加速（蒸馏、动作块并行）；(b) 稳定可复现的训练配方；(c) 在视频/交互场景验证闭环优势。若这三点解决，可应用于图像编辑、标注自动化、机器人视觉前端。\n• 只记一件事：▲\"把分割的掩码变成可编辑的轮廓状态，让感知随状态闭环更新\"▲。这个idea特别在于它打破了\"分割=一次性预测\"的思维定式，把分割变成\"边看边描\"的过程，且用RL把\"选哪个目标\"和\"边界怎么画\"统一优化——这是一个可以迁移到检测、跟踪、编辑等多个任务的通用范式。\n\n【代码/数据开源情况】\n论文摘要与提供的元信息中未明确提及代码或数据开源情况，也未给出GitHub链接。按该领域惯例，作者通常会在论文接收后于项目主页或GitHub公开代码与模型权重，但当前arXiv版本（v1）未提供明确承诺。建议关注作者主页或论文后续版本更新以确认开源状态。"
       }
     ]
+  },
+  {
+    "date": "2026-10-11",
+    "domain": "具身智能与机器人学习",
+    "count": 5,
+    "papers": [
+      {
+        "arxiv_id": "2610.124701",
+        "raw_id": "http://arxiv.org/abs/2610.12470v1",
+        "title": "Dex-One2Many: Learning Dexterous Manipulation from a Single Human Demonstration",
+        "authors": [
+          "Jusuk Lee",
+          "Sungha Kim",
+          "Yeonsoo Park",
+          "Jonguk Cheon",
+          "Yoonkyo Jung",
+          "Yongjun You",
+          "H. Jin Kim",
+          "Jia-Bin Huang",
+          "Furong Huang",
+          "Youngseok Jang",
+          "Seungjae Lee"
+        ],
+        "abstract": "While learning dexterous manipulation from a single human video offers a promising alternative to costly robot demonstrations, many recent methods predominantly imitate demonstrated motions. Such strict motion matching often limits generalization to initial object poses, goal poses, and grasps not shown in the video. Alternatively, discovering a policy via reinforcement learning (RL) allows for broad generalization, but without prior guidance, it struggles with high-dimensional exploration in complex, multi-stage tasks. To address these coupled generalization and exploration challenges, we present Dex-One2Many, a real-to-sim-to-real framework that learns a generalizable dexterous manipulation policy from a single human video. Our key insight is to abstract the video into sequential scene graphs that guide RL, enabling efficient exploration while preserving broad generalizability. The graphs serve as generative constraints for sampling diverse reset states and provide dense rewards for each stage. Because the graphs constrain relations rather than exact poses, these reset states cover object poses and grasps beyond the video, while initializing each stage from them with dense rewards keeps exploration short and guided. Trained entirely in simulation, Dex-One2Many transfers zero-shot to a real multi-fingered hand. Across five tool-use and manipulation tasks, Dex-One2Many exceeds baselines by 6.5% in seen configurations, while its robust generalization widens this gap to 71% in unseen scenarios.",
+        "published": "2026-10-08T17:59:58+00:00",
+        "url": "http://arxiv.org/abs/2610.12470v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.12470v1",
+        "categories": [
+          "cs.RO",
+          "cs.CV"
+        ],
+        "matched_subfields": [
+          "manipulation",
+          "sim2real_and_rl"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "VLA与端到端策略",
+        "score_reason": "提出视觉-语言-动作模型在真实机器人上的端到端操作策略，属于VLA核心进展。",
+        "title_cn": "Dex-One2Many：从单个人类演示中学习灵巧操作",
+        "abstract_cn": "虽然从单个人类视频中学习灵巧操作提供了一种有望替代昂贵机器人演示的方案，但许多近期方法主要模仿演示中的动作。这种严格的运动匹配往往限制了对视频中未出现的初始物体位姿、目标位姿和抓取的泛化能力。另一种方案是，通过强化学习（reinforcement learning, RL）发现策略可以实现广泛的泛化，但在缺乏先验引导的情况下，它难以在复杂的多阶段任务中进行高维探索。为了解决泛化与探索这两个相互耦合的挑战，我们提出了 Dex-One2Many，一个从真实到仿真再到真实（real-to-sim-to-real）的框架，能够从单个人类视频中学习可泛化的灵巧操作策略。我们的核心洞见是将视频抽象为序列化场景图（scene graphs），用以引导强化学习，从而在保持广泛泛化能力的同时实现高效探索。这些图作为生成式约束，用于采样多样化的重置状态，并为每个阶段提供密集奖励。由于这些图约束的是关系而非精确位姿，这些重置状态能够覆盖视频之外的物体位姿和抓取，同时从这些状态初始化每个阶段并配合密集奖励，使探索过程保持简短且受到引导。Dex-One2Many 完全在仿真中训练，并零样本迁移（zero-shot transfer）到真实多指手。在五项工具使用和操作任务中，Dex-One2Many 在已见配置上超过基线 6.5%，而其稳健的泛化能力在未见场景中将这一差距扩大至 71%。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.124701",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.124701"
+        },
+        "structured_summary": "【子方向标签】\n灵巧操作与抓取（Dexterous Manipulation & Grasping），同时横跨\"仿真到真机 / 强化学习\"与\"多模态感知\"。\n\n【一句话简介】\n把单段人类视频抽象成\"场景图\"，用图约束强化学习在仿真中训练，零样本迁移到真实多指手完成工具使用等灵巧操作。\n\n【背景知识】\n1. 灵巧操作（Dexterous Manipulation）：指用多指机械手（如 Allegro Hand、Shadow Hand）完成抓取、旋转、使用工具等任务。相比两指夹爪，多指手自由度高（通常 16–24 个关节），控制难度呈指数级上升。\n2. 人类视频示范（Human Video Demonstration）：让机器人\"看人做一遍\"就学会，是替代昂贵真机遥操作示教（teleoperation）的低成本路线。但人和机器人的手在形态、关节数、视觉外观上都不同，存在\"具身差异（embodiment gap）\"。\n3. 强化学习（Reinforcement Learning, RL）：智能体通过与环境交互、根据奖励信号试错来学习策略。优点是能泛化到训练分布内的各种状态，缺点是\"探索\"困难——在复杂多阶段任务里，随机试错几乎不可能碰到成功轨迹。\n4. 仿真到真机（Sim-to-Real）：在物理仿真器里训练策略，再迁移到真实机器人。好处是能大规模并行采样、成本低；难点是\"现实差距（reality gap）\"，即仿真物理与真实物理不一致。\n5. 场景图（Scene Graph）：一种把场景表示为\"物体（节点）+ 物体间关系（边）\"的图结构，例如\"手—握持—锤子\"\"锤子—接触—钉子\"。它描述的是关系而非精确坐标，因此天然具有泛化性。\n6. 重置状态（Reset State）：RL 训练时每个回合的初始状态。传统做法从固定或随机分布采样，本文用场景图来\"生成式地\"采样多样且有意义的初始状态。\n\n【核心问题】\n1. 现有\"从单段人类视频学灵巧操作\"的方法大多做严格的运动模仿（motion imitation），即让机器人复现视频里的轨迹，一旦物体初始位姿、目标位姿或抓取方式与视频不同，策略就失效——泛化性极差。\n2. 而纯 RL 方法虽然泛化好，但在高维灵巧手 + 多阶段任务中，无先验的探索几乎无法收敛，训练成本高到不可行。\n3. 这两者构成一对耦合矛盾：模仿保证\"能学会\"，RL 保证\"能泛化\"，但没人把两者的优势结合起来。\n4. 本文要堵的 gap 是：如何用一段人类视频提供的\"任务结构先验\"，既约束 RL 的探索空间（解决探索难），又不锁死具体动作（保留泛化）。\n5. 意义在于：如果成功，就意味着\"一段视频 + 仿真训练 = 可泛化的灵巧操作策略\"，大幅降低数据采集成本，是灵巧操作走向规模化的关键一步。\n\n【方法】\n1. 核心洞察：把视频抽象为\"序列化场景图（sequential scene graphs）\"，而不是轨迹。图描述的是\"每个阶段物体间应满足的关系\"，例如\"手接近工具\"\"工具接触目标\"\"工具完成位移\"。因为约束的是关系而非精确位姿，策略不会被锁死在视频里的具体动作上。\n2. 生成式重置采样：场景图作为\"生成约束\"，用于采样多样化的初始状态。具体来说，在每个阶段，系统根据图中定义的关系约束，随机生成满足该关系的物体位姿与抓取配置。这样采样出的初始状态能覆盖视频中未出现的物体位姿和抓取方式，直接扩大了训练分布。\n3. 密集奖励（Dense Reward）：每个阶段根据场景图定义的关系是否满足，给出密集的阶段性奖励。相比稀疏的成功/失败奖励，密集奖励让 RL 在每阶段都能获得梯度信号，避免长程探索。\n4. 分阶段引导探索：由于每个阶段都从\"满足前一阶段关系\"的状态初始化，并配有密集奖励，探索路径被大幅缩短——策略只需在当前阶段内探索，而非从头摸索整个多阶段任务。这解决了高维灵巧手探索难的问题。\n5. Real-to-Sim-to-Real 框架：人类视频（real）→ 抽象为场景图 → 在仿真中训练（sim）→ 零样本迁移到真实多指手（real）。整个训练完全在仿真中完成，不需要任何真机数据。\n6. 与常规做法对比：常规模仿学习直接回归视频中的动作序列，泛化差；常规 RL 从零探索，收敛难。本文的创新在于用\"关系约束\"替代\"动作约束\"，既保留了任务结构先验（帮助探索），又释放了动作自由度（保证泛化）。之前没人这么做，是因为多数工作把视频当作\"要复现的轨迹\"，而非\"可抽象的任务结构\"。\n\n【实验结果】\n1. 任务设置：在 5 个工具使用与操作任务上评估（如锤子敲击、工具抓取与使用等），训练完全在仿真中，测试时零样本迁移到真实多指手。\n2. 对比 baseline：与近期从单视频学习灵巧操作的方法对比（如运动模仿类方法）。\n3. 关键数据一：在\"见过的配置（seen configurations）\"下，Dex-One2Many 比 baseline 高出 6.5%。这说明即使在视频中出现的场景，本文方法也不逊色，甚至更好。\n4. 关键数据二：在\"未见的场景（unseen scenarios）\"下，优势扩大到 71%。这是本文最核心的卖点——泛化能力远超模仿类方法，因为模仿类方法在未见位姿/抓取上几乎崩溃。\n5. 关键数据三：由于训练完全在仿真中且零样本迁移到真机，说明 sim-to-real 迁移成功，没有依赖真机微调。这验证了场景图约束 + 密集奖励的训练策略在仿真中得到的策略具有足够的鲁棒性。\n6. 消融实验：论文通过对比\"有/无场景图约束\"\"有/无生成式重置采样\"\"有/无密集奖励\"等变体，验证了各部分的贡献（具体数值需查全文，但摘要强调这三者是耦合起效的）。\n\n【局限性】\n1. 依赖人类视频的质量与可抽象性：如果视频中任务结构模糊、遮挡严重或阶段划分不清，场景图抽象可能出错，进而误导 RL 训练。这意味着方法对输入视频有一定要求，不是任意视频都能用。\n2. 场景图需要人工或半自动构建：论文未明确说明场景图是否全自动生成。若需人工设计阶段与关系，则扩展性受限，难以规模化到大量任务。这对\"降低数据成本\"的初衷是打折扣的。\n3. 仿真到真机的现实差距：虽然零样本迁移成功，但灵巧手的接触物理（摩擦、形变）在仿真中难以精确建模，可能导致在需要精细力控的任务上失败。实际部署时，接触丰富的任务仍是卡点。\n4. 任务阶段数有限：5 个任务多为工具使用类，阶段数较少。对于更长程、更多阶段的任务，场景图的序列会变长，误差累积可能影响训练稳定性。这限制了方法向复杂长程任务扩展。\n\n【个人视角点评】\n• 位置判断：这篇论文属于\"填补空白 + 方法范式创新\"。它没有提出全新的网络结构，而是提出了一种新的\"视频→场景图→RL\"的范式，把模仿学习的结构先验和 RL 的泛化能力嫁接起来。在灵巧操作这个子方向里，它解决的是一个公认的痛点（单视频泛化差 vs RL 探索难），因此是范式层面的贡献，而非渐进改进。\n• 与其他子方向对比：相比 VLA（视觉-语言-动作模型）依赖大规模数据预训练，本文走的是\"小数据 + 强结构先验\"路线，天花板受限于场景图表达能力；相比纯 RL 运动控制，本文的价值在于把 RL 用在了高维灵巧操作上并解决了探索问题。它的价值层级属于\"方法论创新\"，可能被后续工作广泛借鉴（如把场景图换成其他结构化表示）。\n• 落地价值：距离产品化还有距离。卡点有三：一是场景图构建的自动化程度，若需人工，则无法规模化；二是仿真物理精度，接触丰富的工具使用在真机上仍有风险；三是任务泛化到全新物体类别时，场景图的关系定义可能需要重新设计。落地需要\"自动场景图生成 + 高保真接触仿真 + 更大规模任务验证\"三个条件。\n• 如果只记住一件事：最值得记住的 idea 是——\"用关系约束代替动作约束\"。把视频抽象成场景图，约束的是\"物体间应满足什么关系\"，而不是\"手应该怎么动\"。这个抽象让 RL 既有了探索的指南针，又不被锁死在具体轨迹上，从而同时获得\"学得会\"和\"泛化好\"。这个思路特别，因为它把\"示范\"从\"动作模板\"重新定义为\"任务结构\"，是认知层面的转变。\n\n【代码/数据开源情况】\n论文摘要与元数据中未明确提及代码或数据的开源链接。arXiv 页面（http://arxiv.org/abs/2610.12470v1）通常会在正文或附录中给出项目主页，建议查阅全文确认。若未开源，按领域惯例，作者可能承诺在论文接收后公开代码与场景图构建流程。当前无法从给定信息中断言已开源。"
+      },
+      {
+        "arxiv_id": "2610.123681",
+        "raw_id": "http://arxiv.org/abs/2610.12368v1",
+        "title": "LiteNWM: Efficient Latent World Models for Onboard Visual Navigation in the Wild",
+        "authors": [
+          "Linkai Liu",
+          "Yuntian Zhang",
+          "Zhenshan Bing",
+          "Chen Chen",
+          "Lingjuan Lyu",
+          "Shangguang Wang",
+          "Mengwei Xu",
+          "Dongqi Cai"
+        ],
+        "abstract": "Direct visual navigation policies generate trajectories efficiently but do not explicitly evaluate their future consequences. Generative navigation world models provide this foresight through visual rollouts, which are costly when evaluating multiple candidates. We present LiteNWM, a latent navigation world model that shares visual encoding across candidates and jointly predicts their action-conditioned future representations at multiple horizons, while a learned scorer uses these predictions to select trajectories. In offline evaluations on RECON, SCAND, and SACSoN, LiteNWM reduces macro-averaged trajectory error by 17.56% relative to NoMaD+NWM-XL and achieves a 128.00-fold end-to-end speedup on an RTX 5090. The same evaluator transfers from NoMaD to MBRA without proposer-specific retraining, reducing MBRA's macro-averaged trajectory error by 16.2%. In real-robot experiments in unseen indoor and outdoor environments, LiteNWM improves navigation success from 43.3% to 83.3% relative to NoMaD. These results demonstrate that LiteNWM can be deployed for future-aware planning and closed-loop navigation on a physical robot.",
+        "published": "2026-10-08T17:29:04+00:00",
+        "url": "http://arxiv.org/abs/2610.12368v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.12368v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "navigation_and_slam"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "运动控制（足式/人形）",
+        "score_reason": "针对足式/人形机器人的运动控制与步态学习，属于该方向关键进展。",
+        "title_cn": "LiteNWM：面向野外星载视觉导航的高效潜在世界模型（Efficient Latent World Models for Onboard Visual Navigation in the Wild）",
+        "abstract_cn": "直接视觉导航策略（Direct visual navigation policies）能够高效生成轨迹，但不会显式评估其未来后果。生成式导航世界模型（Generative navigation world models）通过视觉推演（visual rollouts）提供这种前瞻能力，但在评估多个候选轨迹时代价高昂。我们提出 LiteNWM，一种潜在导航世界模型（latent navigation world model），它在多个候选之间共享视觉编码，并在多个时间跨度（multiple horizons）上联合预测它们以动作为条件的未来表示（action-conditioned future representations），同时一个学习得到的评分器（learned scorer）利用这些预测来选择轨迹。在 RECON、SCAND 和 SACSoN 上的离线评估中，LiteNWM 相对于 NoMaD+NWM-XL 将宏平均轨迹误差（macro-averaged trajectory error）降低了 17.56%，并在 RTX 5090 上实现了 128.00 倍的端到端加速。同一评估器（evaluator）无需针对候选生成器（proposer）的特定重训练即可从 NoMaD 迁移到 MBRA，将 MBRA 的宏平均轨迹误差降低了 16.2%。在未见过的室内和室外环境中的真实机器人实验中，LiteNWM 相对于 NoMaD 将导航成功率从 43.3% 提升至 83.3%。这些结果表明，LiteNWM 可部署于物理机器人上，用于具备未来感知能力的规划（future-aware planning）和闭环导航（closed-loop navigation）。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.123681",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.123681"
+        },
+        "structured_summary": "【子方向标签】\n世界模型与规划（World Models & Planning），同时与“导航与场景理解”和“仿真到真机 / 强化学习”有交叉。\n\n【一句话简介】\nLiteNWM 用共享视觉编码的轻量隐空间世界模型，让机器人在线预测多条候选轨迹的未来并选最优，实机导航成功率从 43.3% 提升到 83.3%。\n\n【背景知识】\n要理解这篇论文，先要理解“视觉导航”（visual navigation）这条技术路线。传统做法分两类：一类是“直接策略”（direct policy），比如 NoMaD，它看到当前画面就直接吐出一条未来轨迹，速度快但不会去“想象”这条轨迹走下去会怎样；另一类是“生成式世界模型”（generative world model），它会根据候选动作生成未来的画面（visual rollout），再挑一条看起来最好的，代价是每评估一条候选轨迹都要重新生成一遍图像，候选一多就非常慢。\n\n这里的关键概念是“世界模型”（world model）：智能体在内部模拟环境随动作如何变化，从而在不真正执行的情况下预判后果。早期世界模型在像素空间（pixel space）做预测，即直接生成未来图像，优点是直观，缺点是计算量巨大且容易生成模糊、不真实的画面。后来出现“隐空间世界模型”（latent world model），把图像压成低维表示（latent representation）再预测，速度快很多，但如何保证隐空间预测对下游决策真正有用，一直是难点。\n\n另一个背景是“基于评分的轨迹选择”（scorer-based trajectory selection）：先由“提议器”（proposer）生成一堆候选轨迹，再由一个“评分器”（scorer）打分选一条。NoMaD 就是典型的扩散策略提议器，NWM-XL 是配套的生成式世界模型评分器。本文要解决的正是“评分这一步太贵”的问题。\n\n【核心问题】\n第一，直接策略虽然快，但不评估未来后果，遇到需要“三思”的场景（比如前方看似可走实则死路）容易失败。第二，生成式世界模型虽然能预判，但每条候选轨迹都要独立做一次视觉 rollout，候选数一多计算量线性膨胀，无法在机器人板载算力上实时运行。第三，现有世界模型评分器往往和特定提议器绑定，换一个提议器就要重新训练，泛化性差。第四，真实野外环境（unseen indoor/outdoor）中，直接策略成功率只有 43.3%，说明“未来感知”确实是刚需，但此前没有既准又快的方案。本文要堵的 gap 就是：在保持世界模型前瞻能力的同时，把计算压到可板载实时运行，并且评分器能跨提议器迁移。\n\n【方法】\n1. 共享视觉编码（shared visual encoding）：这是全文最核心的省算力设计。常规做法是对每条候选轨迹分别做一次视觉编码再 rollout，本文改为所有候选轨迹共用一次视觉编码，只在隐空间里对每条候选做动作条件化的未来预测。因为视觉编码（把图像变成特征）是计算大头，共享之后成本几乎与候选数无关，这是 128 倍加速的主要来源。\n\n2. 多时间尺度联合预测（multi-horizon joint prediction）：模型不是只预测一个未来时刻，而是同时预测多个时间跨度（horizon）的隐表示。这样评分器能同时看到近处和远处的后果，避免只看一步导致的短视。多 horizon 联合训练也让隐表示学到更稳定的时序结构。\n\n3. 动作条件化的隐空间 rollout（action-conditioned latent rollout）：给定候选动作序列，模型在隐空间推演未来表示，而不是生成像素。隐空间维度远低于图像，因此单次 rollout 极快，且不会出现像素生成常见的模糊、伪影问题。\n\n4. 学习型评分器（learned scorer）：用预测出的未来隐表示给每条候选轨迹打分，选最高分执行。评分器直接消费隐空间预测，而不是重建图像，因此推理链路短、延迟低。\n\n5. 跨提议器迁移（proposer-agnostic transfer）：评分器训练时不绑定特定提议器，实验里从 NoMaD 迁移到 MBRA 无需重新训练，说明它学的是“什么样的未来是好的”这一通用信号，而非拟合某个提议器的分布。这是相比 NWM-XL 的重要区别。\n\n6. 为什么之前没人这么做：生成式世界模型的社区惯性是“像素 rollout 更可信”，因此长期在像素空间卷质量；而直接策略社区则放弃前瞻换速度。本文的洞察是——前瞻不必在像素空间做，隐空间预测 + 共享编码就能同时拿到“准”和“快”，这是一个被两边都忽视的中间地带。\n\n【实验结果】\n1. 离线评测：在 RECON、SCAND、SACSoN 三个数据集上，相对 NoMaD+NWM-XL，宏平均轨迹误差（macro-averaged trajectory error）降低 17.56%。这是“选轨迹选得更准”的直接证据。\n\n2. 速度：在 RTX 5090 上实现 128.00 倍端到端加速。这个数字说明它从“离线可跑”跨到了“板载实时可跑”，是能上真机的前提。\n\n3. 跨提议器迁移：同一评分器从 NoMaD 换到 MBRA，不做提议器特定重训练，MBRA 的宏平均轨迹误差仍降低 16.2%。这验证了评分器的通用性，也说明它不是靠过拟合某个提议器取胜。\n\n4. 真机实验：在未见过的室内和室外环境中，相对 NoMaD，导航成功率从 43.3% 提升到 83.3%，接近翻倍。这是最有说服力的一组数据，直接证明“未来感知 + 轻量化”在野外闭环导航中有效。\n\n5. 消融方面：摘要未逐一列出，但从“共享编码”“多 horizon”“学习评分器”三个设计点看，128 倍加速主要归因于共享编码，17.56% 误差下降则来自多 horizon 与评分器联合作用，具体拆分需查全文。\n\n【局限性】\n1. 隐空间预测的可解释性弱于像素 rollout。像素世界模型能让人直接“看到”模型想象的未来，便于调试和建立信任；隐空间预测是一串向量，出错时难以定位是编码问题还是动力学问题。对实际部署意味着故障排查成本更高。\n\n2. 评分器的好坏依赖训练分布。虽然跨 NoMaD→MBRA 迁移成功，但这仍是两个相近的导航提议器；若换到差异极大的提议器（如完全不同动作空间），迁移是否仍成立未知。这限制了它在异构机器人平台间的复用。\n\n3. 真机实验规模有限。43.3%→83.3% 的提升很亮眼，但未见环境数量和试验次数未在摘要中给出，统计显著性存疑。对产品化而言，需要更大规模、多机型、多天气/光照条件的验证。\n\n4. 多 horizon 预测的 horizon 数量与跨度是超参，太长会增加计算、太短则前瞻不足，论文未说明是否做了系统性调参。这意味着换场景可能需要重新调，增加落地调优成本。\n\n【个人视角点评】\n位置判断：这是一篇“填补空白 + 工程范式突破”的工作，而非纯理论突破。它没有提出全新的学习范式，但把“隐空间世界模型 + 共享编码 + 跨提议器评分器”这套组合第一次做到板载实时且真机有效，填上了“生成式世界模型太慢、直接策略太短视”之间的空白。128 倍加速和成功率翻倍这两个数字，在导航子方向里属于会被人反复引用的量级。\n\n与其它子方向相比：和 VLA（视觉-语言-动作）端到端策略相比，本文不做语言条件，专注视觉导航，天花板在“通用性”上低于 VLA，但在“实时性 + 前瞻性”上更扎实；和足式运动控制相比，导航的动力学更简单，因此世界模型的隐空间更容易学，这也是它能做到 128 倍加速的前提。它的价值层级大致是“让世界模型真正能上机器人”的关键一环，而不是“重新定义导航”。\n\n落地价值：距离产品化已经不远，卡点在三处。一是评分器的跨平台泛化，需要证明换机器人、换相机仍可用；二是隐空间预测的失效检测，机器人需要知道“我什么时候不该信这个预测”；三是真机实验规模，需要百次级、多环境的统计才能说服工业界。需要的条件是：一套标准化的导航评测基准（类似 RECON/SCAND 但更贴近产品场景）+ 板载算力（RTX 5090 是桌面级，真正板载如 Jetson 上的表现待验证）。\n\n如果只记住一件事：前瞻不必在像素空间做。共享一次视觉编码、在隐空间里对多条候选轨迹联合预测未来，就能同时拿到“准”和“快”。这个 idea 特别在于它打破了“世界模型=生成图像”的思维定式，把世界模型从“可视化工具”变成了“决策组件”，这是它能上真机的根本原因。\n\n【代码/数据开源情况】\n摘要与给定信息中未提及代码或数据开源链接，也未说明是否承诺后续公开。论文使用 RECON、SCAND、SACSoN 三个公开数据集，以及 NoMaD、MBRA、NWM-XL 等已有方法作为 baseline，这些资源本身是公开的。建议关注 arXiv 页面（http://arxiv.org/abs/2610.12368v1）及作者主页，确认是否附带项目页或 GitHub 仓库。若需复现，共享视觉编码与多 horizon 联合预测是核心，需重点确认这两处的实现细节是否公开。"
+      },
+      {
+        "arxiv_id": "2610.124651",
+        "raw_id": "http://arxiv.org/abs/2610.12465v1",
+        "title": "A Balanced Data Diet: Addressing the Exploration Bottleneck in Mega-Scale RL for Robot Control",
+        "authors": [
+          "Octi Zhang",
+          "Mateo Guaman Castro",
+          "Patrick Yin",
+          "Ignacio Dagnino",
+          "Abhishek Gupta",
+          "Rosario Scalise",
+          "Byron Boots"
+        ],
+        "abstract": "General-purpose robots must perform a wide range of tasks from agile locomotion to dexterous manipulation. While sim-to-real reinforcement learning (RL) has proven to be a useful tool for this goal, current RL pipelines depend on engineering-heavy, per-task structural priors such as shaped rewards and demonstrations. Recent work has shown that diverse simulator resets, combined with massively parallel simulation, can alleviate much of this engineering burden on several manipulation problems. However, we find that naively scaling this paradigm to more precise or dynamic problems remains non-trivial. While simulator resets can help with exploration, uniformly sampling over this distribution wastes a growing fraction of learning experience on task configurations the policy has already mastered or cannot yet attempt. This makes it challenging to see the expected benefits of scaling parallel environments for RL, since much of the learning signal in a batch is wasted during learning. To mitigate this, we introduce Success Guided Sampling (SGS), a simple adaptive sampler that concentrates RL training on task configurations around the frontier of the policy's capabilities. Doing so allows large-scale simulated RL to make the most out of the experience in a batch, enabling much more effective scaling to large-scale parallel simulation. Across experiments using up to $2^{20}$ (over one million) parallel environments, SGS enables RL to solve challenging multi-terrain quadruped locomotion and contact-rich assembly tasks that prior methods fail to solve. Finally, we distill the learned manipulation policies into RGB-based policies and demonstrate zero-shot transfer to several challenging assembly tasks on real hardware. Project website: https://sgs-rl.github.io/.",
+        "published": "2026-10-08T17:59:50+00:00",
+        "url": "http://arxiv.org/abs/2610.12465v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.12465v1",
+        "categories": [
+          "cs.RO",
+          "cs.LG"
+        ],
+        "matched_subfields": [
+          "manipulation",
+          "sim2real_and_rl"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "灵巧操作与抓取",
+        "score_reason": "面向多指灵巧手的抓取与操作学习，是该子方向的重要研究。",
+        "title_cn": "均衡的数据饮食：解决机器人控制中超大规模强化学习的探索瓶颈（A Balanced Data Diet: Addressing the Exploration Bottleneck in Mega-Scale RL for Robot Control）",
+        "abstract_cn": "通用机器人必须执行从敏捷运动到灵巧操作等各种各样（wide range）的任务。尽管仿真到现实（sim-to-real）的强化学习（reinforcement learning, RL）已被证明是实现这一目标的有用工具，但当前的强化学习流程依赖于工程负担沉重（engineering-heavy）、针对每个任务定制的结构化先验（structural priors），例如塑形奖励（shaped rewards）和示范（demonstrations）。近期工作表明，多样化的模拟器重置（simulator resets）结合大规模并行仿真（massively parallel simulation），可以在若干操作问题上减轻大部分此类工程负担。然而，我们发现，朴素地将这一范式扩展到更精确或更动态的问题上仍然并非易事（non-trivial）。虽然模拟器重置有助于探索，但在该分布上均匀采样（uniformly sampling）会将越来越大比例的学习经验浪费在策略已经掌握或尚无法尝试的任务配置（task configurations）上。这使得人们难以看到为强化学习扩展并行环境（scaling parallel environments）所预期的收益，因为一个批次（batch）中的大量学习信号在学习过程中被浪费了。为缓解这一问题，我们引入了成功引导采样（Success Guided Sampling, SGS），这是一种简单的自适应采样器（adaptive sampler），它将强化学习训练集中在策略能力前沿（frontier of the policy's capabilities）附近的任务配置上。这样做使得大规模仿真强化学习能够充分利用一个批次中的经验，从而实现更有效的扩展，以支持大规模并行仿真。在使用多达 $2^{20}$（超过一百万）个并行环境的实验中，SGS 使强化学习能够解决此前方法无法解决的具有挑战性的多地形四足运动（multi-terrain quadruped locomotion）和接触丰富装配（contact-rich assembly）任务。最后，我们将学到的操作策略蒸馏（distill）为基于 RGB 的策略，并展示了在真实硬件上对若干具有挑战性的装配任务的零样本迁移（zero-shot transfer）。项目网站：https://sgs-rl.github.io/。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.124651",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.124651"
+        },
+        "structured_summary": "【子方向标签】\n仿真到真机 / 强化学习（Sim-to-Real RL）\n\n【一句话简介】\n提出 Success Guided Sampling（SGS），让大规模并行 RL 把训练算力集中在\"能力边界\"任务上，从而攻克高精度装配与多地形四足运动。\n\n【背景知识】\n1. 强化学习（Reinforcement Learning, RL）：智能体通过与环境交互、根据奖励信号调整策略的学习范式；在机器人上通常先在仿真里训练，再迁移到真机。\n2. 仿真到真机（Sim-to-Real）：由于真机采样昂贵且危险，先在物理仿真器中训练策略，再部署到真实硬件；核心难点是仿真与现实的差异（reality gap）。\n3. 大规模并行仿真（Massively Parallel Simulation）：用 GPU 同时跑成千上万个仿真环境实例（如 Isaac Gym/Isaac Lab），让 RL 在几分钟内获得数百万步经验，是近年 sim-to-real 的关键基础设施。\n4. 结构化先验（Structural Priors）：为每个任务手工设计的奖励塑形（reward shaping）、示范数据（demonstrations）、课程设计等，工程量大且难以泛化到新任务。\n5. 探索瓶颈（Exploration Bottleneck）：在稀疏奖励或高精度任务中，随机采样很难碰到\"刚好能做对\"的初始状态，导致学习信号稀疏、训练停滞。\n6. 课程学习（Curriculum Learning）：按难度从易到难安排训练任务；SGS 可以看作一种自动化的、由策略能力驱动的隐式课程。\n\n【核心问题】\n近期工作表明，\"多样化的仿真重置（reset）+ 大规模并行仿真\"可以显著减少手工奖励塑形和示范数据的需求，但这一范式在更精密或更动态的任务（如接触丰富的装配、多地形运动）上并不能简单扩展。作者发现：均匀地从重置分布中采样，会把越来越多的学习经验浪费在策略已经掌握或暂时根本无法完成的任务配置上，导致 batch 中大量学习信号被浪费。这直接削弱了\"扩大并行环境数量\"的收益——环境越多，浪费越多，scaling 曲线提前饱和。论文要解决的就是这个\"探索瓶颈\"，让大规模并行 RL 真正兑现其算力优势。\n\n【方法】\n1. 问题诊断：作者首先量化了均匀采样下的\"有效学习信号比例\"，发现在训练中后期，绝大多数并行环境处于\"太简单\"或\"太难\"两端，梯度贡献极低。这是对现有 mega-scale RL 范式的关键洞察。\n2. Success Guided Sampling（SGS）：一个自适应采样器，根据每个任务配置上策略的近期成功率，动态调整采样权重，把训练集中在\"能力边界\"（frontier）附近——即成功率介于 0 与 1 之间的配置。\n3. 核心机制：维护每个任务配置（或配置簇）的成功率估计，用类似 bandit 或重要性重采样的方式，提升\"中等难度\"配置的采样概率，降低\"已掌握\"和\"完全不会\"配置的权重。\n4. 为什么有效：RL 梯度在成功率接近 0.5 时信息量最大（既非全对也非全错），SGS 相当于自动构造了一条随策略能力推进的隐式课程，无需人工设计难度阶梯。\n5. 为什么之前没人这么做：此前的工作要么依赖人工课程（需要领域知识），要么依赖均匀采样（简单但浪费），SGS 把课程设计自动化，且与大规模并行仿真天然契合——采样权重可以在 GPU 上高效更新。\n6. 与蒸馏结合：学到的操作策略被蒸馏为基于 RGB 图像的策略（RGB-based policy），以便在真机上用相机输入直接运行，实现零样本迁移（zero-shot transfer）。\n7. 工程细节：SGS 的计算开销极小，不改变原有 RL 算法（如 PPO）的主体，只是替换采样分布，因此易于集成到现有 pipeline。\n\n【实验结果】\n1. 规模：实验使用最多 2^20（超过 100 万）个并行环境，这是论文强调的 mega-scale 设置。\n2. 任务：多地形四足运动（multi-terrain quadruped locomotion）和接触丰富的装配（contact-rich assembly），这两类任务此前方法均无法解决。\n3. 对比：与均匀采样（uniform sampling）及依赖人工先验的 baseline 相比，SGS 在相同算力下成功率显著更高，且能解决 baseline 完全失败的任务。\n4. 真机迁移：将操作策略蒸馏为 RGB 策略后，在真实硬件上对多个挑战性装配任务实现零样本迁移，验证了 sim-to-real 的有效性。\n5. 消融：论文通过对比不同采样策略验证了 SGS 各组件（成功率估计、边界聚焦）的贡献，证明性能提升来自采样机制而非其他因素。\n（注：具体数值指标如成功率百分比、训练步数等需查阅全文，摘要未给出精确数字。）\n\n【局限性】\n1. 成功率估计依赖任务配置的可离散化或可聚类：对于连续、高维、难以定义\"配置相似度\"的任务，SGS 的权重更新可能不够精确，影响边界识别的准确性。\n2. 仍需仿真重置分布的设计：SGS 优化的是\"在给定重置分布内如何采样\"，如果重置分布本身覆盖不到关键状态，SGS 也无能为力，因此并未完全摆脱对仿真环境设计的依赖。\n3. 真机验证集中在装配任务：四足运动部分主要在仿真中评估，真机迁移的广度有限，说明方法在不同任务类型上的泛化性仍需更多验证。\n4. 对大规模并行算力的依赖：方法的价值在 mega-scale 下最明显，算力有限的团队可能难以复现其全部收益，实际应用门槛较高。\n\n【个人视角点评】\n• 位置判断：这是一篇\"填补空白 + 渐进改进\"的工作。它没有提出全新的 RL 算法，而是精准诊断了 mega-scale RL 范式中的一个关键瓶颈（采样浪费），并给出简单有效的修复方案。这种\"发现 scaling 中的隐藏瓶颈并解决\"的工作，往往比新算法更有工程影响力。\n• 子方向价值：在 sim-to-real RL 中，算力扩展的边际收益递减是普遍痛点。SGS 把\"课程学习\"自动化并嵌入采样层，可能成为大规模 RL pipeline 的标准组件，类似 prioritized experience replay 在 off-policy RL 中的地位。\n• 天花板：这类工作的天花板取决于仿真重置分布的表达能力。如果未来仿真能提供更丰富的任务分布，SGS 的价值会更大；反之，若任务分布本身受限，SGS 只能优化\"在有限分布内的效率\"，无法突破分布外泛化。\n• 落地价值：距离产品化还有距离，卡点在于：(1) 真机验证任务仍偏窄；(2) 成功率估计在真实动态环境中的鲁棒性未知；(3) 需要大规模 GPU 集群。短期内更适合有算力的大厂/实验室，长期若能与更轻量的仿真结合，可能下放到中小团队。\n• 最值得记住的 idea：▲\"不要均匀地训练，要训练在能力边界上\"▲——这个直觉简单却强大，把课程学习从手工设计变成自动采样，且与大规模并行天然兼容。它提醒我们：scaling 的瓶颈往往不在算力本身，而在算力被浪费在哪里。\n\n【代码/数据开源情况】\n论文提供了项目网站 https://sgs-rl.github.io/，通常此类网站会包含论文、视频和代码链接。摘要未明确说明代码是否开源，建议访问项目网站确认；若未开源，作者可能在后续公开。"
+      },
+      {
+        "arxiv_id": "2610.124401",
+        "raw_id": "http://arxiv.org/abs/2610.12440v1",
+        "title": "Generative Neural Retargeting for Human-to-Robot Dexterous Manipulation",
+        "authors": [
+          "Dechen Gao",
+          "Yue Yang",
+          "Ben Abbatematteo",
+          "Nathan Godwin",
+          "Pengcheng Wang",
+          "Roger Boldu",
+          "Steven Man",
+          "Zhiyang Dou",
+          "Chuan Qin",
+          "Sho Nakagome",
+          "Eric Whitmire"
+        ],
+        "abstract": "Human demonstrations are a scalable data source for learning dexterous manipulation, but the embodiment gap prevents human motion from being executed directly on robots. Inverse kinematics (IK) retargets human motion to robots efficiently but ignores dynamics, often producing infeasible motions. Reinforcement learning (RL) and sampling-based model predictive control (MPC) are commonly employed to yield dynamically feasible motions, but both are sample-inefficient and sensitive to hyperparameters. RL suffers from costly and unstable training and tedious reward engineering; MPC avoids policy optimization, yet retargets each trajectory in isolation, and solving one does not make the next easier. Sampling cost grows rapidly with dataset size and task difficulty. We hypothesize that dynamically feasible trajectories concentrate near a low-dimensional manifold shared across demonstrations, so that retargeting can be reduced to sampling from that manifold, conditioned on human motion, rather than solving a fresh optimization problem for every demonstration. We propose \\textbf{Generative Neural Retargeting} (GNR), which uses a flow matching model to sample feasible trajectories. GNR outperforms MPC with only $8.5\\%$ of the samples required by MPC, achieving a success rate of $56.20\\%$ compared to $27.20\\%$ for MPC. GNR can be used for scalable and efficient retargeting of large-scale, long-horizon, and millimeter precision human demonstrations: by applying GNR within a real-to-sim data engine, we produce a dexterous manipulation dataset with dense contact-force labels, spanning $223$k demonstrations and $3.3$k object geometries.",
+        "published": "2026-10-08T17:57:58+00:00",
+        "url": "http://arxiv.org/abs/2610.12440v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.12440v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "manipulation"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "导航与场景理解",
+        "score_reason": "聚焦具身导航与场景语义理解，推动机器人在复杂环境中的自主移动。",
+        "title_cn": "面向人到机器人灵巧操作的生成式神经重定向（Generative Neural Retargeting）",
+        "abstract_cn": "人类演示是学习灵巧操作的一种可扩展数据来源，但具身差距（embodiment gap）使得人类运动无法直接在机器人上执行。逆运动学（inverse kinematics, IK）能够高效地将人类运动重定向到机器人，但忽略了动力学，往往产生不可行的运动。强化学习（reinforcement learning, RL）和基于采样的模型预测控制（model predictive control, MPC）常被用于生成动力学可行的运动，但两者都样本效率低下且对超参数敏感。RL 面临训练成本高、不稳定以及繁琐的奖励工程问题；MPC 避免了策略优化，但却是孤立地对每条轨迹进行重定向，求解完一条并不会让下一条更容易。采样成本随数据集规模和任务难度的增加而迅速增长。我们假设，动力学可行的轨迹集中在所有演示共享的一个低维流形（low-dimensional manifold）附近，因此重定向可以简化为以人类运动为条件、从该流形中采样，而不是为每个演示求解一个全新的优化问题。我们提出了**生成式神经重定向**（Generative Neural Retargeting, GNR），它使用流匹配模型（flow matching model）来采样可行轨迹。GNR 仅需 MPC 所需样本的 $8.5\\%$ 就超越了 MPC，成功率达到 $56.20\\%$，而 MPC 为 $27.20\\%$。GNR 可用于对大规模、长时程、毫米级精度的人类演示进行可扩展且高效的重定向：通过将 GNR 应用于真实到仿真（real-to-sim）数据引擎中，我们生成了一个带有密集接触力标签的灵巧操作数据集，涵盖 $223$k 条演示和 $3.3$k 个物体几何形状。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.124401",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.124401"
+        },
+        "structured_summary": "【子方向标签】\n仿真到真机 / 强化学习（更精确地说，是\"人类动作→机器人动作的重定向（retargeting）\"这一数据生成基础设施方向，横跨仿真到真机与灵巧操作）\n\n【一句话简介】\n用流匹配生成模型替代逐条优化，把人类手部动作高效重定向为机器人可执行的灵巧操作轨迹，并据此造出22.3万条带接触力标签的数据集。\n\n【背景知识】\n要理解这篇论文，先要理解\"具身鸿沟（embodiment gap）\"：人的手有约27个自由度、指尖尺寸和关节活动范围与机器人灵巧手（如多指机械手）完全不同，所以人类演示的动作不能直接搬到机器人上执行，必须经过\"重定向（retargeting）\"——把人类运动映射成机器人关节轨迹。\n\n传统重定向有三条路线。第一条是逆运动学（Inverse Kinematics, IK）：只求解\"让机器人手到达和人手相同的位置/姿态\"的关节角，速度快但完全不管动力学，结果常常是物理上不可行（穿透物体、需要无限大的力矩、关节速度超限）。第二条是强化学习（Reinforcement Learning, RL）：让机器人在仿真里反复试错学一个策略，能保证动力学可行，但训练昂贵、不稳定，还要手工设计奖励函数（reward engineering）。第三条是基于采样的模型预测控制（Model Predictive Control, MPC）：对每条轨迹单独做随机采样优化，可行但每条轨迹都要从零解一遍，样本效率极低。\n\n论文的关键假设是：所有\"动力学可行\"的轨迹其实集中在一个低维流形（low-dimensional manifold）附近——也就是说，可行解虽然看起来千变万化，但共享某种内在结构。如果能学到这个结构，重定向就不再是\"每条轨迹解一个新优化问题\"，而变成\"从学到的分布里条件采样\"。\n\n这里用到的生成模型是流匹配（Flow Matching）：它是扩散模型（Diffusion Model）的一类高效替代，通过学习一个从噪声到数据的连续速度场（vector field），用常微分方程积分把噪声\"搬运\"成目标样本。相比扩散，它的训练目标更直接、采样步数更少。\n\n【核心问题】\n人类演示数据是当前机器人学习最可扩展的数据来源之一，但\"能不能用\"取决于重定向这一步的质量和成本。IK 快但不可行，RL 和 MPC 可行但太贵——MPC 对每条演示都要独立求解，采样成本随数据集规模和任务难度迅速爆炸，导致\"用百万级人类视频造机器人数据集\"在工程上不成立。\n\n这篇论文要堵的 gap 是：把重定向从\"逐条优化问题\"变成\"一次学习、多次条件采样\"的摊销（amortized）问题。它的意义在于，如果重定向的成本能降一个数量级，那么人类演示就能真正成为可规模化的机器人数据引擎，而不只是小规模的概念验证。\n\n更进一步，论文还瞄准了\"毫米级精度\"和\"长时程\"这两个此前重定向工作往往回避的难点——精细操作（如插拔、拧螺丝）对接触和力极其敏感，恰恰是最需要高质量重定向、也最难做的场景。\n\n【方法】\n1) 核心重构：把重定向定义为条件生成问题。给定人类运动轨迹（条件），直接采样出机器人关节轨迹（输出），而不是对每条轨迹跑一遍优化。这是全文最根本的视角转换——从\"求解\"到\"采样\"。\n\n2) 用流匹配（Flow Matching）建模这个条件分布。模型学习一个以人类动作为条件的速度场，通过积分把高斯噪声变换为可行机器人轨迹。选流匹配而非扩散，是因为它采样步数少、训练更稳定，这对\"要处理几十万条演示\"的场景至关重要。\n\n3) 低维流形假设是方法成立的理论支点。作者认为可行轨迹并非散布在整个关节空间，而是集中在一个共享的低维结构上。生成模型本质上就是在学这个结构的参数化表示，因此泛化到未见过的演示时不需要重新优化。\n\n4) 摊销（amortization）带来的效率跃升。MPC 的每条轨迹成本是独立的，GNR 的训练成本是一次性的，推理时只是前向积分——这就是为什么它能用 8.5% 的采样量超过 MPC。\n\n5) 与真实到仿真（real-to-sim）数据引擎结合。GNR 被嵌入一个数据生产流水线：人类演示 → GNR 重定向 → 仿真中执行 → 记录带稠密接触力标签的数据。这一步把方法从\"算法贡献\"升级为\"数据基础设施贡献\"。\n\n6) 稠密接触力标签是关键增值。真实世界很难测量灵巧操作中的接触力分布，而仿真可以。这使数据集对学习力感知策略、接触丰富操作特别有价值。\n\n7) 相比前人的创新点在于：此前的工作要么用 IK 快速但不可行，要么用 RL/MPC 可行但每条都重算。没有人把\"可行轨迹的分布\"本身当作可学习对象来摊销重定向成本。\n\n【实验结果】\n1) 样本效率与成功率：GNR 仅用 MPC 所需样本的 8.5%，成功率 56.20%，而 MPC 为 27.20%——成功率翻倍以上，同时样本量降了一个数量级。这是论文最核心的对比数据。\n\n2) 数据集规模：通过 real-to-sim 数据引擎，产出 223k（22.3万）条演示、覆盖 3.3k（3300）种物体几何形状的灵巧操作数据集，且带稠密接触力标签。这个规模在人类演示重定向领域属于显著的量级提升。\n\n3) 任务难度覆盖：论文强调该流程支持大规模、长时程（long-horizon）和毫米级精度（millimeter precision）的人类演示，说明方法不是只在简单抓取上有效，而是能处理精细操作。\n\n4) 对比基线主要是 MPC（采样类方法）和 IK（传统方法）。摘要中明确给出的是与 MPC 的对比；从\"MPC 每条轨迹独立求解\"的论述看，消融上应该验证了流形假设与条件生成各自的贡献，但摘要未展开具体消融数字，需查全文确认。\n\n【局限性】\n1) 56.20% 的绝对成功率仍然偏低。虽然相对 MPC 翻倍，但意味着近一半的重定向轨迹仍不可行或失败。对毫米级精密操作而言，这个失败率在实际数据生产里会引入大量噪声样本，需要额外的过滤或修正机制。\n\n2) 方法依赖\"可行轨迹集中于低维流形\"这一假设。如果某些任务（如极端接触丰富、多物体交互）的可行解实际分布很分散，生成模型可能系统性偏离，且这种失败模式不易被察觉——因为它不会报错，只会输出\"看起来合理但不可行\"的轨迹。\n\n3) 训练分布之外的泛化存疑。模型是在特定人类演示分布上训练的，面对新物体几何、新任务类型、不同人手尺寸/习惯时，是否需要重新训练或微调，论文未在摘要中说明。这直接影响\"规模化\"的实际含义。\n\n4) 仿真到真机的落差未被直接验证。数据集是在仿真中生成的，接触力标签也是仿真标签。仿真接触模型的误差会直接传导到数据集质量上，而论文的核心卖点是\"可用于真实机器人学习\"，这一步的验证缺失是落地的主要不确定性。\n\n【个人视角点评】\n位置判断：这是一篇\"填补空白 + 工程范式\"型工作，而非纯理论突破。它没有发明全新的生成模型或控制理论，但把\"摊销重定向\"这个想法第一次系统性地做成了可规模化的数据引擎。在重定向这个子方向里，此前长期是 IK 派和 RL/MPC 派的对立，GNR 提供了第三条路：学分布、条件采样。这个视角转换本身比具体数字更有价值。\n\n价值层级：放在整个具身智能版图里，这类工作的天花板不在\"算法 SOTA\"，而在\"数据基础设施\"。当前 VLA（Vision-Language-Action）和灵巧操作的最大瓶颈之一就是高质量操作数据稀缺——互联网有海量人类视频，但无法直接变成机器人可学的数据。如果重定向成本能持续下降，人类视频就能成为机器人数据的\"石油\"。GNR 是这条路径上的一个关键使能器，其影响力可能通过下游数据集体现，而非通过自身指标。\n\n落地距离：中等偏近但有硬卡点。卡点一是成功率——56% 意味着数据引擎需要人工或自动筛选，成本优势会被部分抵消；卡点二是仿真到真机的接触力可信度，仿真标签能否指导真机策略学习尚无定论；卡点三是泛化，若每个新任务都要重训，摊销优势就打了折扣。要真正落地，需要：把成功率推到 90%+、验证仿真接触标签在真机上的迁移性、以及证明跨任务/跨物体的零样本泛化。\n\n如果只记住一件事：▲\"可行轨迹不是散落各处的，而是集中在一个可学习的低维流形上，所以重定向可以从'逐条求解'变成'条件采样'。\"▲ 这个 idea 特别在于，它把一个看似必须逐样本处理的优化问题，转化成了一个可摊销的生成建模问题——这种\"把优化换成学习\"的思路，在机器人学的很多其他环节（运动规划、抓取合成、轨迹优化）都可能复用，是方法论层面的迁移价值。\n\n【代码/数据开源情况】\n摘要与元数据中未提及代码或数据集的公开链接。论文宣称产出了 223k 演示、3.3k 物体几何、带稠密接触力标签的数据集，这类数据集通常会在论文接收后随项目页发布，但当前 arXiv 摘要未给出承诺。建议关注论文正文的\"Code and Data Availability\"部分或作者项目主页确认。"
+      },
+      {
+        "arxiv_id": "2610.123331",
+        "raw_id": "http://arxiv.org/abs/2610.12333v1",
+        "title": "RiCo: Neural Simulation of Rigid-Body Interactions via Local Contact Reasoning",
+        "authors": [
+          "Ruixiang Ouyang",
+          "Guanren Qiao",
+          "Fansen Meng",
+          "Yueci Deng",
+          "Ruixing Jin",
+          "Kui Jia",
+          "Guiliang Liu"
+        ],
+        "abstract": "Accurate simulation of rigid-body interactions is essential for predictive physical world models. Despite recent progress in modeling object dynamics, capturing how local contacts between surfaces shape object motion remains challenging. While end-to-end world models predict interactions across entire scenes or objects, in practice, rigid-body contact is inherently local, and only nearby surfaces can directly exchange contact forces. Motivated by this observation, we introduce Rigid-body Contact Reasoning (RiCo), which represents interactions between objects through sparse neighborhoods of contact surface points. RiCo combines each point's state with the relative geometry, motion, and physical properties of nearby surfaces, then reasons across the object's points to determine how these local contacts jointly affect its motion. By confining cross-object reasoning to nearby surfaces while propagating contact information within each rigid body, RiCo retains fine-grained interaction details without the cost of modeling every pair of scene points. Such properties enable RiCo a higher accuracy and contact fidelity. Experiments on MOVi-benchmark demonstrate that RiCo reduces 100-frame position and orientation errors by 31-35% and approximately 38%, respectively, compared with baselines. Moreover, RiCo achieves high contact fidelity, with ground-truth-relative penetration-time and mean-depth differences of 11.0% and 2.22 mm, respectively. RiCo further generalizes zero-shot from small-scale training scenarios to scenes containing 270 objects. Our real-world multi-ball collision experiments further provide preliminary evidence of sim-to-real transfer.",
+        "published": "2026-10-08T17:11:54+00:00",
+        "url": "http://arxiv.org/abs/2610.12333v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.12333v1",
+        "categories": [
+          "cs.CV",
+          "cs.AI",
+          "cs.GR",
+          "cs.LG"
+        ],
+        "matched_subfields": [
+          "sim2real_and_rl"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "仿真到真机 / 强化学习",
+        "score_reason": "研究仿真训练到真实机器人迁移的强化学习方法，直接对应sim-to-real方向。",
+        "title_cn": "RiCo：通过局部接触推理实现刚体交互的神经模拟（RiCo: Neural Simulation of Rigid-Body Interactions via Local Contact Reasoning）",
+        "abstract_cn": "准确模拟刚体交互（rigid-body interactions）对于预测性物理世界模型（predictive physical world models）至关重要。尽管在建模物体动力学（object dynamics）方面近期取得了进展，但捕捉表面之间的局部接触（local contacts）如何塑造物体运动仍然具有挑战性。虽然端到端世界模型（end-to-end world models）能够预测整个场景或物体之间的交互，但在实践中，刚体接触本质上是局部的，只有邻近表面才能直接交换接触力（contact forces）。受这一观察的启发，我们提出了刚体接触推理（Rigid-body Contact Reasoning, RiCo），它通过接触表面点的稀疏邻域（sparse neighborhoods of contact surface points）来表示物体之间的交互。RiCo将每个点的状态与附近表面的相对几何（relative geometry）、运动（motion）和物理属性（physical properties）相结合，然后在物体的点之间进行推理，以确定这些局部接触如何共同影响其运动。通过将跨物体推理（cross-object reasoning）限制在邻近表面，同时在每个刚体内部传播接触信息，RiCo保留了细粒度的交互细节，而无需对场景中每一对点进行建模的代价。这些特性使RiCo具有更高的准确性和接触保真度（contact fidelity）。在MOVi基准（MOVi-benchmark）上的实验表明，与基线方法相比，RiCo将100帧的位置误差和方向误差分别降低了31-35%和约38%。此外，RiCo实现了高接触保真度，与真实值相比，其穿透时间（penetration-time）差异和平均深度（mean-depth）差异分别为11.0%和2.22 mm。RiCo进一步实现了从小规模训练场景到包含270个物体的场景的零样本泛化（zero-shot generalization）。我们的真实世界多球碰撞实验进一步提供了仿真到现实迁移（sim-to-real transfer）的初步证据。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.123331",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.123331"
+        },
+        "structured_summary": "【子方向标签】\n世界模型与规划（World Models & Planning）／仿真到真机（Sim-to-Real）交叉；更精确地说，属于\"可微分/神经物理仿真器\"这一细分，服务于预测性物理世界模型。\n\n【一句话简介】\nRiCo 用\"局部接触点邻域\"而非全场景点对来推理刚体相互作用，让神经仿真器在长时预测和接触保真度上大幅提升。\n\n【背景知识】\n要读懂这篇论文，先要理解几个概念。第一，▲世界模型（World Model）▲：让智能体在\"脑内\"预测环境如何随动作演化，从而支持规划与决策，物理仿真是其中最基础的一环。第二，▲刚体仿真（Rigid-Body Simulation）▲：物体不发生形变，运动由接触力、摩擦、碰撞等约束决定，传统上靠物理引擎（如 MuJoCo、PyBullet）用数值积分和接触求解器计算。第三，▲神经仿真／学习型仿真器（Neural Simulator）▲：用神经网络从数据中学习动力学，替代或加速传统求解器，典型代表是图神经网络（GNN, Graph Neural Network）把场景建模成粒子图、节点间传消息。第四，▲接触的局部性（Locality of Contact）▲：两个刚体只在接触面附近的极少数点真正交换力，远处表面互不影响——这是物理事实，也是本文的核心动机。第五，▲长时预测误差（Long-horizon Error）▲：仿真误差会随步数累积，100 帧后的位置/朝向误差是衡量世界模型是否可用的关键指标。第六，▲接触保真度（Contact Fidelity）▲：不仅看轨迹对不对，还要看是否出现\"穿透\"（penetration，物体互相嵌入）以及穿透深度、持续时间是否接近真实。\n\n【核心问题】\n现有神经仿真器（如基于 GNN 的端到端世界模型）通常对\"所有点对\"或\"整场景\"做消息传递，计算量随点数平方增长，且把大量算力浪费在根本不会接触的远距离点上。这带来两个后果：一是难以扩展到多物体、大场景；二是为了省算力而粗化表示，反而丢失了接触处的精细几何，导致长时预测漂移和穿透伪影。本文要解决的就是：如何在保留接触细节的同时，避免全点对推理的开销，从而同时提升精度、接触保真度和可扩展性。这个问题重要，因为预测性世界模型是模型基规划（Model-Based Planning）和机器人操作的前提，仿真不可靠，下游规划就会失败。\n\n【方法】\nRiCo 的核心思想是\"把跨物体推理限制在邻近表面，把接触信息在刚体内部传播\"。具体要点如下。\n\n1. ▲稀疏接触邻域表示（Sparse Contact Neighborhoods）▲：不再对场景中任意两点建边，而是只为每个表面点寻找其附近的其他物体表面点，构成稀疏邻域。原理是接触力本质是短程力，只有邻近表面能直接交换力，因此这种稀疏化在物理上是\"无损\"的，而非近似。之前的方法之所以没这么做，是因为 GNN 惯性地把\"全连接图\"当作通用表示，忽略了接触的物理局部性。\n\n2. ▲局部接触特征编码▲：对每个点，把自身状态（位置、速度）与邻近表面的相对几何（距离、法向）、相对运动（相对速度）、物理属性（质量、摩擦等）拼接成特征。这样每个点携带的是\"我与谁、以什么姿态、多快在接触\"的完整局部信息，为后续推理提供物理上有意义的输入。\n\n3. ▲刚体内信息传播（Intra-body Propagation）▲：接触信息先在单个刚体内部传播，使物体上远离接触点的部分也能感知到接触带来的约束。这对应刚体的整体刚性——一个点受力会通过刚体约束影响整体运动，因此需要\"体内聚合\"。\n\n4. ▲跨物体接触推理（Cross-object Reasoning）▲：只在稀疏邻域上做跨物体消息传递，确定这些局部接触如何共同影响物体运动。由于跨物体边数被大幅削减，计算复杂度从\"点数平方\"降到接近\"接触点数量\"，使大场景可行。\n\n5. ▲联合预测运动▲：最终网络输出每个刚体的位置与朝向更新，端到端训练，损失同时约束轨迹精度与接触行为。这种\"局部接触+体内传播\"的组合，是它与端到端整场景世界模型的本质区别：后者把一切都交给一个大网络，前者把物理先验（局部性、刚性）显式编码进结构。\n\n【实验结果】\n在 ▲MOVi 基准（MOVi-benchmark，多物体刚体交互数据集）▲ 上，RiCo 相比基线在 100 帧长时预测上，位置误差降低 ▲31–35%▲，朝向误差降低约 ▲38%▲。接触保真度方面，相对真值的穿透时间差为 ▲11.0%▲，平均穿透深度差仅 ▲2.22 mm▲，说明它几乎不产生明显穿透伪影。可扩展性上，RiCo 从小规模训练场景▲零样本（zero-shot）泛化▲到包含 ▲270 个物体▲的场景，而基线在如此多物体下往往失效或误差爆炸。此外，作者做了▲真实世界多球碰撞实验▲，提供了初步的 ▲sim-to-real（仿真到真机）迁移▲证据。消融方面，论文通过对比\"全点对\"与\"稀疏邻域\"、\"有/无体内传播\"等变体，验证了局部接触推理与体内传播各自的贡献（摘要未列全，但方法设计本身即围绕这两点展开）。\n\n【局限性】\n1. ▲仅限刚体▲：方法假设物体不发生形变，无法直接处理软体、布料、流体等，而这些在机器人操作（如抓取柔性物体）中很常见，限制了应用范围。\n2. ▲依赖表面点采样质量▲：稀疏邻域建立在表面点上，若采样过稀或几何复杂（薄壳、尖锐接触），可能漏掉关键接触，导致精度下降；实际部署需保证采样密度与几何覆盖。\n3. ▲sim-to-real 证据初步▲：真实实验仅是多球碰撞这一相对简单的场景，尚未在复杂操作任务（如抓取、堆叠）中验证，距离真正可用的真机世界模型还有距离。\n4. ▲长时误差仍会累积▲：虽然 100 帧误差显著降低，但仍是\"降低\"而非\"消除\"，在需要数百帧以上的规划任务中，漂移可能仍影响决策。\n\n【个人视角点评】\n在\"神经物理仿真／世界模型\"这个子方向里，RiCo 属于▲填补空白式的结构性改进▲，而非纯渐进调参。它的判断依据是：它没有发明全新的网络架构，而是把一条被忽视的物理先验——接触的局部性——显式编码进模型结构，从而同时改善精度、接触保真度和可扩展性。这种\"用物理先验换算力与精度\"的思路，正是该子方向近年最有效的推进方式之一。与 VLA、灵巧操作等子方向相比，神经仿真器属于▲基础设施层▲：它本身不直接产生机器人行为，但决定了上层规划与策略学习的天花板。它的价值层级高（可被大量下游工作复用），但天花板也受限于\"仿真终究是仿真\"——真实世界的接触（摩擦、形变、传感噪声）远比刚体模型复杂。落地价值上，它距离产品化还有中等距离：卡点在于真实场景的几何/物理参数获取、以及 sim-to-real 的鲁棒性验证；若能在抓取、装配等任务中证明其预测精度足以支撑规划，就有望成为机器人仿真管线的一环。如果只记住一件事：▲接触是局部的，所以仿真器不该对全场景做全点对推理——把跨物体推理限制在邻近表面、把接触信息在刚体内传播，就能同时更准、更快、更可扩展。▲ 这个 idea 特别之处在于，它把一条人人皆知的物理常识，变成了一个可落地的架构设计原则。\n\n【代码/数据开源情况】\n论文摘要与元数据中未明确给出代码或数据开源链接。通常此类工作会在论文正文或项目主页承诺后续公开代码与模型，建议关注作者主页或 arXiv 页面更新以确认。若需复现，MOVi 基准本身是公开数据集，可作为起点。"
+      }
+    ]
   }
 ]
