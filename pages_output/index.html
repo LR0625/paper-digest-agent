@@ -82,6 +82,148 @@ body {
 <div class="header"><h1>📄 embodied_ai 论文速递</h1><p>每日自动推送 · 由 paper-digest-agent 驱动</p></div>
 <div class="container">
 <section class="day">
+<h2>📅 2026-10-18 <span class="count">(4 篇)</span></h2>
+
+<div class="paper">
+<h3>价值即记忆：面向通用机器人策略的在线价值引导后训练（Value as Memory）</h3>
+<div class="title-en">Value as Memory: Online Value-Guided Post-training for General Robot Policies</div>
+<div class="meta">
+<span>📂 </span>
+<span>📊 相关性 7/10</span>
+<a href="http://arxiv.org/abs/2610.22368v1" target="_blank">arXiv: 2610.223681</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.223681" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.223681" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.223681" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.223681" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">通用机器人策略的真实世界后训练面临两项挑战：部分可观测性使动作选择存在歧义，而离线后训练方法又会延迟来自部署经验的反馈。我们提出价值即记忆（Value as Memory，VaM），一个通过价值缓存（value caching）与在线真实世界强化学习（online real-world reinforcement learning，RL）来应对上述挑战的框架。价值缓存以近期的价值预测作为任务进度记忆来约束动作选择，而在线更新则通过结合离线演示（offline demonstrations）、离策略干预（off-policy interventions）与同策略 rollout（on-policy rollouts）来实现及时的策略改进，从而达成样本高效的适配。由此，VaM 能够从离线 RL 预热（offline RL warmup）过渡到基于稀疏奖励的在线自主学习。在涉及可变形物体与富接触操作的长时程任务中，VaM 借助价值缓存取得平均绝对成功率提升 $29.4\%$，而在与离线训练相匹配的设置下，通过在线自主学习取得 $32.8\%$ 的提升。所评估的在线调度在相同梯度步预算下执行的策略迭代次数为 $8\times$，且在数据采集与训练并发进行时，每个梯度步所记录的时间降低超过 $2\times$。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更精确地说：通用机器人策略的在线真实世界后训练 / 在线强化学习）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>VaM 用"价值缓存"当任务进度记忆、用在线真实世界 RL 做后训练，让通用机器人策略在稀疏奖励下持续自我改进。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，需要先建立几个概念。第一，<strong>通用机器人策略（generalist robot policy）</strong>：指一个策略网络（通常是视觉-语言-动作模型，VLA，Vision-Language-Action model）在海量跨任务数据上预训练，能处理多种指令和物体，但预训练完往往还需要在具体任务上"后训练（post-training）"才能达到可用成功率。第二，<strong>部分可观测（partial observability）</strong>：机器人只能看到当前相机画面，看不到"任务进行到哪一步"这种隐藏状态，比如袋子是否已经撑开、绳子是否已经绕好，导致同一个画面下该做什么动作是模糊的——这是长程操作任务的核心难点。第三，<strong>离线后训练 vs 在线后训练</strong>：离线方法用事先采集的固定数据集训练，反馈延迟、无法利用部署中产生的新经验；在线方法（online RL）让机器人在真实环境中边跑边学，反馈及时但样本效率低、真实世界试错代价高。第四，<strong>稀疏奖励（sparse reward）</strong>：只有任务成功才给 1 分，中间过程无信号，这让 RL 极难起步，通常需要<strong>离线 RL 预热（offline RL warmup）</strong>——先用演示数据学一个还不错的初始策略，再转到在线。第五，<strong>价值函数（value function）</strong>：估计"当前状态下未来能拿到多少回报"，本文把它当作"任务进度"的隐式编码来用。第六，<strong>on-policy / off-policy 数据</strong>：on-policy 是当前策略自己跑出来的数据（分布匹配但采集慢），off-policy 是历史策略或人类干预产生的数据（可复用但分布偏移），本文把演示、干预、自主 rollout 三类数据混用。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>通用机器人策略在真实世界后训练面临两个结构性障碍：一是部分可观测导致动作选择歧义，策略"不知道任务做到哪了"；二是离线后训练把部署经验与策略更新割裂，反馈滞后。前人工作通常只解决其中一个：记忆类方法（如带历史帧的序列模型）缓解部分可观测但不解决在线学习；在线 RL 方法解决反馈及时性但常在部分可观测 + 稀疏奖励下崩溃。本文要堵的 gap 是：<strong>如何让一个通用策略在真实世界中、稀疏奖励下、从离线预热平滑过渡到在线自主学习，并且样本高效</strong>。这件事重要，因为它是"机器人基础模型能否在部署后持续变强"的关键一环——没有它，通用策略永远停留在"预训练完就冻结"的阶段。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>核心技术方案可拆成三块。</p>
+<div class="spacer"></div><p>1）<strong>价值缓存（value caching）作为任务进度记忆</strong>：常规做法是把最近若干帧历史拼进策略输入（frame stacking / 序列模型），显式但冗余、对长程任务窗口有限。VaM 的做法是把价值函数近期的预测值缓存起来，作为额外的条件输入喂给策略。原理是：价值预测本身编码了"离成功还有多远"，它的时间序列天然是一条任务进度曲线，比原始像素历史更紧凑、更任务相关。为什么有效：它把"记忆"从高维感知空间搬到低维价值空间，既缓解部分可观测，又不需要策略自己去从历史帧里推断进度。为什么之前没人这么做：价值通常只用于 RL 的信用分配，很少被显式当作策略的输入特征来充当记忆。</p>
+<div class="spacer"></div><p>2）<strong>在线真实世界 RL 与三类数据混合</strong>：把离线演示（demonstrations）、离策略人类干预（off-policy interventions）、在策略自主 rollout（on-policy rollouts）混合进同一个训练缓冲，兼顾初始覆盖、纠错信号与分布匹配。这样在稀疏奖励下，演示提供起步、干预提供关键纠错、自主 rollout 提供策略自身分布的数据，样本效率显著提升。</p>
+<div class="spacer"></div><p>3）<strong>离线 RL 预热 → 在线自主学习的调度</strong>：先用离线 RL 把策略和价值函数预热到"能偶尔成功"的水平，再切到在线自主探索，用稀疏成功信号继续提升。配合<strong>并发数据采集与训练（concurrent data collection and training）</strong>的工程调度，让采样与梯度更新重叠进行，从而在同样梯度步预算下做更多策略迭代。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>实验在真实世界的长程任务上做，涵盖可变形物体（deformable objects）与接触丰富操作（contact-rich manipulation）。关键数字：其一，<strong>价值缓存带来平均绝对成功率提升 29.4%</strong>；其二，<strong>在线自主学习相对匹配的离线训练带来 32.8% 的提升</strong>；其三，在相同梯度步预算下，在线调度执行的<strong>策略迭代次数是 8 倍</strong>，且由于采集与训练并发，<strong>每梯度步记录时间降低 2 倍以上</strong>。对比基线是匹配的离线训练方案。摘要未明确列出消融细节，但从"value caching 单独 +29.4%"与"online learning 单独 +32.8%"的拆分看，二者贡献被分别量化，属于对方法各部分的验证。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p>1）<strong>依赖真实世界在线试错</strong>：虽然样本效率提升，但"在线自主学习"仍意味着机器人在真实环境中失败，对安全敏感或高价值场景（如家庭中的易碎物品）落地有风险，需要额外的安全约束或仿真预训练。2）<strong>价值函数的可靠性是命门</strong>：价值缓存把记忆压缩进价值预测，若价值估计在分布外状态偏差大，进度记忆就会误导策略；稀疏奖励下价值学习本身困难，这一耦合放大了误差。3）<strong>任务与奖励工程仍偏定制</strong>：稀疏奖励需要成功检测器，长程任务的成功判定在真实世界并不总是自动可得，限制了"开箱即用"的通用性。4）<strong>实验规模有限</strong>：摘要只给出成功率增益，未说明任务数量、跨任务泛化与跨本体迁移，通用性证据尚不充分。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>位置判断：这是一篇<strong>填补空白型</strong>工作，而非范式突破。它没有提出全新的学习范式，而是把"价值函数"这一 RL 老组件创造性地复用为"记忆"，并把离线预热 + 在线 RL + 混合数据这套组合在真实机器人上跑通、量化收益。价值在于它把两个此前分头解决的痛点（部分可观测、反馈滞后）用一个统一框架接上，且给出了真实世界的具体增益数字。与领域其他子方向相比：相比 VLA 预训练这类"堆数据"路线，本文属于"部署后持续学习"这一层，天花板受限于在线 RL 在真实世界的样本效率与安全性；但它的价值密度高，因为通用策略的"最后一公里"恰恰卡在后训练。落地距离：中等偏近但有关键卡点——成功检测器、安全约束、价值估计鲁棒性。需要条件：可靠的任务成功判定、仿真到真实的预热、以及能承受试错成本的场景（工业分拣、实验室操作先于家庭）。如果只记住一件事：<strong>把价值预测当作任务进度记忆来条件化策略</strong>——这个 idea 特别，因为它把"记忆"从感知层搬到价值层，用任务相关性替代原始历史，既省窗口又直击部分可观测的本质，是一个可迁移到其他长程操作系统的通用技巧。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>摘要与给定信息中未提及代码或数据开源，也未给出项目主页链接。论文是否承诺后续公开无法从现有信息确认，建议查阅 arXiv 页面正文的 "Code and Data" 或补充材料部分核实。</p></div>
+</div>
+<div class="paper">
+<h3>Spark-0：扩展空间对齐触觉预训练以实现机器人灵巧操作</h3>
+<div class="title-en">Spark-0: Scaling Spatially Aligned Tactile Pretraining for Robot Dexterous Manipulation</div>
+<div class="meta">
+<span>📂 </span>
+<span>📊 相关性 7/10</span>
+<a href="http://arxiv.org/abs/2610.22342v1" target="_blank">arXiv: 2610.223421</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.223421" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.223421" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.223421" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.223421" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">通用机器人策略受益于大规模视觉预训练，但往往在接触密集的灵巧操作中表现不佳，因为力、柔顺性和初期滑移难以从图像中观测。我们提出Spark-0，一种空间对齐的视觉-触觉-语言-动作（VTLA）模型，以两种互补方式利用触觉。在预训练期间，由触觉手套导出的图像空间接触图（contact maps）连同来自冻结的3D几何教师模型的特征一起监督视觉token；这些目标在推理时被移除。与此同时，一条触觉通路编码区域力历史和3D触觉单元（taxel）状态，以对动作专家进行条件化。因此，单个检查点同时支持纯视觉部署和触觉条件化部署。为扩展这一监督，我们构建了HumanTouch，一个包含1000小时全手触觉人类操作的数据集，并在该数据集上结合第一人称视频、机器人数据和仿真对Spark-0进行预训练。我们还发布了SparkArena，它在同一灵巧本体上将纯视觉仿真任务与触觉条件化的真实机器人任务配对。Spark-0在SparkArena的两个赛道（tracks）上均取得最高平均成功率，并在Ego Humanoid Manipulation Benchmark的全部八项聚合指标上排名第一。与在相同数据和算力下丢弃触觉进行纯视觉预训练相比，保留1000小时HumanTouch的触觉使Ego Humanoid上的纯视觉成功率从52.5%提升至71.7%，并使SparkArena-Real（部署时也使用触觉）上的成功率从44.0%提升至52.0%，这表明触觉不仅作为策略输入，还作为灵巧视觉运动预训练的可扩展监督发挥作用。网站见：https://xsparkai.com/Spark-0。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更精确地说，是“视觉-触觉-语言-动作”多模态端到端策略，属于VLA的一个扩展分支）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>用1000小时人类全手触觉数据做“触觉监督式”预训练，让VLA模型在接触密集的灵巧操作上更强。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，需要先建立几个概念。第一，<strong>VLA（Vision-Language-Action，视觉-语言-动作模型）</strong>：这类模型把摄像头图像、语言指令作为输入，直接输出机器人动作，是当前通用机器人策略（generalist robot policy）的主流范式，代表工作如RT-2、OpenVLA、π0等。第二，<strong>预训练（pretraining）</strong>：在大规模数据上先训练一个通用表征，再迁移到下游任务；视觉领域靠ImageNet/网络视频已经非常成熟，机器人领域则依赖大规模遥操作数据、人类视频（egocentric video，第一视角视频）和仿真数据。第三，<strong>灵巧操作（dexterous manipulation）</strong>：指多指手完成拧瓶盖、插拔、装配等需要精细力控的任务，其难点在于<strong>接触（contact）</strong>——力的大小、柔顺性（compliance，即顺应外力的能力）和<strong>初始滑移（incipient slip，物体刚开始打滑的瞬间）</strong>这些信息在图像里几乎不可见，因为手指遮挡加上视觉分辨率有限。第四，<strong>触觉手套（tactile glove）</strong>：一种在人类手部布置触觉传感器的手套，可以在人做演示时同步采集触觉信号，是获取“人类触觉数据”的关键硬件。第五，<strong>触觉表征</strong>常用两种形式：<strong>taxel（tactile pixel，触觉像素）</strong>是触觉传感器阵列上的单个测点，记录该点的三维力；<strong>接触图（contact map）</strong>则是把触觉信号投影回图像空间，形成一张“哪里被碰到了”的稠密热力图。第六，<strong>教师模型（teacher model）</strong>：在蒸馏（distillation）中提供监督信号的大模型，这里指冻结的3D几何教师，用来给视觉token提供空间几何先验。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>当前VLA模型的预训练几乎完全依赖视觉监督（图像重建、视频预测、视觉-语言对齐），这使得模型在接触密集任务上存在系统性短板：力、柔顺性、滑移这些决定成败的信号无法从图像中观测，导致灵巧操作的成功率远低于抓取放置等粗粒度任务。已有的触觉研究大多停留在“小规模、单任务、触觉仅作为推理输入”的层面，没有人验证过“触觉能否像视觉一样，作为一种可扩展的预训练监督信号”来提升通用策略。这篇论文要堵的gap正是：<strong>触觉数据的规模化和触觉监督的可迁移性</strong>——即能否用大规模人类触觉数据，在预训练阶段就把接触先验注入视觉表征，并且让同一个checkpoint既能纯视觉部署、又能触觉条件部署。这个问题重要，因为它决定了灵巧操作能否复制视觉预训练的成功路径，而不是每个任务都重新采数据、重新训练。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>核心技术方案可以拆成四块。第一，<strong>双通道触觉使用策略</strong>：预训练阶段，用触觉手套数据生成“图像空间接触图”（image-space contact map），把它作为稠密监督信号去监督视觉token——相当于告诉视觉编码器“这张图里哪些像素区域正在被接触”，同时叠加一个冻结的3D几何教师模型的特征作为几何监督；这两个监督目标在推理时被移除，因此不增加部署负担。第二，<strong>触觉条件通路</strong>：并行的触觉编码器处理“区域力历史”（regional force histories，按手部区域聚合的力时序）和“3D taxel状态”，输出条件向量注入动作专家（action expert，即负责生成动作的模块）。第三，<strong>单checkpoint双模式部署</strong>：由于触觉监督只在预训练期存在、触觉通路是可选的，同一个模型权重既支持纯视觉推理，也支持带触觉的推理，这是相对以往“触觉专用模型”的关键工程创新。第四，<strong>数据规模化</strong>：构建HumanTouch，1000小时全手触觉人类操作数据集，并与第一视角视频、机器人数据、仿真数据混合预训练。相比常规做法（触觉只作为输入、或只在机器人数据上做小规模触觉训练），其创新点在于把触觉“升格”为一种自监督式的表征学习信号，且用人类数据绕开了机器人触觉数据采集成本高的问题——之前没人这么做，是因为缺乏大规模触觉手套数据和把触觉对齐到图像空间的技术手段。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>实验在自建的SparkArena上进行，包含两条track：SparkArena-Sim（纯视觉仿真任务）和SparkArena-Real（触觉条件真机任务），使用同一灵巧操作本体；此外还评测了Ego Humanoid Manipulation Benchmark的八项聚合指标。关键数据有三组：其一，在Ego Humanoid上，相比“同等数据同等算力但丢弃触觉”的纯视觉预训练，保留1000小时HumanTouch触觉把纯视觉成功率从52.5%提升到71.7%，提升19.2个百分点，证明触觉作为监督信号的价值；其二，在SparkArena-Real（部署时也用触觉）上，成功率从44.0%提升到52.0%，提升8个百分点；其三，Spark-0在SparkArena两条track上均取得最高平均成功率，并在Ego Humanoid Manipulation Benchmark全部八项聚合指标上排名第一。论文还通过“丢弃触觉”的对照实验构成了对触觉监督贡献的消融验证，但摘要未披露逐模块（如3D几何教师、接触图、触觉通路）的独立消融数字。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p>第一，触觉监督依赖触觉手套采集的人类数据，而人类手与机器人手的形态、传感器布局存在<strong>具身差异（embodiment gap）</strong>，接触图在图像空间对齐后仍可能存在分布偏移，这意味着迁移到新本体时需要重新校准，限制了“开箱即用”的通用性。第二，论文的核心提升证据集中在自建的SparkArena和Ego Humanoid上，缺少与外部公开灵巧操作基准（如Robomimic、DexArt等）的横向对比，外部有效性存疑，实际部署到第三方平台的效果未知。第三，推理阶段触觉通路是可选的，但真机实验显示带触觉仅比纯视觉高8个百分点（52.0% vs 44.0%），说明触觉条件通路的边际收益有限，主要收益来自预训练监督——这暗示触觉编码器的设计可能还不是最优，实际产品中是否值得加装触觉硬件需要权衡成本。第四，1000小时数据虽大，但全部为人类演示，缺少机器人自主交互中的失败数据，模型对接触失败的恢复能力未被评估，这在真实非结构化环境中是致命短板。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>这篇论文在VLA与灵巧操作交叉的子方向里属于<strong>填补空白型</strong>工作，而非范式突破。判断依据是：它没有提出全新的模型架构或学习范式，而是把“触觉作为预训练监督”这一思路在规模上做到了前人没做到的量级（1000小时），并用“单checkpoint双模式”解决了触觉模型部署的实际工程障碍。它的价值在于验证了一个此前只是猜想的命题——触觉可以像视觉一样规模化地监督表征学习，这对整个领域的数据策略有指导意义。和领域其他子方向相比，这类工作的天花板受限于触觉硬件的普及度和人类-机器人具身差异：视觉预训练能靠互联网视频无限扩展，触觉数据却必须靠手套逐小时采集， scaling law的上限明显更低；但它的“下限”很高，因为接触密集任务是当前通用策略最明确的失败模式，任何实质提升都有直接落地价值。落地距离方面，硬件卡点是触觉手套和机器人触觉皮肤的成本与耐用性，软件卡点是跨本体的触觉对齐校准；需要触觉硬件成本下降到消费级、且出现标准化的触觉数据格式，才可能产品化，乐观估计还需2-3年。如果只记住一件事，那就是：<strong>触觉不只是推理时的输入，更是预训练时可扩展的监督信号</strong>——这个idea特别之处在于它把触觉从“传感器模态”重新定位为“表征学习资源”，从而绕开了“部署时必须装触觉”的约束，让触觉数据的价值可以惠及纯视觉部署的模型。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文提供了项目网站 https://xsparkai.com/Spark-0，摘要中未明确说明代码与HumanTouch数据集、SparkArena基准是否完全开源；通常此类工作会在网站或后续版本中承诺公开数据集与评测基准，建议关注项目页的更新。</p></div>
+</div>
+<div class="paper">
+<h3>从监督式玩耍中获得灵巧性（Dexterity from Supervised Play）</h3>
+<div class="title-en">Dexterity from Supervised Play</div>
+<div class="meta">
+<span>📂 </span>
+<span>📊 相关性 7/10</span>
+<a href="http://arxiv.org/abs/2610.22340v1" target="_blank">arXiv: 2610.223401</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.223401" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.223401" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.223401" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.223401" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">机器人如何能够自主收集学习灵巧操作所需的富含接触的经验？我们提出了DSP：从监督式玩耍中获得灵巧性（Dexterity from supervised play），这是一个框架，机器人通过行为克隆（behavior cloning）从数分钟的人类玩耍中学习一个玩耍策略（play policy），然后自主部署该策略以收集数小时的交互数据来训练一个世界模型（world model）。在推理阶段，同一个玩耍策略随后通过在学习到的世界模型下提出候选动作序列以供评估，来指导模型预测控制（model-predictive control, MPC）。为了加速推理，我们还引入了一种方法，通过在学习到的世界模型内进行自我玩耍（self-play）来蒸馏出一个闭环的、以目标为条件的策略（closed-loop, goal-conditioned policy）。我们在仿真和真实世界中，在多指手（multifingered hand）上对欠驱动推动（underactuated pushing）和任意到任意的手内姿态重定向（any-to-any in-hand pose reorientation）评估了该框架。在真实世界实验中，我们的方法在成功率上比事后行为克隆（hindsight behavior cloning）高出69.6%，并以少490倍的交互数据达到了与强化学习（reinforcement learning）相当的成功率。这些结果表明，监督式玩耍可以自主收集交互数据、指导基于模型的规划（model-based planning），并在没有任何任务特定演示或仿真到现实迁移（sim-to-real transfer）的情况下实现策略学习。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>灵巧操作与抓取（Dexterous Manipulation），兼跨“世界模型与规划”和“仿真到真机 / 强化学习”</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>机器人先模仿几分钟人类“玩耍”学会自主玩耍，再用玩耍采集数小时数据训练世界模型，并用它做规划与策略蒸馏，实现无需任务示范的灵巧操作。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>灵巧操作（dexterous manipulation）指用多指手对物体做精细的接触丰富（contact-rich）操作，比如把物体在手中翻转、调整姿态。这类任务难在接触动力学复杂、状态空间高维，传统上靠强化学习（reinforcement learning, RL）在仿真里大量试错，再通过“仿真到真机迁移”（sim-to-real transfer）搬到现实，但迁移本身很脆弱。另一条路是行为克隆（behavior cloning, BC），即用人类遥操作示范直接监督学习策略，但需要大量任务特定的示范数据，采集成本高。世界模型（world model）是学习出来的环境动力学预测器，给定当前状态和动作能预测未来状态，从而支持模型预测控制（model-predictive control, MPC）——即在线采样多条候选动作序列、用世界模型评估后选最优执行。本文的核心思路是：让机器人自己“玩”来产生数据，而不是依赖人类示范或仿真。这里的“玩耍”（play）指无明确任务目标、广泛探索物体交互的行为，能覆盖大量接触状态，天然适合训练世界模型。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>灵巧操作缺乏可扩展的自主数据采集方式：人类示范贵且带任务偏置，仿真数据迁移难。论文要回答的是，能否用极少量人类“玩耍”视频教会机器人自己玩，从而自主、无任务特定地采集接触丰富数据。这填补的 gap 是：把“玩耍”从人类专属的数据来源变成机器人可自主执行的持续数据引擎，并把它与世界模型、规划、策略蒸馏串成闭环。其意义在于提供一条不依赖任务示范、不依赖 sim-to-real 的灵巧操作学习路径，直击该子方向最痛的“数据从哪来”问题。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>1）监督玩耍策略：用几分钟人类玩耍数据做行为克隆，得到一个“玩耍策略”，它不追求完成任务，只模仿人类与物体交互的多样行为分布。这样机器人能自主持续产生接触丰富数据，解决数据来源问题。</p>
+<p>2）自主采集与世界模型训练：部署该策略自主交互数小时，收集状态-动作-下一状态数据训练世界模型，使其能预测接触动力学。相比仿真器，世界模型直接拟合真实数据，绕开 sim-to-real 差距。</p>
+<p>3）推理时用玩耍策略引导 MPC：玩耍策略提出候选动作序列，世界模型评估其后果，MPC 选最优动作执行。玩耍策略充当动作先验，把搜索限制在合理分布内，提高规划效率与成功率。</p>
+<p>4）世界模型内自博弈蒸馏：为加速推理，在学习到的世界模型里做自博弈（self-play），把闭环、目标条件（goal-conditioned）策略蒸馏出来，替代在线 MPC 的重计算。蒸馏在学生模型内完成，无需真实交互。</p>
+<p>创新点在于把“玩耍”同时用作数据采集器和规划先验，并用世界模型内自博弈把重规划压缩成轻策略，形成“少量人类玩耍→自主玩耍→世界模型→规划/蒸馏”的闭环，此前没人这样串联。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>在欠驱动推动（underactuated pushing）和多指手任意到任意手内姿态重定向（any-to-any in-hand pose reorientation）上，仿真与真机均验证。真机中，方法比 hindsight behavior cloning（用事后目标重标定的行为克隆）成功率高出 69.6%；与强化学习相比，达到相当成功率但交互数据少 490 倍。这组数字说明监督玩耍采集的数据效率极高，且无需任务示范与 sim-to-real。论文还通过消融验证玩耍策略作为 MPC 先验、世界模型质量、蒸馏策略各自贡献（摘要未给全部数字，但明确报告了对比与消融设置）。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p>1）依赖少量人类玩耍数据做初始行为克隆，若人类玩耍分布与目标任务接触模式差异大，自主采集可能覆盖不足，影响世界模型在关键区域精度。</p>
+<p>2）世界模型在接触丰富、高维手部操作下预测误差会累积，MPC 与蒸馏策略的可靠性受限于模型精度，长时程任务尤其明显。</p>
+<p>3）真机实验集中在推动与手内重定向两类任务，向更复杂工具使用、多物体交互泛化性未验证，实际部署范围受限。</p>
+<p>4）蒸馏策略在世界模型内自博弈，存在模型偏差被策略放大的风险，真机上可能需额外校正。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>位置：属“填补空白+方法整合”型工作，不是单点范式突破，但把玩耍、世界模型、MPC、自博弈蒸馏串成可复用的数据闭环，在灵巧操作数据瓶颈上给出有说服力的新路径。判断依据是 490 倍数据效率与无需 sim-to-real 的强实证。相比 VLA、导航等子方向，灵巧操作天花板受接触动力学与硬件限制更高，但这类“自主数据引擎”价值在领域坐标系里属中高——它解决的是共性数据问题，可被其他子方向借鉴。落地距离中等：真机已跑通两类任务，卡点在世界模型精度、长时程可靠性与任务泛化；需更强世界模型与安全约束才能产品化。最值得记住的 idea：用几分钟人类玩耍教会机器人自己玩，让“玩耍”成为自主数据引擎并兼作规划先验——把数据采集从负担变成机器人可自持续的能力。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>摘要与给定信息未提及开源链接；论文未明确承诺公开代码或数据，需查阅全文与项目页确认。</p></div>
+</div>
+<div class="paper">
+<h3>去中心化智能体集群中的自组织学习（Learning Self-Orchestration in Decentralized Agent Swarms）</h3>
+<div class="title-en">Learning Self-Orchestration in Decentralized Agent Swarms</div>
+<div class="meta">
+<span>📂 </span>
+<span>📊 相关性 7/10</span>
+<a href="http://arxiv.org/abs/2610.22322v1" target="_blank">arXiv: 2610.223221</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.223221" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.223221" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.223221" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.223221" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">智能体集群（agent swarm）的能力既取决于其个体成员，也取决于它们如何协调。然而，现有的多智能体系统往往在固定的编排结构（orchestration structures）中训练智能体，将个体能力的学习与集体行为的组织分离开来。我们提出了基于市场的后训练（market-based post-training, MPT），这是一个用于在去中心化智能体集群中联合学习动作策略（action policies）与自组织（self-orchestration）的框架。智能体通过出价（bids）表达其参与意愿，出价决定了谁采取行动以及集体结果如何提供局部训练信用（local training credit）。同时学习动作行为与出价行为，使得个体能力与参与模式能够在没有中央协调智能体的情况下共同适应。我们在具身制作（embodied crafting）、机器人导航（robot navigation）和深度研究（deep research）任务上评估了MPT。结果表明，相较于单体式后训练（monolithic post-training）取得了增益，并证实智能体的参与确实随学习而演化。在相同的后训练动作策略下，学习得到的自组织优于替代的协调策略。消融实验（ablations）表明，动作与出价均从学习中受益，且学习到的出价提供了更有效的动作训练信号。超出原始训练目标之外，经过训练的集群能够更快地适应相关任务，并在推理时以更大的种群规模取得更好的性能。更大的种群在智能体退出（agent dropout）情况下 also 遭受更小的性能损失，这表明学习到的自组织支持去中心化智能体集群中的复用、扩展与鲁棒性。代码与训练模型可在 https://github.com/Embodied-Minds-Lab/MPT 获取。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>多智能体自组织 / 去中心化协调（可归入“人机交互与协作”邻近范畴，但更准确应自拟为“多智能体自组织与协调学习”）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>让去中心化智能体群体通过“竞价”同时学会做事与自我编排，无需中央协调者。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>这篇论文处在多智能体系统（Multi-Agent System, MAS）与具身智能的交叉点上。传统做法是“先训练个体能力，再套一个固定的协调结构”——比如指定一个中央调度器（central orchestrator）决定谁在什么时候做什么，或者用固定的通信拓扑（如全连接、环形）让智能体交换信息。这带来一个根本矛盾：个体能力的学习和集体组织方式的学习被割裂了，组织方式往往是人工设计的，无法随任务和个体能力共同进化。论文引入的“市场机制”（market-based）借鉴了经济学中的拍卖/竞价思想：每个智能体对“是否参与当前任务”提交一个出价（bid），出价高者获得执行权，而集体结果反过来作为局部训练信号（local training credit）分配给参与者。这里的“后训练”（post-training）指在预训练基础模型之上做针对性微调，而非从零训练。理解这篇论文需要知道：去中心化意味着没有单一控制节点，协调必须从个体交互中涌现；而“信用分配”（credit assignment）是多智能体强化学习的核心难题——当集体成功时，如何判断哪个智能体的贡献大。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>现有 MAS 把“个体能力学习”和“集体组织学习”分开处理，协调结构是固定的、人工设计的，导致系统无法适应任务变化或个体能力差异。论文要堵的 gap 是：能否让行动策略（action policy）和参与/编排模式（orchestration pattern）联合学习，且不依赖中央协调者？这重要是因为真实部署中的智能体群体往往是异构、动态、可能掉线的，固定编排结构在规模扩展和鲁棒性上会崩溃。前人工作要么用固定拓扑做通信，要么用集中式调度器，都没有让“谁参与”本身成为可学习的行为。论文的意义在于把“组织”从设计问题变成学习问题。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>核心技术是市场式后训练（Market-based Post-training, MPT），要点如下：</p>
+<p class="num-item">1. 竞价机制：每个智能体在每一步提交一个 bid，表示自己参与当前子任务的意愿/能力估计。bid 决定谁实际执行动作，这取代了中央调度器。为什么有效：bid 是一个可微/可训练的输出，把“参与决策”变成策略的一部分，而不是外部规则。</p>
+<p class="num-item">2. 联合学习行动与竞价：行动策略（做什么）和竞价策略（是否参与）用同一套后训练目标联合优化。之前没人这么做，是因为通常把“调度”当作系统层设计而非学习对象；论文的关键洞察是二者耦合——个体能力提升会改变合理参与模式，参与模式又影响能力训练的信号分布。</p>
+<p class="num-item">3. 局部训练信用：集体结果按参与情况分配为局部 credit，参与者根据自己贡献获得训练信号。这解决了去中心化下的信用分配问题，避免“搭便车”和信号稀释。</p>
+<p class="num-item">4. 无中央协调者：整个编排从个体竞价交互中涌现，天然支持去中心化部署和规模变化。</p>
+<p class="num-item">5. 消融显示行动和竞价都从学习中获益，且学到的 bid 提供了更有效的行动训练信号——即竞价不只是调度工具，还改善了学习本身。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文在三个域上评估：具身 crafting（具身制作）、机器人导航（robot navigation）、深度研究（deep research）。关键结论与数据：相比单体式后训练（monolithic post-training），MPT 取得增益；在相同后训练行动策略下，学到的自编排优于替代协调策略；消融证实行动与竞价学习各自有贡献，且学到的 bid 给出更有效的行动训练信号。此外，训练后的群体对相关任务适应更快，推理时更大群体规模带来更好性能，且更大群体在智能体掉线（dropout）下性能损失更小——这三点分别验证了复用性、可扩展性和鲁棒性。具体数值提升幅度摘要未给出，需查全文表格。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. 竞价机制引入额外决策开销和潜在博弈不稳定（bid 可能震荡或共谋），在实时性要求高的具身任务中可能成为瓶颈；对实际部署意味着需要额外的稳定性约束。</p>
+<p class="num-item">2. 评估域（crafting、导航、deep research）相对受控，真实开放环境中智能体异构性和通信延迟更复杂，泛化性未验证；落地时可能需重新调参。</p>
+<p class="num-item">3. 信用分配仍依赖集体结果的局部化近似，长时序任务中 credit 可能失真，影响学习效率。</p>
+<p class="num-item">4. 规模扩展实验虽显示更大群体更好，但训练成本随群体规模增长，实际部署的算力门槛未讨论。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>位置：属于“填补空白”偏“范式突破”的早期工作——把组织/编排从人工设计转为可学习对象，并给出联合学习框架，思路清晰且有跨域验证。判断依据是它没有提出全新网络结构，而是改变了“谁参与”这一决策的学习方式，属于协调层面的范式转变。相比 VLA、灵巧操作等子方向，这类多智能体自组织工作的价值在于系统层可扩展性，天花板取决于能否在真实异构群体和长时序任务中稳定；短期落地价值在仿真/研究型多智能体流水线（如 deep research 智能体群），距产品化还差鲁棒性与成本验证。最值得记住的 idea：把“参与意愿”做成可训练的输出（bid），让协调从竞价中涌现，而不是被设计——这让群体能自适应规模、掉线和任务变化。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>已开源，代码与训练模型见 https://github.com/Embodied-Minds-Lab/MPT 。</p></div>
+</div>
+</section>
+<section class="day">
 <h2>📅 2026-10-17 <span class="count">(5 篇)</span></h2>
 
 <div class="paper">
