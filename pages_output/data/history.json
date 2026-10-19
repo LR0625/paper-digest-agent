@@ -15323,5 +15323,79 @@
         "structured_summary": "【子方向标签】\n多智能体自组织 / 去中心化协调（可归入“人机交互与协作”邻近范畴，但更准确应自拟为“多智能体自组织与协调学习”）\n\n【一句话简介】\n让去中心化智能体群体通过“竞价”同时学会做事与自我编排，无需中央协调者。\n\n【背景知识】\n这篇论文处在多智能体系统（Multi-Agent System, MAS）与具身智能的交叉点上。传统做法是“先训练个体能力，再套一个固定的协调结构”——比如指定一个中央调度器（central orchestrator）决定谁在什么时候做什么，或者用固定的通信拓扑（如全连接、环形）让智能体交换信息。这带来一个根本矛盾：个体能力的学习和集体组织方式的学习被割裂了，组织方式往往是人工设计的，无法随任务和个体能力共同进化。论文引入的“市场机制”（market-based）借鉴了经济学中的拍卖/竞价思想：每个智能体对“是否参与当前任务”提交一个出价（bid），出价高者获得执行权，而集体结果反过来作为局部训练信号（local training credit）分配给参与者。这里的“后训练”（post-training）指在预训练基础模型之上做针对性微调，而非从零训练。理解这篇论文需要知道：去中心化意味着没有单一控制节点，协调必须从个体交互中涌现；而“信用分配”（credit assignment）是多智能体强化学习的核心难题——当集体成功时，如何判断哪个智能体的贡献大。\n\n【核心问题】\n现有 MAS 把“个体能力学习”和“集体组织学习”分开处理，协调结构是固定的、人工设计的，导致系统无法适应任务变化或个体能力差异。论文要堵的 gap 是：能否让行动策略（action policy）和参与/编排模式（orchestration pattern）联合学习，且不依赖中央协调者？这重要是因为真实部署中的智能体群体往往是异构、动态、可能掉线的，固定编排结构在规模扩展和鲁棒性上会崩溃。前人工作要么用固定拓扑做通信，要么用集中式调度器，都没有让“谁参与”本身成为可学习的行为。论文的意义在于把“组织”从设计问题变成学习问题。\n\n【方法】\n核心技术是市场式后训练（Market-based Post-training, MPT），要点如下：\n1. 竞价机制：每个智能体在每一步提交一个 bid，表示自己参与当前子任务的意愿/能力估计。bid 决定谁实际执行动作，这取代了中央调度器。为什么有效：bid 是一个可微/可训练的输出，把“参与决策”变成策略的一部分，而不是外部规则。\n2. 联合学习行动与竞价：行动策略（做什么）和竞价策略（是否参与）用同一套后训练目标联合优化。之前没人这么做，是因为通常把“调度”当作系统层设计而非学习对象；论文的关键洞察是二者耦合——个体能力提升会改变合理参与模式，参与模式又影响能力训练的信号分布。\n3. 局部训练信用：集体结果按参与情况分配为局部 credit，参与者根据自己贡献获得训练信号。这解决了去中心化下的信用分配问题，避免“搭便车”和信号稀释。\n4. 无中央协调者：整个编排从个体竞价交互中涌现，天然支持去中心化部署和规模变化。\n5. 消融显示行动和竞价都从学习中获益，且学到的 bid 提供了更有效的行动训练信号——即竞价不只是调度工具，还改善了学习本身。\n\n【实验结果】\n论文在三个域上评估：具身 crafting（具身制作）、机器人导航（robot navigation）、深度研究（deep research）。关键结论与数据：相比单体式后训练（monolithic post-training），MPT 取得增益；在相同后训练行动策略下，学到的自编排优于替代协调策略；消融证实行动与竞价学习各自有贡献，且学到的 bid 给出更有效的行动训练信号。此外，训练后的群体对相关任务适应更快，推理时更大群体规模带来更好性能，且更大群体在智能体掉线（dropout）下性能损失更小——这三点分别验证了复用性、可扩展性和鲁棒性。具体数值提升幅度摘要未给出，需查全文表格。\n\n【局限性】\n1. 竞价机制引入额外决策开销和潜在博弈不稳定（bid 可能震荡或共谋），在实时性要求高的具身任务中可能成为瓶颈；对实际部署意味着需要额外的稳定性约束。\n2. 评估域（crafting、导航、deep research）相对受控，真实开放环境中智能体异构性和通信延迟更复杂，泛化性未验证；落地时可能需重新调参。\n3. 信用分配仍依赖集体结果的局部化近似，长时序任务中 credit 可能失真，影响学习效率。\n4. 规模扩展实验虽显示更大群体更好，但训练成本随群体规模增长，实际部署的算力门槛未讨论。\n\n【个人视角点评】\n位置：属于“填补空白”偏“范式突破”的早期工作——把组织/编排从人工设计转为可学习对象，并给出联合学习框架，思路清晰且有跨域验证。判断依据是它没有提出全新网络结构，而是改变了“谁参与”这一决策的学习方式，属于协调层面的范式转变。相比 VLA、灵巧操作等子方向，这类多智能体自组织工作的价值在于系统层可扩展性，天花板取决于能否在真实异构群体和长时序任务中稳定；短期落地价值在仿真/研究型多智能体流水线（如 deep research 智能体群），距产品化还差鲁棒性与成本验证。最值得记住的 idea：把“参与意愿”做成可训练的输出（bid），让协调从竞价中涌现，而不是被设计——这让群体能自适应规模、掉线和任务变化。\n\n【代码/数据开源情况】\n已开源，代码与训练模型见 https://github.com/Embodied-Minds-Lab/MPT 。"
       }
     ]
+  },
+  {
+    "date": "2026-10-19",
+    "domain": "具身智能与机器人学习",
+    "count": 2,
+    "papers": [
+      {
+        "arxiv_id": "2610.238271",
+        "raw_id": "http://arxiv.org/abs/2610.23827v1",
+        "title": "Quality-of-Transmission Estimation in Quantum Networks: Compute, Simulate, or Learn?",
+        "authors": [
+          "Anis Bekri",
+          "Amar Abane",
+          "Van Sy Mai",
+          "Abdella Battou",
+          "Saddek Bensalem"
+        ],
+        "abstract": "Future quantum networks will rely on control-plane decisions such as routing, scheduling, entanglement provisioning, purification, and memory allocation. Each decision depends on a timely and reliable estimate of the quality of the entanglement that a candidate path can deliver, with end-to-end fidelity as a central metric. Inspired by the optical-networking experience with quality-of-transmission (QoT) estimation, this article asks when a quantum controller should compute fidelity analytically, simulate it, or learn a surrogate model. The optical analogy is useful but incomplete: optical QoT estimation often predicts a scalar transmission margin, whereas quantum QoT estimation must account for probabilistic entanglement generation, random memory waiting times, decoherence, state consumption, and measurement constraints that can make fidelity a stochastic target. We propose a compute/simulate/learn framework for quantum QoT estimation and illustrate it with a simulation-based proof of concept. Our study shows that analytical composition can be sufficient in simple regimes, that simulation becomes necessary when stochastic memory effects shape the delivered fidelity distribution, and that lightweight learned surrogates can approximate simulator labels at much lower runtime cost for online control. We close with open challenges for deployment, including stochastic targets, sim-to-real transfer, data-generation cost, physics-informed learning, and generalization beyond individual paths to full network topologies.",
+        "published": "2026-10-16T17:49:43+00:00",
+        "url": "http://arxiv.org/abs/2610.23827v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.23827v1",
+        "categories": [
+          "quant-ph",
+          "cs.LG",
+          "cs.NI"
+        ],
+        "matched_subfields": [
+          "sim2real_and_rl"
+        ],
+        "priority": false,
+        "score": 7,
+        "subfield_label": "",
+        "score_reason": "API error, kept by default",
+        "title_cn": "量子网络中的传输质量估计：计算、模拟还是学习？（Quality-of-Transmission Estimation in Quantum Networks: Compute, Simulate, or Learn?）",
+        "abstract_cn": "未来的量子网络将依赖于控制平面决策，例如路由、调度、纠缠提供、纯化和内存分配。每个决策都依赖于对候选路径所能交付的纠缠质量的及时且可靠的估计，其中端到端保真度（end-to-end fidelity）是核心指标。受光网络中传输质量（quality-of-transmission, QoT）估计经验的启发，本文提出一个问题：量子控制器应在何时解析地计算保真度、对其进行模拟，还是学习一个代理模型（surrogate model）。光网络类比是有用的但并不完整：光QoT估计通常预测一个标量传输裕度（scalar transmission margin），而量子QoT估计必须考虑概率性纠缠生成、随机内存等待时间、退相干、态消耗以及测量约束，这些因素可能使保真度成为一个随机目标（stochastic target）。我们提出了一个用于量子QoT估计的“计算/模拟/学习”（compute/simulate/learn）框架，并用一个基于模拟的概念验证（proof of concept）加以说明。我们的研究表明，解析组合（analytical composition）在简单情形下可以是充分的；当随机内存效应塑造所交付的保真度分布时，模拟变得必要；而轻量级学习代理（lightweight learned surrogates）可以以低得多的运行时成本逼近模拟器标签，用于在线控制。我们最后讨论了部署中的开放挑战，包括随机目标、模拟到现实迁移（sim-to-real transfer）、数据生成成本、物理信息学习（physics-informed learning），以及从单条路径到完整网络拓扑的泛化。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.238271",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.238271"
+        },
+        "structured_summary": "【子方向标签】\n多模态感知（更准确地说，是“量子网络控制面中的性能估计与学习代理模型”，与具身智能的交集在于“用学习代理模型替代昂贵仿真/解析计算以支撑在线决策”这一方法论）\n\n【一句话简介】\n该文提出“计算/仿真/学习”三分框架，用于量子网络端到端保真度的快速估计，以支撑路由等在线控制决策。\n\n【背景知识】\n量子网络（quantum network）是通过量子信道与量子存储器把多个节点连接起来、用于分发纠缠（entanglement）并进行量子通信或分布式量子计算的网络。其控制面要做路由、调度、纠缠供给、纯化（purification，用多个低质量纠缠对换取少量高质量纠缠对）和存储器分配等决策，而这些决策都依赖对“候选路径能交付多好的纠缠”的及时估计，核心指标是端到端保真度（end-to-end fidelity，衡量交付量子态与理想目标态的接近程度，取值 0~1）。在经典光网络中，类似问题叫传输质量估计（quality-of-transmission, QoT），工程上已有成熟经验：用解析模型、仿真或机器学习代理模型来预测光路是否满足误码率要求。量子情形更复杂：纠缠生成是概率性的，存储器等待时间是随机的，量子态会退相干（decoherence，随时间和环境噪声而退化），测量会消耗量子态且只能做有限次采样，因此保真度往往不是一个确定标量，而是一个随机变量/分布。理解这一点，才能明白为什么“直接照搬光网络 QoT 的做法”不够用。\n\n【核心问题】\n论文要回答的是：量子控制器在什么时候应该用解析公式直接算保真度、什么时候必须跑仿真、什么时候该用一个学习出来的代理模型（surrogate model，用便宜模型逼近昂贵函数）来快速预测。这个问题的意义在于：量子网络的控制决策是毫秒级在线发生的，而精确仿真一次多跳纠缠分发可能非常慢，解析模型又在随机存储与退相干耦合时失真，二者之间存在明显的“精度—时延”空档。前人工作多聚焦单一方法（要么解析建模、要么仿真器、要么零散地套用机器学习），缺少一个统一的“何时用哪种”的决策框架，也没有系统指出量子 QoT 与光 QoT 的本质差异（随机目标 vs 标量裕量）。该文正是要填这个空白，并给出可操作的选择准则。\n\n【方法】\n论文的核心是一个“compute / simulate / learn”三层框架，按问题复杂度与实时性需求选择估计手段。第一层是解析组合（analytical composition）：把路径上各段链路的保真度按纠缠交换（entanglement swapping，通过中间节点测量把两段纠缠“接”成一段更长纠缠）和纯化的规则逐段复合，得到闭式估计；它在链路短、存储等待可忽略、噪声模型简单时足够准，优点是零时延、可解释。第二层是仿真：显式建模概率性纠缠生成、随机存储器等待、退相干与测量消耗，输出的是保真度的分布而非单点值；当随机存储效应显著改变交付保真度分布时，解析法会系统性偏差，仿真成为必要。第三层是学习代理：用仿真器产生标签，训练轻量模型（如回归/小型神经网络）逼近“输入路径与网络状态→保真度分布统计量”的映射，从而在在线控制时以远低于仿真的运行时代价获得近似标签。其创新点不在任一单件技术，而在于把三者组织成一个按 regime 切换的决策框架，并明确指出量子 QoT 的估计目标是随机量、需要考虑测量约束与状态消耗——这是光网络 QoT 经验无法直接迁移的部分。作者用基于仿真的概念验证（proof of concept）演示了三种手段各自适用的区域。\n\n【实验结果】\n需要说明：从摘要与可见信息看，这是一篇立场/框架型文章（article），实验是“基于仿真的概念验证”，并未给出大规模基准对比，因此具体数字在摘要层面不可得。可确认的结论有三组定性—半定量结果：其一，在简单 regime（短路径、弱随机存储效应）下解析组合即可给出足够准确的保真度估计，无需仿真；其二，当随机存储器等待时间显著影响交付保真度分布时，解析法失效、仿真成为必需，说明“分布形状”而非均值才是关键；其三，轻量学习代理能在运行时代价大幅低于仿真器的前提下近似仿真标签，从而满足在线控制时延要求。至于对比了哪些 baseline、提升了多少百分比、是否有逐组件消融，摘要未披露，需查阅全文的实验章节确认；读者应把该文视为“框架提出 + 概念验证”，而非“性能刷榜”。\n\n【局限性】\n第一，验证停留在仿真层面，缺少真实量子网络或硬件测试床的端到端验证，因此“sim-to-real transfer（仿真到现实迁移）”仍是未解问题，实际部署时仿真标签与真实保真度之间的偏差可能直接破坏代理模型的可信度。第二，学习代理依赖仿真器生成标签，而高保真仿真本身昂贵，数据生成成本（data-generation cost）会随网络规模与拓扑复杂度上升，可能抵消代理模型带来的时延收益。第三，框架目前主要针对单条路径的保真度估计，向完整网络拓扑的泛化（generalization beyond individual paths）尚未解决，而真实控制面需要同时评估大量候选路径。第四，量子测量的消耗性与随机目标意味着“真值”本身只能有限采样获得，评估代理模型精度时存在标签噪声，这会限制监督学习的上限。这些局限共同意味着：该方法距离产品化还有明显距离，卡点在真实数据与规模化验证。\n\n【个人视角点评】\n在所属子方向里，这篇工作属于“填补空白 + 框架提出”型，而非范式突破：它没有发明新的量子硬件或新的学习算法，而是把“何时算、何时仿、何时学”这个工程决策问题第一次在量子网络 QoT 语境下系统化，并清楚点出与光网络 QoT 的本质差异（随机目标、测量约束、状态消耗）。判断依据是：其贡献主要是概念框架与概念验证，缺少大规模定量基准，因此影响力将取决于后续是否有人把它做成可复用的基准与工具链。与具身智能其他子方向相比，这类“用学习代理替代昂贵仿真以支撑在线决策”的工作，价值层级与“世界模型/规划”中的代理模型研究相当：方法论通用、天花板受限于仿真器保真度与分布外泛化能力。落地价值方面，它距离实际部署还远，卡点有三：真实量子网络数据稀缺、仿真到现实的保真度偏差、以及拓扑级泛化的计算成本；需要的前提条件是出现中等规模的量子网络测试床与标准化的保真度测量协议。如果只记住一件事，那就是：量子网络的控制面不能只预测一个标量裕量，而要预测保真度的分布，并据此在“算—仿—学”之间按 regime 切换——这个“按需选择估计手段”的元思路，比任何单一模型都更值得迁移到其他需要在线估计的具身系统里。\n\n【代码/数据开源情况】\n摘要与可见元数据未提及代码或数据开源，也未给出项目链接。论文以“概念验证”形式呈现，是否会在后续公开仿真器与数据生成脚本，需以全文的“Code availability”或作者主页为准；建议读者直接查阅 arXiv 全文的脚注与附录确认。"
+      },
+      {
+        "arxiv_id": "2610.238491",
+        "raw_id": "http://arxiv.org/abs/2610.23849v1",
+        "title": "Blind Precise Assembly: Proprioceptive Sim-to-Real Peg-in-Hole for Diverse Parts",
+        "authors": [
+          "Antonia Bronars",
+          "Younghyo Park",
+          "Kushal Kedia",
+          "Pulkit Agrawal"
+        ],
+        "abstract": "Every robot already carries high-resolution contact sensors: its own joints. Legged robots and humanoids exploit them to walk, run, and track whole-body motions without vision, but there the contacts are large and forceful. Is joint sensing also enough for precise, contact-rich assembly, where the robot must find a millimeter-scale opening, mesh gear teeth, or catch a thread through light contact? We study this question by training blind assembly policies that observe only a short history of joint positions, velocities, and their own actions, without visual, force, torque, or tactile sensing. The poses of both the fixture and the part are unknown to the policy, and the grasp is randomized substantially. The policy must therefore assemble the parts through contact, sensed exclusively through its own proprioception. Trained with reinforcement learning entirely in simulation over randomized parts, grasps, and contacts, such policies learn peg insertion, gear meshing, and nut threading. The peg insertion policy transfers zero-shot to the real world and inserts pegs of different shapes and sizes in 73% of trials. Controlled comparisons with matched visual policies in simulation show that blind policies generalize far better to unseen part shapes and sizes, though they can be slower. Training such policies needs thousands of different assemblies, each simulated with its clearance intact, so we also release an open-source generator that builds them procedurally from exact convex pieces for MuJoCo; it is more accurate and faster than convex decomposition or MuJoCo's signed-distance collision. Videos and interactive simulations are at https://younghyopark.me/blind-proprioceptive-assembly/.",
+        "published": "2026-10-16T17:58:48+00:00",
+        "url": "http://arxiv.org/abs/2610.23849v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.23849v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "perception"
+        ],
+        "priority": false,
+        "score": 7,
+        "subfield_label": "",
+        "score_reason": "API error, kept by default",
+        "title_cn": "盲精确装配：面向多样零件本体感觉的仿真到现实轴孔装配（Blind Precise Assembly: Proprioceptive Sim-to-Real Peg-in-Hole for Diverse Parts）",
+        "abstract_cn": "每个机器人其实都已经自带高分辨率接触传感器：它自己的关节。腿足机器人和人形机器人利用这些传感器在没有视觉的情况下行走、奔跑并跟踪全身运动，但在这些场景中接触面积大且作用力强。那么，关节感知是否也足以应对精确且接触丰富的装配任务——即机器人必须找到毫米级开口、啮合齿轮齿，或通过轻接触将螺母套上螺纹？我们通过训练盲装配策略来研究这一问题，这些策略仅观测关节位置、速度及自身动作的短历史序列，不使用视觉、力、力矩或触觉传感。夹具和零件的位姿对策略均未知，且抓取具有大幅随机化。因此，策略必须完全通过自身本体感觉来感知接触，从而完成零件装配。在仿真中完全通过强化学习、针对随机化的零件、抓取和接触进行训练，此类策略学会了轴孔插入、齿轮啮合和螺母套扣。轴孔插入策略零样本迁移到真实世界，在73%的试验中成功插入不同形状和尺寸的轴。在仿真中与匹配的视觉策略进行受控对比表明，盲策略对未见过的零件形状和尺寸具有远更好的泛化能力，尽管速度可能较慢。训练此类策略需要数千种不同的装配任务，每种任务在仿真时需保持其间隙完整，因此我们还发布了一个开源生成器，可基于精确凸块为MuJoCo程序化构建这些装配任务；它比凸分解或MuJoCo的有符号距离碰撞检测更准确且更快。视频和交互式仿真见 https://younghyopark.me/blind-proprioceptive-assembly/。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.238491",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.238491"
+        },
+        "structured_summary": "【子方向标签】\n灵巧操作与抓取（更细一点：接触丰富的精密装配 / 本体感觉驱动的操作）\n\n【一句话简介】\n只用关节本体感觉、不靠视觉/力/触觉，在仿真中用强化学习训练出能零样本迁移到真机的\"盲\"精密插孔策略。\n\n【背景知识】\n要读懂这篇论文，需要先建立几个概念。第一是▲本体感觉（proprioception）▲：机器人对自己关节角度、角速度等内部状态的感知，相当于人的\"闭眼也知道手在哪\"。论文的核心主张是，机器人身上已有的高分辨率关节编码器其实就是一套被低估的接触传感器——当零件发生碰撞、卡住、滑动时，这些力会通过机械结构反馈到关节上，被关节传感\"感知\"到。第二是▲装配任务（assembly）▲：把销插入孔（peg-in-hole）、齿轮啮合（gear meshing）、螺母拧到螺纹上（nut threading），这类任务要求亚毫米到毫米级精度，传统上依赖视觉伺服或力/力矩（force/torque, F/T）传感器。第三是▲仿真到真机迁移（sim-to-real）▲：在物理仿真里训练策略再部署到真实机器人，难点是仿真与现实的物理差异（接触模型、摩擦、间隙）。第四是▲零样本迁移（zero-shot transfer）▲：训练完不做任何真机微调直接部署。第五是▲强化学习（reinforcement learning, RL）▲：通过试错最大化奖励来学习策略，这里用它在大量随机化场景中自动\"练\"出装配技能。最后是▲间隙（clearance）▲：孔与销之间的配合公差，仿真中必须精确保持这个微小间隙，否则学到的策略在真机上会失效——这也是论文要专门做数据生成器的原因。\n\n【核心问题】\n精密装配长期依赖视觉（找孔位）或力/触觉（感知接触），但这些传感器昂贵、易损、需要标定，且在遮挡或狭小空间里不可靠。论文问的是一个反直觉的问题：机器人自带的关节传感，是否足以完成毫米级、接触丰富的装配？这堵上了一个明确的 gap——此前本体感觉主要用于足式/人形的 locomotion（接触大而有力），没人系统验证它在\"轻接触、高精度\"装配中是否够用。如果成立，意味着大量现成机器人无需加装传感器就能做精密装配，大幅降低硬件门槛。同时论文还暴露并解决了一个基础设施 gap：现有仿真工具难以在保持精确间隙的前提下批量生成多样化装配场景，而这正是训练此类策略的前提。\n\n【方法】\n核心技术方案可以分几点理解。其一，▲盲策略的观测设计▲：策略只接收一小段历史的关节位置、关节速度和自己过去的动作，完全没有视觉、力、力矩、触觉输入；夹具和零件的位姿对策略未知，抓取姿态也大幅随机化。这意味着策略必须完全通过\"接触在关节上留下的痕迹\"来推断零件相对位置——原理上，接触力会经由连杆传导到关节，形成可辨识的信号模式，短历史窗口让策略能感知接触的动态变化（比如卡住时的突变）。其二，▲纯仿真 RL 训练▲：在 MuJoCo 中对零件形状、抓取、接触参数做大规模随机化（domain randomization），用 RL 学出鲁棒策略；随机化是 sim-to-real 的关键，让策略见过足够多的\"物理变化\"从而对现实差异不敏感。其三，▲为什么之前没人这么做▲：过去大家默认精密装配必须靠外部传感器，本体感觉信号弱、噪声大、难以解耦，且缺乏能精确建模微小间隙的仿真工具，导致这条路线在数据层面就无法训练。其四，▲配套的装配场景生成器▲：论文开源了一个从精确凸块程序化构建 MuJoCo 装配场景的生成器，相比凸分解（convex decomposition）和 MuJoCo 自带的 signed-distance 碰撞，它更准确也更快，能保持间隙完整——这是让\"数千种不同装配\"可训练的基础设施创新。其五，▲与视觉策略的受控对比▲：在仿真中训练观测匹配的视觉策略作对照，隔离出\"感知模态\"这一变量，证明盲策略在泛化上的优势。\n\n【实验结果】\n关键结论用数字说话：真机零样本插孔成功率 ▲73%▲，且能插入不同形状和尺寸的销（说明泛化到未见零件）；在仿真受控对比中，盲策略对未见零件形状和尺寸的泛化▲显著优于▲匹配的视觉策略，代价是速度更慢；任务覆盖插孔、齿轮啮合、螺母拧螺纹三类。实验设置上，训练完全在仿真、零件/抓取/接触全随机化，真机部署不做微调。消融方面，论文通过视觉 vs 本体感觉的匹配对比隔离感知模态贡献，并通过其生成器与凸分解、MuJoCo signed-distance 碰撞的对比说明仿真精度/速度优势（摘要给出定性结论\"更准更快\"，具体数值需看全文）。总体看，73% 是一个\"可行性已验证但未到产品级\"的数字，速度劣势也被明确承认。\n\n【局限性】\n第一，▲成功率与速度的权衡▲：73% 意味着约四分之一失败，且盲策略比视觉慢，对节拍敏感的产线不友好——实际部署需要更高可靠性或与视觉/力传感融合。第二，▲任务与硬件范围有限▲：只在特定机器人、特定零件族上验证，抓取虽随机化但仍是受控设置，换机械臂、换更大公差范围是否成立未知，这限制了通用性宣称。第三，▲依赖高质量仿真与随机化▲：策略好坏强依赖仿真接触建模精度和随机化分布设计，若真实接触特性（摩擦、柔性、磨损）超出随机化覆盖，迁移会退化——这也是它必须自建生成器的原因，反过来说明方法对仿真基础设施有较强耦合。第四，▲缺乏对失败模式的系统分析▲（从摘要看）：盲策略在何种接触条件下失效、如何检测失败并恢复，尚未充分讨论，这对实际无人化装配很关键。\n\n【个人视角点评】\n位置判断：这是一篇▲填补空白 + 略带范式意味▲的工作。填补空白在于它首次系统回答\"本体感觉够不够做精密装配\"并给出真机证据；范式意味在于它挑战了\"精密装配必须外部传感\"的默认假设，把足式机器人\"盲走\"的思路迁移到接触丰富操作。但它不是彻底突破——73% 成功率和速度劣势说明它是\"可行性证明\"而非\"性能碾压\"，更接近打开一个新方向的第一步。与领域其他子方向比：VLA/端到端策略追求通用性但精度不足，灵巧操作多依赖触觉，本文价值在于用最低传感成本换精度与泛化，天花板受限于\"接触信号可辨识度\"——对超大公差或需要力控柔顺的任务可能不够，但对标准化零件装配潜力大。落地价值：距离产品化还有距离，卡点在成功率（需 >99%）、速度、以及跨硬件/零件族的泛化验证；落地条件是仿真接触建模足够准、随机化覆盖真实分布，并可能需与轻量视觉或力传感做混合以补足盲区。如果只记一件事：▲机器人自带的关节编码器就是一套免费的接触传感器，配合大规模随机化仿真训练，可以在没有任何外部传感的情况下完成毫米级装配▲——这个 idea 特别之处在于它把\"传感器成本\"这一落地瓶颈直接绕开了，且用受控实验证明了盲策略在泛化上反而更强（因为不依赖易过拟合的视觉外观），这对低成本、易部署的工业装配极具启发。\n\n【代码/数据开源情况】\n论文开源了一个程序化装配场景生成器（从精确凸块构建 MuJoCo 场景，比凸分解和 MuJoCo signed-distance 碰撞更准更快），项目主页为 https://younghyopark.me/blind-proprioceptive-assembly/ ，提供视频与交互式仿真。策略代码/模型是否一并开源，摘要未明确承诺，建议以项目页和论文全文的\"Code/Data\"章节为准。"
+      }
+    ]
   }
 ]
