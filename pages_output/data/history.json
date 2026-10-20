@@ -15397,5 +15397,215 @@
         "structured_summary": "【子方向标签】\n灵巧操作与抓取（更细一点：接触丰富的精密装配 / 本体感觉驱动的操作）\n\n【一句话简介】\n只用关节本体感觉、不靠视觉/力/触觉，在仿真中用强化学习训练出能零样本迁移到真机的\"盲\"精密插孔策略。\n\n【背景知识】\n要读懂这篇论文，需要先建立几个概念。第一是▲本体感觉（proprioception）▲：机器人对自己关节角度、角速度等内部状态的感知，相当于人的\"闭眼也知道手在哪\"。论文的核心主张是，机器人身上已有的高分辨率关节编码器其实就是一套被低估的接触传感器——当零件发生碰撞、卡住、滑动时，这些力会通过机械结构反馈到关节上，被关节传感\"感知\"到。第二是▲装配任务（assembly）▲：把销插入孔（peg-in-hole）、齿轮啮合（gear meshing）、螺母拧到螺纹上（nut threading），这类任务要求亚毫米到毫米级精度，传统上依赖视觉伺服或力/力矩（force/torque, F/T）传感器。第三是▲仿真到真机迁移（sim-to-real）▲：在物理仿真里训练策略再部署到真实机器人，难点是仿真与现实的物理差异（接触模型、摩擦、间隙）。第四是▲零样本迁移（zero-shot transfer）▲：训练完不做任何真机微调直接部署。第五是▲强化学习（reinforcement learning, RL）▲：通过试错最大化奖励来学习策略，这里用它在大量随机化场景中自动\"练\"出装配技能。最后是▲间隙（clearance）▲：孔与销之间的配合公差，仿真中必须精确保持这个微小间隙，否则学到的策略在真机上会失效——这也是论文要专门做数据生成器的原因。\n\n【核心问题】\n精密装配长期依赖视觉（找孔位）或力/触觉（感知接触），但这些传感器昂贵、易损、需要标定，且在遮挡或狭小空间里不可靠。论文问的是一个反直觉的问题：机器人自带的关节传感，是否足以完成毫米级、接触丰富的装配？这堵上了一个明确的 gap——此前本体感觉主要用于足式/人形的 locomotion（接触大而有力），没人系统验证它在\"轻接触、高精度\"装配中是否够用。如果成立，意味着大量现成机器人无需加装传感器就能做精密装配，大幅降低硬件门槛。同时论文还暴露并解决了一个基础设施 gap：现有仿真工具难以在保持精确间隙的前提下批量生成多样化装配场景，而这正是训练此类策略的前提。\n\n【方法】\n核心技术方案可以分几点理解。其一，▲盲策略的观测设计▲：策略只接收一小段历史的关节位置、关节速度和自己过去的动作，完全没有视觉、力、力矩、触觉输入；夹具和零件的位姿对策略未知，抓取姿态也大幅随机化。这意味着策略必须完全通过\"接触在关节上留下的痕迹\"来推断零件相对位置——原理上，接触力会经由连杆传导到关节，形成可辨识的信号模式，短历史窗口让策略能感知接触的动态变化（比如卡住时的突变）。其二，▲纯仿真 RL 训练▲：在 MuJoCo 中对零件形状、抓取、接触参数做大规模随机化（domain randomization），用 RL 学出鲁棒策略；随机化是 sim-to-real 的关键，让策略见过足够多的\"物理变化\"从而对现实差异不敏感。其三，▲为什么之前没人这么做▲：过去大家默认精密装配必须靠外部传感器，本体感觉信号弱、噪声大、难以解耦，且缺乏能精确建模微小间隙的仿真工具，导致这条路线在数据层面就无法训练。其四，▲配套的装配场景生成器▲：论文开源了一个从精确凸块程序化构建 MuJoCo 装配场景的生成器，相比凸分解（convex decomposition）和 MuJoCo 自带的 signed-distance 碰撞，它更准确也更快，能保持间隙完整——这是让\"数千种不同装配\"可训练的基础设施创新。其五，▲与视觉策略的受控对比▲：在仿真中训练观测匹配的视觉策略作对照，隔离出\"感知模态\"这一变量，证明盲策略在泛化上的优势。\n\n【实验结果】\n关键结论用数字说话：真机零样本插孔成功率 ▲73%▲，且能插入不同形状和尺寸的销（说明泛化到未见零件）；在仿真受控对比中，盲策略对未见零件形状和尺寸的泛化▲显著优于▲匹配的视觉策略，代价是速度更慢；任务覆盖插孔、齿轮啮合、螺母拧螺纹三类。实验设置上，训练完全在仿真、零件/抓取/接触全随机化，真机部署不做微调。消融方面，论文通过视觉 vs 本体感觉的匹配对比隔离感知模态贡献，并通过其生成器与凸分解、MuJoCo signed-distance 碰撞的对比说明仿真精度/速度优势（摘要给出定性结论\"更准更快\"，具体数值需看全文）。总体看，73% 是一个\"可行性已验证但未到产品级\"的数字，速度劣势也被明确承认。\n\n【局限性】\n第一，▲成功率与速度的权衡▲：73% 意味着约四分之一失败，且盲策略比视觉慢，对节拍敏感的产线不友好——实际部署需要更高可靠性或与视觉/力传感融合。第二，▲任务与硬件范围有限▲：只在特定机器人、特定零件族上验证，抓取虽随机化但仍是受控设置，换机械臂、换更大公差范围是否成立未知，这限制了通用性宣称。第三，▲依赖高质量仿真与随机化▲：策略好坏强依赖仿真接触建模精度和随机化分布设计，若真实接触特性（摩擦、柔性、磨损）超出随机化覆盖，迁移会退化——这也是它必须自建生成器的原因，反过来说明方法对仿真基础设施有较强耦合。第四，▲缺乏对失败模式的系统分析▲（从摘要看）：盲策略在何种接触条件下失效、如何检测失败并恢复，尚未充分讨论，这对实际无人化装配很关键。\n\n【个人视角点评】\n位置判断：这是一篇▲填补空白 + 略带范式意味▲的工作。填补空白在于它首次系统回答\"本体感觉够不够做精密装配\"并给出真机证据；范式意味在于它挑战了\"精密装配必须外部传感\"的默认假设，把足式机器人\"盲走\"的思路迁移到接触丰富操作。但它不是彻底突破——73% 成功率和速度劣势说明它是\"可行性证明\"而非\"性能碾压\"，更接近打开一个新方向的第一步。与领域其他子方向比：VLA/端到端策略追求通用性但精度不足，灵巧操作多依赖触觉，本文价值在于用最低传感成本换精度与泛化，天花板受限于\"接触信号可辨识度\"——对超大公差或需要力控柔顺的任务可能不够，但对标准化零件装配潜力大。落地价值：距离产品化还有距离，卡点在成功率（需 >99%）、速度、以及跨硬件/零件族的泛化验证；落地条件是仿真接触建模足够准、随机化覆盖真实分布，并可能需与轻量视觉或力传感做混合以补足盲区。如果只记一件事：▲机器人自带的关节编码器就是一套免费的接触传感器，配合大规模随机化仿真训练，可以在没有任何外部传感的情况下完成毫米级装配▲——这个 idea 特别之处在于它把\"传感器成本\"这一落地瓶颈直接绕开了，且用受控实验证明了盲策略在泛化上反而更强（因为不依赖易过拟合的视觉外观），这对低成本、易部署的工业装配极具启发。\n\n【代码/数据开源情况】\n论文开源了一个程序化装配场景生成器（从精确凸块构建 MuJoCo 场景，比凸分解和 MuJoCo signed-distance 碰撞更准更快），项目主页为 https://younghyopark.me/blind-proprioceptive-assembly/ ，提供视频与交互式仿真。策略代码/模型是否一并开源，摘要未明确承诺，建议以项目页和论文全文的\"Code/Data\"章节为准。"
       }
     ]
+  },
+  {
+    "date": "2026-10-20",
+    "domain": "具身智能与机器人学习",
+    "count": 5,
+    "papers": [
+      {
+        "arxiv_id": "2610.268541",
+        "raw_id": "http://arxiv.org/abs/2610.26854v1",
+        "title": "Physical Words: A Vocabulary for Structuring Latent Reasoning in Robot Manipulation",
+        "authors": [
+          "Jiaming Liu",
+          "Xinghao Zhu",
+          "Yiming Zhang",
+          "Shanghang Zhang",
+          "Yinxi Wang",
+          "Yichu Yang",
+          "Zhuoyang Liu",
+          "Dantong Niu",
+          "Soha Pouya",
+          "Juekun Li",
+          "Yan Chang"
+        ],
+        "abstract": "Multimodal reasoning provides robotic foundation models with predictive context needed for reliable action generation. However, language-based reasoning captures task semantics but struggles to express fine-grained physical dynamics, while latent reasoning models future state evolution but offers limited structure for organizing these dynamics into reusable reasoning primitives. To bridge this gap, we introduce PhysWord, a reasoning-before-acting foundation model built on Physical Words, which use atomic action verbs as shared semantic anchors for continuous representations of physical dynamics. Specifically, PhysWord predicts upcoming atomic action words and directly aligns their contextual hidden states with latent targets derived from the corresponding future observations. Building on these primitives, we construct a temporally structured PhysWord space with visual and optional tactile variants of each action word. Autoregressively predicting Physical Words across future timesteps captures transitions between execution stages, providing structured multimodal context for action generation. PhysWord achieves state-of-the-art success rates of 90.3\\% on visuotactile UniVTAC and 99.6\\% on vision-based LIBERO-Long, and outperforms competing methods on real-world tasks using bimanual grippers and dexterous hands. Further evaluations demonstrate that our structured latent reasoning framework generalizes to unseen scenarios and enables long-horizon manipulation.",
+        "published": "2026-10-19T17:59:54+00:00",
+        "url": "http://arxiv.org/abs/2610.26854v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.26854v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "VLA与端到端策略",
+        "score_reason": "提出视觉-语言-动作模型的新架构或训练方法，直接推动端到端机器人策略学习。",
+        "title_cn": "物理词（Physical Words）：一种用于构建机器人操作中潜在推理结构的词汇体系",
+        "abstract_cn": "多模态推理为机器人基础模型提供了可靠动作生成所需的预测性上下文。然而，基于语言的推理虽能捕捉任务语义，却难以表达细粒度的物理动力学；而潜在推理虽能建模未来状态演化，却为将这些动力学组织为可复用的推理原语（reasoning primitives）提供了有限的结构。为弥合这一鸿沟，我们提出了PhysWord，一种基于物理词（Physical Words）的“先推理后行动”（reasoning-before-acting）基础模型，该模型使用原子动作动词（atomic action verbs）作为物理动力学连续表示的共享语义锚点（shared semantic anchors）。具体而言，PhysWord预测即将发生的原子动作词，并将其上下文隐藏状态（contextual hidden states）直接与由相应未来观测导出的潜在目标（latent targets）对齐。在这些原语的基础上，我们构建了一个时间结构化的PhysWord空间，其中每个动作词都具有视觉变体和可选的触觉变体。通过自回归地预测未来多个时间步上的物理词，该模型捕捉执行阶段之间的转换，为动作生成提供结构化的多模态上下文。PhysWord在视觉-触觉（visuotactile）UniVTAC上取得了90.3\\%的最先进成功率，在基于视觉的LIBERO-Long上取得了99.6\\%的成功率，并在使用双臂夹爪（bimanual grippers）和灵巧手（dexterous hands）的真实世界任务上优于竞争方法。进一步的评估表明，我们的结构化潜在推理框架能够泛化到未见场景，并支持长时程操作（long-horizon manipulation）。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.268541",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.268541"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细一点：多模态推理驱动的机器人操作策略学习）\n\n【一句话简介】\n用“原子动作动词”作为语义锚点，把连续物理动态压缩成可复用的“物理词”，在动作前做结构化潜空间推理，显著提升操作成功率。\n\n【背景知识】\n要读懂这篇论文，先要理解当前机器人基础模型（robotic foundation model）里“推理—行动”（reasoning-before-acting）这条技术路线。传统端到端策略（end-to-end policy）直接从观测映射到动作，缺乏对未来的预测，容易在长程任务中“走一步看一步”。为了让模型“先想后做”，一类工作引入语言推理（language-based reasoning），即让模型用自然语言描述任务步骤再生成动作——好处是可解释、语义清晰，坏处是语言很难表达“手指该用多大力”“物体将如何滑动”这类细粒度物理动态（fine-grained physical dynamics）。另一类工作走潜空间推理（latent reasoning），直接预测未来观测或状态的特征表示，物理信息丰富但缺乏结构，难以组织成可复用的推理原语（reasoning primitives）。此外，多模态感知里触觉（tactile）与视觉（vision）的融合对精细操作很关键，但如何把触觉也纳入推理结构仍是开放问题。本文的“物理词”（Physical Words）就是想在语言的可组织性和潜变量的物理保真度之间搭一座桥：用原子动作动词（atomic action verbs，如“抓”“推”“转”）作为共享语义锚点（shared semantic anchors），把连续物理动态“挂”到离散词上。\n\n【核心问题】\n论文要解决的核心矛盾是：语言推理“有结构但不够物理”，潜空间推理“够物理但没结构”，二者难以兼得，导致机器人基础模型在需要精细物理理解的长程操作中推理质量受限。具体来说，前人要么用自然语言做思维链（chain-of-thought），但语言 token 无法承载接触力、形变、滑动等连续量；要么直接回归未来帧特征，但这些特征没有离散化的“抓手”，无法形成可组合、可跨任务复用的推理单元。这个 gap 的重要性在于：如果推理原语既能被语言组织、又能保留物理细节，模型就能在长程任务中按“执行阶段”分段推理，而不是把整段未来压成一个模糊向量。此外，如何把触觉模态纳入这种结构化推理，此前几乎没有系统方案，而触觉恰恰是灵巧操作（dexterous manipulation）的关键。\n\n【方法】\n核心方案是构建“物理词”这一中间表示，并围绕它设计推理—行动架构，要点如下：\n\n1. ▲原子动作动词作为语义锚点▲：选取一组原子动作动词（如 grasp、push、rotate），每个词既是离散语言符号，又作为一个“槽位”去绑定对应的连续物理动态表示。这样离散词提供了结构（可枚举、可组合、可自回归预测），连续表示保留了物理保真度。此前没人这么做，是因为语言模型和潜变量模型通常被当作两条独立路线，缺少一个显式的“对齐接口”。\n\n2. ▲隐状态—未来观测对齐▲：模型在预测下一个原子动作词时，取其上下文隐状态（contextual hidden state），并强制它与“对应未来观测导出的潜目标”（latent targets derived from future observations）对齐。这相当于用对比/回归式对齐损失，把“词的含义”锚定在“未来世界会变成什么样”上，使词的隐表示真正携带物理预测信息，而不是纯语言学语义。这一步是方法的关键：没有它，“物理词”就退化成普通动作分类标签。\n\n3. ▲时间结构化物理词空间▲：每个动作词配有视觉变体和可选触觉变体（visuotactile variants），形成按时间排列的词序列。自回归地预测未来多个时间步的物理词，就自然刻画了“执行阶段之间的转移”（transitions between execution stages），例如“接近→抓取→抬升→放置”。相比一次性预测整段未来，这种分段结构更符合操作的阶段性，也为下游动作生成提供了分阶段的多模态上下文。\n\n4. ▲推理结果注入动作生成▲：预测出的物理词序列及其对齐的潜表示，作为结构化多模态上下文（structured multimodal context）送入动作头（action head）生成动作。因为上下文是按阶段组织的，策略在长程任务中能有“当前处于哪个阶段、下一阶段是什么”的显式信号，缓解了长程误差累积。\n\n5. ▲触觉变体的可选设计▲：触觉分支是可插拔的，使同一框架既能用于纯视觉设定（如 LIBERO-Long），也能用于视触觉设定（如 UniVTAC），提升了架构的通用性。\n\n【实验结果】\n论文报告了三类实验。第一，在视触觉基准 UniVTAC 上达到 90.3% 成功率，为当前最优（state-of-the-art），说明触觉变体确实被有效利用。第二，在纯视觉长程基准 LIBERO-Long 上达到 99.6% 成功率，这是一个接近饱和的数字，表明结构化潜推理在长程多阶段任务上优势明显。第三，在真实世界任务上，使用双臂夹爪（bimanual grippers）和灵巧手（dexterous hands）均优于对比方法，说明方法能迁移到真机与不同末端执行器。此外，论文还做了泛化评估，声称框架能泛化到未见场景并支持长程操作；从摘要看应有消融性质的验证（如视觉/触觉变体、结构化 vs 非结构化推理的对比），但摘要未给出具体消融数字，需查全文确认各组件贡献的量化幅度。总体看，三组数据覆盖了“视触觉—纯视觉—真机”三个层面，结论一致性较强。\n\n【局限性】\n1. ▲原子动作词表是人工预设的▲：词表大小和粒度决定了推理原语的表达能力，若任务涉及词表外的复杂动作（如揉捏、装配中的精细对准），模型可能无法用现有词准确分段，实际部署到开放任务时需要重新设计词表，这限制了零样本泛化。\n2. ▲依赖未来观测做对齐训练▲：潜目标来自未来观测，训练时需要能获取“动作词—未来帧”配对的数据，这类标注在真实机器人数据中获取成本高，可能限制方法在低成本数据上的可扩展性。\n3. ▲长程任务的成功率数字接近饱和▲：LIBERO-Long 上 99.6% 已接近上限，后续改进空间难以在该基准上体现，也意味着该基准可能已不足以区分方法优劣，真实复杂场景的验证仍不充分。\n4. ▲触觉为可选分支▲：在无触觉硬件时退化为纯视觉，精细接触任务（如易碎物体抓取）的物理推理能力会打折扣，实际部署受硬件条件制约。\n\n【个人视角点评】\n位置判断：这是一篇“填补空白 + 局部范式创新”的工作。它没有推翻推理—行动框架，而是精准补上了“语言结构”与“潜空间物理保真”之间的接口缺失，属于把两条路线缝合起来的关键拼图。用原子动作动词做锚点这个设计简洁且可复用，具备成为该子方向标准组件的潜力。相对其他子方向：在 VLA 与端到端策略里，这类“结构化中间表示”工作的价值在于提升样本效率与长程可靠性，天花板受限于词表设计与数据规模；相比世界模型与规划方向，它不做显式动力学建模，因而计算更轻但物理外推能力有限；相比纯灵巧操作方向，它提供了通用推理骨架，但精细力控仍依赖触觉与低层控制器。落地价值：距离产品化中等偏近——架构可插拔、已在真机双臂与灵巧手上验证，卡点在于词表工程化、真实数据采集成本与触觉硬件普及；若能把词表自动化学习并与大规模机器人数据结合，落地会明显加速。如果只记住一件事：▲用离散动作词当“文件夹”，把连续物理动态当“文件”存进去，再让模型自回归地翻阅这些文件夹来做推理▲——这个“语义锚定潜变量”的 idea 特别值得记住，因为它同时解决了可解释性、可组合性和物理保真度三个通常互相冲突的需求。\n\n【代码/数据开源情况】\n摘要与提供的元信息中未提及代码或数据开源，也未给出项目主页链接。论文是否承诺后续公开需查阅全文的“Code and Data”或附录部分确认；就目前信息看，开源状态不明，建议以 arXiv 页面与作者主页为准。"
+      },
+      {
+        "arxiv_id": "2610.267651",
+        "raw_id": "http://arxiv.org/abs/2610.26765v1",
+        "title": "HandsOn: A Large-Scale Simulation Benchmark for Generalizable Dexterous Manipulation",
+        "authors": [
+          "Tianwei Luo",
+          "Yiming He",
+          "Hongjin Wu",
+          "Ting Pan",
+          "Debin Ren",
+          "Haorui Guo",
+          "Junlin Yang",
+          "Yuxin Zuo",
+          "Zhehao Kou",
+          "Kaisen Yang",
+          "Zhuoqun Lai",
+          "Yi Ding",
+          "Jiale Yu",
+          "Yuchen Zhang",
+          "Zijie Qiu",
+          "Haozhan Li",
+          "Ning Ding"
+        ],
+        "abstract": "General-purpose manipulation requires reliable behavior across embodiments, objects, and task demands. We introduce HandsOn, a composable simulation platform and benchmark for cross-embodiment dexterous manipulation. It supports five robotic arms, six dexterous hands, and approximately 200 rigid, articulated, and deformable assets in randomized scenes. The benchmark pairs 18,000 curated human demonstrations with 66 human-verified tasks: Core-50 supports demonstration-based learning and execution tests, while Transfer-16 evaluates asset and relation transfer, skill composition, and deformable manipulation without target-task training demonstrations. Qualitative real-robot rollouts illustrate sim-to-real transfer. Across diffusion, vision-language-action, world-action, and prompted VLM-based methods, the best trained multi-task policy achieves 29.1% Core-50 success. Without benchmark finetuning, GPT-6 using move_eef for palm-and-finger control achieves 5.2% on Core-50 and 1.9% on Transfer-16 over 660 trials. Trained-policy stage diagnostics expose failures in contact establishment, action coordination, and maintaining achieved goals, with additional sequencing errors in composed tasks. HandsOn provides a shared basis for investigating manipulation generalization and the limits of reliable physical interaction.",
+        "published": "2026-10-19T17:22:48+00:00",
+        "url": "http://arxiv.org/abs/2610.26765v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.26765v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy",
+          "manipulation",
+          "sim2real_and_rl"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "灵巧操作与抓取",
+        "score_reason": "聚焦多指灵巧手抓取与操作，是该子方向的核心进展。",
+        "title_cn": "HandsOn：面向可泛化灵巧操作的大规模仿真基准",
+        "abstract_cn": "通用操作需要在不同具身形态（embodiments）、物体和任务需求下具备可靠的行为。我们提出HandsOn，一个用于跨具身灵巧操作的可组合仿真平台与基准。它支持五种机械臂、六种灵巧手，以及约200个刚体、关节体和可变形资产，并置于随机化场景中。该基准将18,000条精选人类演示与66个经人工验证的任务配对：Core-50支持基于演示的学习与执行测试，而Transfer-16评估资产与关系迁移、技能组合以及无可目标任务训练演示的可变形操作。定性的真实机器人 rollout 展示了仿真到现实（sim-to-real）的迁移。在扩散模型、视觉-语言-动作模型、世界-动作模型以及基于提示的VLM方法中，最佳训练多任务策略在Core-50上达到29.1%的成功率。在未进行基准微调的情况下，GPT-6使用move_eef进行手掌与手指控制，在660次试验中于Core-50上达到5.2%、于Transfer-16上达到1.9%。训练策略的阶段诊断揭示了在接触建立、动作协调和维持已达成目标方面的失败，并在组合任务中还存在额外的排序错误。HandsOn为研究操作泛化与可靠物理交互的极限提供了共享基础。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.267651",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.267651"
+        },
+        "structured_summary": "【子方向标签】\n灵巧操作与抓取（兼跨“仿真到真机 / 强化学习”与“VLA与端到端策略”的评测基准类工作）\n\n【一句话简介】\n提出 HandsOn：一个可组合的大规模仿真灵巧操作基准，用 66 个任务、1.8 万条人类演示系统评测跨本体、跨物体、可形变操作的泛化能力。\n\n【背景知识】\n要读懂这篇论文，需要先建立几个概念。第一是“灵巧操作”（dexterous manipulation）：指用多指机械手（而非简单两指夹爪）完成抓取、转笔、开瓶、拧盖这类需要手指协同的动作，它的难点在于高维连续控制、接触丰富（contact-rich）且容易发生滑移。第二是“跨本体”（cross-embodiment）：同一个策略要能跑在不同机械臂+不同机械手的组合上，因为现实中硬件五花八门，而策略往往过拟合到某一种本体。第三是“仿真基准”（simulation benchmark）：在物理仿真器里搭建标准化任务集和评测协议，让不同方法在同一把尺子下比较，避免各实验室自建环境导致结果不可比。第四是“人类演示”（human demonstration）：由人通过 VR/动捕/遥操作采集的专家轨迹，用于模仿学习（imitation learning），比手工设计奖励更省力，但存在本体差异和噪声。第五是“可形变物体”（deformable object）：绳子、布料、软袋这类会随接触改变形状的物体，其物理建模和状态表示远比刚体困难，是灵巧操作里公认的硬骨头。最后，“VLA”（Vision-Language-Action，视觉-语言-动作模型）指把图像、语言指令直接映射为动作的大模型策略，是当前端到端操作的主流范式之一，本基准也把它作为被测对象。\n\n【核心问题】\n灵巧操作领域长期缺乏一个“够大、够杂、够标准”的评测场：现有基准要么本体单一（只支持一种手），要么任务少、物体少，要么只测刚体、回避可形变物体，导致“泛化”这个词被各家用不同口径随意宣称，无法横向比较。更关键的是，大家不知道当前最强方法到底卡在哪——是抓不住（接触建立失败）、动作不协调，还是达成目标后维持不住？没有统一的诊断口径，改进就靠猜。HandsOn 试图堵上的正是这个 gap：用一个支持 5 种机械臂、6 种灵巧手、约 200 个刚体/铰接/可形变资产的可组合平台，配合 66 个人工核验任务和 1.8 万条演示，把“跨本体+跨物体+技能组合+可形变”的泛化评测标准化。它的意义在于给整个子方向提供一把公共尺子，并用实测数字（最好的多任务策略仅 29.1% 成功率）冷静地标定出当前技术的真实水位。\n\n【方法】\n论文的核心贡献不是某个新算法，而是一套“平台+数据+协议+诊断”的基准设计，其技术要点可拆为以下几层。第一，可组合仿真平台：把机械臂、灵巧手、物体资产解耦为可自由拼装的模块，支持 5 臂×6 手的组合，这在工程上要求统一的运动学接口、抓取/装配对齐和控制器抽象，否则换手就得重写环境；这种“本体即配置”的设计让跨本体评测第一次成为默认能力而非附加实验。第二，资产与场景多样性：约 200 个资产覆盖刚体、铰接体（articulated，如抽屉、门）和可形变体（deformable，如绳、布），并在随机化场景中摆放，随机化是为了逼迫策略学关系而非记位置。第三，任务分层设计：Core-50 提供训练演示，用于“基于演示的学习+执行测试”；Transfer-16 则刻意不提供目标任务的训练演示，专门测资产迁移、关系迁移、技能组合和可形变操作——这个“不给演示”的设计是评测泛化的关键，避免了用目标任务数据作弊。第四，数据规模与质量：1.8 万条精选人类演示、66 个任务全部人工核验，保证演示可用、任务可解。第五，诊断协议：不只报成功率，还分阶段诊断失败类型（接触建立、动作协调、目标维持、组合任务中的顺序错误），这把基准从“打分”升级为“归因”。与常规做法相比，创新点在于把“跨本体”和“可形变”同时纳入统一评测，并引入无演示迁移集与失败归因，此前少有基准同时做到这几点。\n\n【实验结果】\n实验在 HandsOn 仿真中进行，并辅以真机定性 rollout 展示 sim-to-real 可行性。第一组关键数据：在 Core-50 上训练的多任务策略中，表现最好者成功率仅 29.1%，说明即便有演示、有训练，当前方法在 50 个任务上的平均可靠性仍不到三成。第二组：不做基准微调的 GPT-6（用 move_eef 同时控制手掌与手指）在 660 次试验中，Core-50 仅 5.2%、Transfer-16 仅 1.9%，表明通用大模型零样本直接上手灵巧操作几乎不可用，且迁移到无演示任务时进一步崩塌。第三组：诊断结果显示失败集中在接触建立、动作协调和“达成目标后维持不住”三类，组合任务还额外出现顺序错误——这量化了“抓不住”和“抓不稳”是主要瓶颈，而非单纯规划错误。对比基线覆盖扩散策略（diffusion policy）、VLA、world-action 模型和提示式 VLM 方法四大类，形成较完整的范式横评；论文亦通过分阶段诊断间接验证各能力维度的贡献，但摘要未给出逐模块消融的具体数值。\n\n【局限性】\n第一，绝对成功率过低（29.1%）意味着基准当前更像“难度探针”而非“能力展示台”，任务难度分布可能偏陡，部分任务对现有方法近乎不可解，这会削弱方法间区分度——大家都低分时排名噪声大。第二，真机验证仅为定性 rollout，缺乏定量 sim-to-real 成功率，而仿真中的接触建模、摩擦与可形变物理与真实差距恰恰是灵巧操作最敏感之处，因此“能迁移”的结论强度有限。第三，跨本体虽支持 5 臂 6 手组合，但演示数据由人类采集，存在本体与人的形态差异，策略可能隐式依赖采集设备特性，泛化结论需谨慎外推。第四，基准本身不含新算法，其价值依赖社区采纳；若任务定义或评测协议后续调整，历史结果可比性会受影响，这对实际应用意味着选型时不能只看单一基准分数。\n\n【个人视角点评】\n位置判断：这是“填补空白”型工作，而非范式突破。灵巧操作长期缺公共评测场，HandsOn 用跨本体+可形变+无演示迁移+失败归因四件套把空白补上，其价值类似操作领域的“ImageNet 时刻”的基础设施层，但方法层面无新算法。与领域其他子方向相比，这类基准工作的价值在“定义问题与标定水位”，天花板受限于仿真保真度与任务设计代表性；它不会直接产出可部署策略，但会显著加速社区迭代。落地价值：距离产品化很远，卡点在两点——一是仿真接触/可形变物理与真实的 gap，二是 29.1% 的可靠性远低于工业可用门槛（通常需 >90%），需要真实数据闭环、更强的基础模型与更好的触觉/力反馈才能推进。如果只记住一件事：记住那个 29.1% 和 5.2%——它们冷静地告诉整个领域，“通用灵巧操作”目前连三成可靠性都不到，而通用大模型零样本几乎为零，这个水位标定本身就是最有价值的 idea，因为它把“泛化”从口号变成了可测的数字。\n\n【代码/数据开源情况】\n摘要与元数据未明确给出开源链接；按此类基准论文惯例，作者通常承诺公开仿真平台、任务定义与演示数据，但当前 arXiv 页面信息不足以确认。建议关注论文正文的“Code and Data”章节或项目主页，若未开源，其社区影响力将大打折扣，因为基准类工作的核心价值正依赖于可复现与可采纳。"
+      },
+      {
+        "arxiv_id": "2610.265841",
+        "raw_id": "http://arxiv.org/abs/2610.26584v1",
+        "title": "HAF-VLA: Hierarchical Action Flow Framework for Humanoid Vision-Language-Action Control",
+        "authors": [
+          "Langzhe Gu",
+          "Chengkai Hou",
+          "Meng Li",
+          "Xinhua Wang",
+          "Xinyuan Lv",
+          "Shuanghao Bai",
+          "Guangrun Li",
+          "Jingyang He",
+          "Ziluo Ding",
+          "Zhiyuan Xu",
+          "Ning Ding",
+          "Kuan Cheng",
+          "Jian Tang",
+          "Shanghang Zhang",
+          "Zhengping Che"
+        ],
+        "abstract": "Humanoid robots hold great promise as general-purpose agents in human-centered environments, yet adapting generalist vision-language-action (VLA) policies to real-world humanoid loco-manipulation remains challenging. Unlike fixed-base or wheeled manipulators, humanoids must coordinate locomotion, posture, gaze, and dual-arm manipulation over a high-dimensional whole-body action space, where inaccurate base or waist motions can easily induce unstable and aggressive upper-body compensation. We propose HAF-VLA, a hierarchical action-flow framework for humanoid VLA control. Built upon a pretrained flow-matching VLA, HAF-VLA inherits the vision-language prefix encoder and action expert weights, and adapts them to humanoid whole-body loco-manipulation with learnable stage embeddings and cross-stage KV-cache conditioning. Instead of generating the full action chunk in a single pass, HAF-VLA progressively denoises a shared whole-body action space: first locomotion and head commands, then waist refinement, and finally full-body manipulation. To preserve structural dependencies across stages, we introduce a cross-stage KV cache conditioning mechanism, enabling subsequent action generation stages to refine and augment their outputs based on the action representations from preceding stages. Experimental results across six real-world tasks demonstrate that our framework significantly enhances the performance of existing models in humanoid loco-manipulation tasks, demonstrating an effective pathway for adapting strong mobile-manipulation VLAs to humanoid whole-body loco-manipulation.",
+        "published": "2026-10-19T15:33:34+00:00",
+        "url": "http://arxiv.org/abs/2610.26584v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.26584v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "运动控制（足式/人形）",
+        "score_reason": "针对足式或人形机器人的运动控制方法，属于该子方向的重要工作。",
+        "title_cn": "HAF-VLA：面向人形机器人视觉-语言-动作控制的分层动作流框架",
+        "abstract_cn": "人形机器人有望成为以人为中心环境中的通用智能体，然而将通用视觉-语言-动作（vision-language-action, VLA）策略适配到真实世界的人形机器人移动-操作（loco-manipulation）任务仍然具有挑战性。与固定基座或轮式操作器不同，人形机器人必须在高维全身动作空间中协调移动、姿态、视线和双臂操作，其中不准确的基座或腰部运动很容易诱发不稳定且剧烈（aggressive）的上半身补偿。我们提出HAF-VLA，一种用于人形机器人VLA控制的分层动作流（hierarchical action-flow）框架。HAF-VLA构建于预训练的流匹配（flow-matching）VLA之上，继承其视觉-语言前缀编码器和动作专家（action expert）权重，并通过可学习的阶段嵌入（stage embeddings）和跨阶段KV缓存条件（cross-stage KV-cache conditioning）将其适配到人形机器人全身移动-操作任务。HAF-VLA并非在单次前向中生成完整动作块（action chunk），而是逐步地对一个共享的全身动作空间进行去噪：首先生成移动和头部指令，然后进行腰部细化，最后生成全身操作动作。为保持跨阶段的结构依赖关系，我们引入跨阶段KV缓存条件机制，使后续动作生成阶段能够基于前序阶段的动作表示来细化和增强其输出。在六个真实世界任务上的实验结果表明，我们的框架显著提升了现有模型在人形机器人移动-操作任务中的性能，为将强大的移动-操作VLA适配到人形机器人全身移动-操作提供了一条有效路径。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.265841",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.265841"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细分地说，是“人形全身 loco-manipulation 的 VLA 策略”）\n\n【一句话简介】\n把预训练的 flow-matching VLA 改造成分级去噪框架，让人形机器人先动腿和头、再调腰、最后出手，实现全身协调的移动操作。\n\n【背景知识】\n要看懂这篇论文，需要先建立几个概念。第一，VLA（Vision-Language-Action，视觉-语言-动作模型）指把视觉观测和自然语言指令直接映射成机器人动作序列的大模型，通常建立在预训练视觉语言模型（VLM）之上，代表工作如 RT-2、OpenVLA、π0 等；它的卖点是“通用性”——一个模型能听懂多种指令、执行多种任务。第二，flow matching（流匹配）是一类生成式建模方法，学习一个从噪声到目标动作分布的连续“流场”，推理时通过多步去噪（denoising）生成动作；相比扩散模型（diffusion），它训练更稳定、采样步数更少，π0 就是基于 flow matching 的 VLA。第三，action chunk（动作块）指一次前向生成未来若干步的动作序列，而不是单步动作，能提升时序一致性。第四，loco-manipulation（移动操作）指机器人一边移动底座一边操作物体，区别于固定底座（fixed-base）机械臂或轮式底盘。第五，人形机器人的全身动作空间（whole-body action space）维度很高，包含双腿关节、腰部、头部 gaze（视线朝向）、双臂，各部位之间存在强耦合——底座或腰部稍有偏差，上半身就会做出剧烈补偿动作。理解这几点，就能明白论文的核心张力：通用 VLA 大多在固定底座或轮式平台上训练，直接搬到人形全身控制上会“水土不服”。\n\n【核心问题】\n现有通用 VLA 策略（如 π0 类 flow-matching 模型）主要在固定底座机械臂或轮式移动操作平台上采集的数据上训练，动作空间是“手臂为主 + 底盘平移”的低维结构；而人形机器人需要在高维全身空间里同时协调腿、腰、头、双臂，直接套用会导致底座/腰部运动不精确，进而引发上半身的激进补偿（aggressive upper-body compensation），表现为动作不稳、抖动甚至失稳。论文要堵的 gap 是：如何在不丢弃预训练 VLA 强泛化能力的前提下，把它的动作生成过程“重排”成符合人形全身运动学层级结构的形式。这个问题的意义在于，它决定了“通用 VLA 能否真正迁移到人形平台”这一具身智能落地的关键路径——如果每次换平台都要从头训练，VLA 的规模化价值就大打折扣。\n\n【方法】\n核心思路是把“一次性生成整个动作块”改成“分阶段渐进去噪”，并且让阶段之间共享信息。具体要点如下：\n\n1. ▲继承预训练权重而非重训▲：HAF-VLA 建立在预训练的 flow-matching VLA 之上，保留其 vision-language prefix encoder（视觉语言前缀编码器，负责把图像和指令编码成条件表示）和 action expert（动作专家，负责去噪生成动作）的权重。这样做的好处是保留了大模型从海量数据学到的语义理解和动作先验，避免人形数据稀缺导致的过拟合；之前很多工作选择从头训练人形策略，代价是丢掉通用性。\n\n2. ▲分级动作流（hierarchical action flow）▲：不再单次去噪出完整动作块，而是在一个共享的全身动作空间上分三步渐进去噪——先出 locomotion（腿部移动）和 head（头部/视线）命令，再出 waist（腰部）精修，最后出 full-body manipulation（全身操作，主要是双臂）。这个顺序对应人形运动学的因果链：腿决定基座位姿，腰决定上半身参考系，手臂在腰之上执行操作。先定“地基”再定“上层”，从结构上抑制了上半身对底座误差的激进补偿。之前没人这么做，是因为通用 VLA 的动作空间是扁平的，没有显式的身体部位层级。\n\n3. ▲可学习阶段嵌入（learnable stage embeddings）▲：给每个去噪阶段注入一个可学习的嵌入向量，告诉 action expert“现在处于哪个阶段、该生成哪部分动作”。这让同一个共享动作空间在不同阶段被“路由”到不同子维度，而不需要为每个阶段单独建网络，参数效率高。\n\n4. ▲跨阶段 KV cache 条件化（cross-stage KV-cache conditioning）▲：这是论文的关键机制。Transformer 推理时会把注意力计算的 Key/Value 缓存下来（KV cache），HAF-VLA 让后续阶段复用前面阶段产生的 KV cache 作为条件，使腰部精修能“看到”腿和头的动作表示、操作阶段能“看到”腰和腿的表示。原理上，这相当于把前序阶段的隐表示作为软约束传给后序阶段，保证跨阶段的结构依赖不被切断；如果没有它，各阶段独立去噪会互相矛盾（比如腰的朝向和腿的转向不一致）。这个设计巧妙之处在于复用了 Transformer 原生的缓存机制，几乎零额外参数。\n\n5. ▲共享全身动作空间▲：所有阶段在同一个动作空间上操作，只是分阶段填充/精修不同维度，避免了多网络拼接带来的接口不一致问题。\n\n【实验结果】\n论文在六个真实世界人形 loco-manipulation 任务上做了实验（具体任务名摘要未列，但属于真实机器人部署而非仿真）。关键结论是：该框架显著提升了现有模型在人形全身移动操作任务上的性能。具体数据方面，摘要只给出定性表述“significantly enhances”，未披露逐任务的量化指标、对比 baseline 名称和消融数值；从摘要可确认的实验规模是 6 个真实任务、基座模型为预训练 flow-matching VLA、对比对象是“existing models”（即未做分级改造的原始 VLA）。需要说明：由于摘要信息有限，无法给出“提升 X%”这类具体数字，也无法确认是否做了逐模块消融（阶段嵌入、KV cache 条件化各自的贡献）；这些需要查阅全文的实验章节。读者应把“6 个真实任务上的显著提升”作为当前可核实的三组信息之一，另外两组是“基于预训练 flow-matching VLA 继承权重”和“分三阶段去噪”的实验设置本身。\n\n【局限性】\n1. ▲阶段划分是手工设计的固定顺序▲（腿/头→腰→操作），这隐含假设任务总是遵循“先移动后操作”的因果结构；但真实任务中存在边移动边精细操作、或需要腰部先调整再迈步的情况，固定顺序可能限制策略的表达能力，实际部署时遇到动态任务会显得僵硬。\n\n2. ▲依赖高质量人形全身演示数据▲：虽然继承了预训练权重，但阶段嵌入和 KV cache 条件化仍需要人形平台数据来适配；人形机器人数据采集成本极高（遥操作、动捕），六个任务的数据规模可能有限，泛化到未见任务的能力存疑，这直接影响“通用人形 agent”的承诺。\n\n3. ▲分级去噪增加推理延迟▲：分三阶段去噪意味着多次前向（或至少多轮去噪步），相比单次生成动作块，控制频率会下降；对于需要高动态响应的人形平衡控制，延迟是实打实的风险，论文未在摘要中讨论实时性指标。\n\n4. ▲实验规模有限且缺乏量化披露▲：六个真实任务、摘要级定性结论，缺少与强 baseline 的逐项数字对比和消融，难以判断提升究竟来自分级结构还是仅仅来自人形数据微调；这对想复现或判断方法上限的读者是信息缺口。\n\n【个人视角点评】\n位置判断：这是一篇▲填补空白型 + 渐进式架构创新▲的工作，而非范式突破。理由是：它没有提出全新的学习范式，而是把“分级”这一经典思想（分层强化学习、分层策略早有传统）嫁接到 flow-matching VLA 的去噪过程上，并用 KV cache 条件化这个工程上优雅的手段实现跨阶段耦合。它的价值在于回答了“通用 VLA 如何迁移到高维人形全身控制”这个具体而关键的工程问题——这是当前 VLA 社区从“固定底座 demo”走向“真实人形部署”必须跨过的坎。之所以不是范式突破，是因为核心生成机制（flow matching、action chunk、KV cache）都是现成的，创新在组合方式。\n\n与其他子方向比较：相比灵巧操作或足式运动控制这类“单点深挖”的方向，VLA+人形全身控制属于“系统集成层级”的工作，天花板受限于基座 VLA 的能力和数据规模——如果基座模型不够强、人形数据不够多，分级框架只能锦上添花。它的价值层级大致是“让现有强模型在新平台上可用”，而不是“重新定义模型能力上限”。但这类工作恰恰是产业落地最需要的，因为人形厂商手里有平台、缺的是把通用模型接上去的桥梁。\n\n落地价值：距离实际部署还有中等距离。卡点有三：一是推理延迟，三阶段去噪对实时全身控制是硬约束，需要蒸馏或缓存优化；二是数据，人形全身演示数据的采集成本和规模是瓶颈；三是安全性，分级结构虽抑制了激进补偿，但真实人形在非结构化环境中的失稳风险仍需大量测试。落地条件：基座 VLA 足够强 + 人形数据管线成熟 + 推理加速到位，三者齐备时这类框架会快速产品化。\n\n如果只记住一件事：▲“把动作生成按身体运动学因果链分阶段去噪，并用 KV cache 让后阶段看到前阶段的表示”▲——这个 idea 特别之处在于，它用极低的参数代价（复用 Transformer 原生缓存）把“身体结构先验”注入到通用 VLA 里，是一种可推广到其他高维具身平台（如多足、双臂移动底盘）的通用配方。记住它，是因为它示范了“如何不改基座模型、只改生成流程”来适配新平台，这条路线对资源有限的团队尤其友好。\n\n【代码/数据开源情况】\n摘要与提供的元数据中未提及代码或数据开源，也未给出项目主页链接。论文是否承诺后续公开，需查阅全文的“Code and Data”或项目页说明；当前信息下无法确认开源状态，建议关注 arXiv 页面更新或作者主页。"
+      },
+      {
+        "arxiv_id": "2610.264871",
+        "raw_id": "http://arxiv.org/abs/2610.26487v1",
+        "title": "SPAR: Structural Pruning and Action Recovery for Vision-Language-Action Models",
+        "authors": [
+          "Shenli Zheng",
+          "Zhou Fang",
+          "Yuan Du",
+          "Yijiang Liu",
+          "Li Du"
+        ],
+        "abstract": "The limited onboard computing resources of robots make the inference demands of vision-language-action (VLA) models costly to accommodate. Reducing these demands through aggressive compression, however, can degrade manipulation performance beyond what supervised fine-tuning alone recovers. We present SPAR (Structural Pruning and Action Recovery), which simultaneously prunes the hidden and feed-forward intermediate dimensions of the large language model (LLM) backbone through pruning-aware tuning, then applies reinforcement learning (RL) to recover policy performance. Applied to $π_{0.5}$, SPAR reduces the language backbone from 2.34B to 0.09B parameters and the full model from 3.37B to 1.12B, removing approximately 96% and 67% of their parameters, respectively. At this compression level, RL raises average success across the four LIBERO suites from 84.55% to 93.45%, an 8.90-percentage-point gain. The compressed policy achieves a $1.98\\times$ full-policy inference speedup over the unpruned model. These results identify substantial intermediate-dimension redundancy and show that post-pruning RL can recover manipulation performance in compact policies.",
+        "published": "2026-10-19T14:28:51+00:00",
+        "url": "http://arxiv.org/abs/2610.26487v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.26487v1",
+        "categories": [
+          "cs.RO",
+          "cs.AI"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "仿真到真机 / 强化学习",
+        "score_reason": "研究仿真训练到真机部署的迁移与强化学习，是该方向的关键问题。",
+        "title_cn": "SPAR：面向视觉-语言-动作模型的结构化剪枝与动作恢复（Structural Pruning and Action Recovery）",
+        "abstract_cn": "机器人有限的板载计算资源使得视觉-语言-动作（vision-language-action，VLA）模型的推理需求难以被满足。然而，通过激进压缩来降低这些需求，可能会使操作性能下降到仅靠监督微调（supervised fine-tuning）无法恢复的程度。我们提出SPAR（Structural Pruning and Action Recovery，结构化剪枝与动作恢复），该方法通过剪枝感知调优（pruning-aware tuning）同时剪枝大语言模型（large language model，LLM）主干的隐藏维度和前馈中间维度，然后应用强化学习（reinforcement learning，RL）来恢复策略性能。应用于$π_{0.5}$时，SPAR将语言主干从2.34B参数减少到0.09B参数，将完整模型从3.37B参数减少到1.12B参数，分别移除了约96%和67%的参数。在此压缩水平下，RL将四个LIBERO套件的平均成功率从84.55%提升到93.45%，提高了8.90个百分点。压缩后的策略相比未剪枝模型实现了$1.98\\times$的全策略推理加速。这些结果识别出了大量中间维度冗余，并表明剪枝后的RL可以在紧凑策略中恢复操作性能。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.264871",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.264871"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细一点：VLA 模型压缩与推理加速）\n\n【一句话简介】\nSPAR 通过结构化剪枝加强化学习恢复，把 π0.5 的 VLA 模型压缩到约三分之一，同时把成功率从 84.55% 提到 93.45%。\n\n【背景知识】\nVLA（Vision-Language-Action，视觉-语言-动作模型）是近两年具身智能的核心范式：它把视觉观测和自然语言指令一起喂给一个多模态大模型，直接输出机器人动作序列，典型代表有 RT-2、OpenVLA、π0/π0.5 等。这类模型通常由一个视觉编码器、一个大型语言模型（LLM，Large Language Model）主干、以及一个动作头（action head，把 LLM 的隐状态解码成连续动作）组成，参数量动辄数十亿。问题在于机器人本体算力极其有限（机载 GPU 往往只有几十 TOPS、功耗受限），而 VLA 推理又要求高频闭环控制，于是\"模型太大、跑不动\"成为落地的核心瓶颈。常见的压缩手段有三类：量化（quantization，把权重从 FP16 降到 INT8/INT4）、蒸馏（distillation，用小模型学大模型输出）、剪枝（pruning，直接删掉网络里的通道/维度）。其中结构化剪枝（structural pruning）删的是整条通道或整个中间维度，能真正减少计算量和显存，而不是只减小文件体积。但剪枝越狠，策略性能掉得越厉害，而普通的监督微调（SFT，Supervised Fine-Tuning，用专家示范数据做模仿学习）往往只能恢复一部分——这正是本文切入的缺口。\n\n【核心问题】\n这篇论文要解决的是：在机器人机载算力约束下，如何把 VLA 模型压到可部署规模，同时不牺牲甚至提升操作成功率。具体来说，它针对两个前人没解决好的问题：第一，现有 VLA 压缩工作多集中在量化或非结构化剪枝，对 LLM 主干\"中间维度\"（hidden dimension 隐层维度、FFN intermediate dimension 前馈中间维度）的结构化冗余到底有多大，缺乏系统验证；第二，剪枝后性能下降通常靠 SFT 恢复，但 SFT 只能模仿专家轨迹、无法针对\"剪枝后策略自身的失败模式\"做优化，恢复上限有限。这项工作堵上的 gap 是：把\"结构化剪枝 + 剪枝感知训练 + 强化学习恢复\"串成一条完整流水线，并证明在极端压缩（语言主干砍掉 96%）下 RL 恢复不仅能补回损失，还能超过原始模型。对整个领域而言，它给出了一个明确信号：VLA 的 LLM 主干存在大量可删的中间维度冗余，压缩的天花板比想象中高。\n\n【方法】\nSPAR 的核心是\"先剪、再恢复\"两阶段，关键创新在于剪枝方式与恢复手段的配合。\n\n1. ▲同时剪 hidden 与 FFN 中间维度▲：常规结构化剪枝往往只剪 FFN 的中间维度（因为那里参数最多），但本文同时对 LLM 主干的隐层维度（hidden dimension，即 token 表示的通道数）和前馈中间维度（FFN intermediate dimension，Transformer 里升维再降维的瓶颈宽度）下手。原理是这两处都存在大量低贡献通道，同时剪能获得更高的压缩比；之所以之前少有人做，是因为同时剪两个维度会让各层表示空间严重错位，普通微调很难救回来。\n\n2. ▲剪枝感知调优（pruning-aware tuning）▲：不是\"先剪完再微调\"，而是在剪枝过程中就让模型参与调优，让剩余通道逐步适应被删减后的表示空间。这类似于给网络一个\"渐进适应\"的缓冲期，避免一刀切造成的表示崩塌，为后续 RL 恢复留出可用的初始策略。\n\n3. ▲用 RL 做动作恢复（action recovery）▲：这是与常规做法最大的区别。SFT 是离线模仿，只能拟合专家分布；而 RL（强化学习，这里应是在仿真环境里用成功/失败奖励做策略优化）直接以任务成功率为目标，能针对剪枝后策略的实际失败模式做修正。作者的核心论点是：剪枝破坏了策略的动作分布，SFT 只能\"拉回专家附近\"，RL 则能\"重新搜索到更优的动作策略\"，因此恢复上限更高，甚至超过原模型。\n\n4. ▲端到端流水线▲：从 2.34B 语言主干剪到 0.09B、全模型 3.37B 剪到 1.12B，再经 RL 恢复，最终得到 1.98× 推理加速的紧凑策略。整个方案的价值在于它是一条可直接套用到其他 VLA 上的通用流程，而非针对 π0.5 的定制技巧。\n\n【实验结果】\n实验基于 π0.5 模型，在 LIBERO 仿真基准的四个任务套件（Spatial / Object / Goal / Long，分别考察空间关系、物体操作、目标达成和长程任务）上评估。\n\n• ▲压缩比▲：语言主干从 2.34B 降到 0.09B（删约 96%），全模型从 3.37B 降到 1.12B（删约 67%）。\n• ▲性能恢复▲：在这个压缩水平下，仅剪枝+调优后平均成功率约 84.55%，加入 RL 恢复后升到 93.45%，提升 8.90 个百分点——注意这是\"压缩后反而超过原模型\"的结果，说明 RL 恢复不只是补损。\n• ▲推理加速▲：压缩策略相对未剪枝模型获得 1.98× 的推理加速，直接对应机载部署的实时性收益。\n• ▲消融层面▲：摘要明确对比了\"剪枝后 SFT 类恢复\"与\"RL 恢复\"的差异（84.55% vs 93.45% 即体现 RL 的增量贡献），并验证了同时剪 hidden 与 FFN 维度的必要性；不过具体各套件分项数字与更细的消融表需查全文。\n\n【局限性】\n1. ▲仅在仿真基准验证▲：LIBERO 是标准仿真套件，任务分布相对干净，真机上的视觉噪声、动力学误差、执行器延迟都会放大压缩模型的脆弱性。这意味着 93.45% 的成功率不能直接外推到真实机器人，落地前必须做真机微调与鲁棒性测试。\n2. ▲RL 恢复依赖仿真奖励▲：RL 阶段需要可交互的环境和成功信号，真机上采集奖励代价高、风险大。这限制了该流水线在\"无法大规模仿真\"的任务上的可迁移性，实际部署时可能退化为只能用 SFT，从而损失那 8.9 个点的增益。\n3. ▲压缩对象局限于 LLM 主干▲：视觉编码器和动作头是否也被剪、剪多少，摘要未强调；全模型 67% 的压缩主要来自语言主干，若视觉侧也是瓶颈，进一步压缩空间和收益结构会不同。\n4. ▲单一基座模型▲：只在 π0.5 上验证，不同 VLA 架构（如 OpenVLA、RT-2 类）的冗余分布可能差异很大，\"96% 语言主干可删\"这一结论的普适性仍需更多模型佐证。\n\n【个人视角点评】\n• ▲子方向定位▲：这是一篇\"填补空白 + 工程范式\"型工作，而非理论突破。VLA 压缩此前多是量化或非结构化剪枝的零散尝试，本文第一次把\"结构化剪枝（hidden+FFN 双维度）+ 剪枝感知调优 + RL 恢复\"做成完整闭环，并给出\"压缩后超越原模型\"的强结论。判断依据是：它没有提出新架构或新学习范式，但把一条此前没人走通的工程路径打通了，且结论（中间维度冗余极大、RL 恢复优于 SFT）对整个 VLA 部署社区有直接指导意义。\n• ▲相对其他子方向的价值层级▲：和 VLA 架构创新（如新动作表示、新训练目标）相比，压缩类工作的\"科学天花板\"较低——它不改变模型能力上限，只改变能力/成本曲线；但它的\"工程天花板\"很高，因为算力是当下 VLA 落地的第一硬约束。这类工作属于\"让好模型真正能上机器人\"的使能型研究，价值不在惊艳，而在必需。\n• ▲落地距离▲：距离产品化中等偏近，卡点有三：一是真机验证缺失，仿真到真机的 gap 会吃掉部分成功率；二是 RL 恢复流程需要仿真环境和奖励工程，部署方要有配套的仿真基础设施；三是压缩后模型的鲁棒性、长尾任务表现未充分披露。需要的落地条件是：成熟的仿真训练管线 + 真机少量微调 + 对实时性有硬需求的场景（如高频抓取、移动操作）。\n• ▲最值得记住的 idea▲：▲\"剪枝造成的性能损失，用 RL 而不是 SFT 来恢复，而且能恢复过头\"▲。这个想法特别之处在于它颠倒了常规认知——通常压缩是\"以性能换效率\"，本文证明在 VLA 上可以是\"以效率换性能提升\"，因为 RL 能跳出专家示范的分布去搜索更优策略。这提示了一个更一般的思路：任何让策略\"偏离专家分布\"的操作（剪枝、量化、加噪），都可能被 RL 转化为探索优势，而不是单纯的损失。\n\n【代码/数据开源情况】\n摘要与元数据中未提及代码或数据开源，也未给出项目主页链接。按 arXiv 论文惯例，作者可能承诺后续公开，但当前信息无法确认；建议关注 arXiv 页面（http://arxiv.org/abs/2610.26487v1）的更新或作者主页。实验所用的 LIBERO 基准本身是公开的，π0.5 基座模型也来自公开工作，因此复现的主要障碍在于 SPAR 自身流水线的实现细节（剪枝掩码、RL 奖励设计）是否公开。"
+      },
+      {
+        "arxiv_id": "2610.264551",
+        "raw_id": "http://arxiv.org/abs/2610.26455v1",
+        "title": "ALIGN: Aligning Condition Estimation and Expression in Advantage-Conditioned Behavior Cloning",
+        "authors": [
+          "Zechen Wang",
+          "Zhenqi Qiu",
+          "Houlong Xiong",
+          "Suohang Zhang",
+          "Yiyu Ren",
+          "Wanting Xu",
+          "Hongfei Niu",
+          "Chengyang He",
+          "Ge Sun",
+          "Ran Cheng",
+          "Qian Zhu"
+        ],
+        "abstract": "Human-collected robot manipulation data often mix successful behavior with retries, pauses, recoveries, and failures. Advantage-Conditioned Behavior Cloning (AC-BC) can exploit such mixed-quality data, but only if the conditioning signal is both accurately constructed from offline trajectories and effectively incorporated into the policy's action-vector-field prediction. Existing pipelines can weaken this signal by thresholding estimator-derived advantage scores into noisy conditions, and by routing conditions through prompts that weakly affect the action vector field. We introduce ALIGN, a condition-aligned AC-BC framework for vision-language-action policies. ALIGN directly predicts categorical pairwise conditions in the policy-facing label space and injects them into a DiT action expert through AdaRMS modulation fused with flow time. We evaluate ALIGN on deliberately mixed real-robot datasets for ARX X5 bowl stacking and Franka key hanging, each combining standard demonstrations with retry-heavy trajectories. ALIGN improves condition fidelity, strengthens conditional vector-field separability, and achieves 90.0% and 56.7% closed-loop success, compared with 56.7% and 33.3% for the strongest AC-BC baseline. These results indicate that aligning conditions from estimation to action prediction is an effective way to extract robust manipulation policies from data in which success, recovery and error coexist.",
+        "published": "2026-10-19T14:10:26+00:00",
+        "url": "http://arxiv.org/abs/2610.26455v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.26455v1",
+        "categories": [
+          "cs.RO",
+          "cs.AI"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "世界模型与规划",
+        "score_reason": "构建世界模型用于机器人规划与决策，属于该子方向的前沿探索。",
+        "title_cn": "ALIGN：在优势条件行为克隆中统一条件估计与表达（Aligning Condition Estimation and Expression in Advantage-Conditioned Behavior Cloning）",
+        "abstract_cn": "人类采集的机器人操作数据往往将成功行为与重试、停顿、恢复和失败混杂在一起。优势条件行为克隆（Advantage-Conditioned Behavior Cloning, AC-BC）能够利用这种混合质量的数据，但前提是条件信号既要从离线轨迹中被准确构建，又要被有效地融入策略的动作向量场（action-vector-field）预测之中。现有流程可能通过将估计器得出的优势分数阈值化为含噪条件来削弱该信号，也可能通过以提示（prompt）方式路由条件、而其对动作向量场影响微弱来削弱该信号。我们提出 ALIGN，一个面向视觉-语言-动作（vision-language-action）策略的条件对齐 AC-BC 框架。ALIGN 在面向策略的标签空间中直接预测分类式成对条件（categorical pairwise conditions），并通过与流时间（flow time）融合的 AdaRMS 调制将其注入 DiT 动作专家（action expert）。我们在刻意混合的真实机器人数据集上评估 ALIGN，包括 ARX X5 叠碗和 Franka 挂钥匙，每个数据集均将标准示范与重试密集的轨迹相结合。ALIGN 提升了条件保真度，增强了条件向量场的可分性，并分别取得 90.0% 和 56.7% 的闭环成功率，而最强的 AC-BC 基线分别为 56.7% 和 33.3%。这些结果表明，将条件从估计到动作预测进行对齐，是从成功、恢复与错误共存的数据中提取鲁棒操作策略的有效途径。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.264551",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.264551"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更精确地说：面向VLA策略的“优势条件化行为克隆 / Advantage-Conditioned Behavior Cloning”训练框架）\n\n【一句话简介】\n把“优势条件”从估计到动作预测全链路对齐，让VLA能从混杂质量的真实机器人数据里学出更稳的策略。\n\n【背景知识】\n要读懂这篇论文，需要先建立四个概念。第一，▲行为克隆（Behavior Cloning, BC）▲：最直接的模仿学习方式，把观测映射到动作，用监督学习拟合专家数据；它的软肋是只能学“数据里出现的动作分布”，对数据质量极其敏感。第二，▲离线强化学习中的优势函数（Advantage Function）▲：衡量“在某个状态采取某个动作，比该状态下的平均水平好多少”，通常由critic网络估计；优势为正表示优于平均，为负表示劣于平均。第三，▲优势条件化行为克隆（Advantage-Conditioned BC, AC-BC）▲：不直接把优势当奖励去优化，而是把优势值/优势类别作为额外条件输入策略，让策略学会“给我高优势条件我就输出好动作，给我低优势条件我就输出差动作”，从而把成功、重试、失败混杂的数据都利用起来，而不是简单丢弃低质量片段。第四，▲VLA（Vision-Language-Action）策略与DiT动作专家▲：VLA是把视觉观测和语言指令一起编码、直接输出机器人动作的大模型范式；DiT（Diffusion Transformer）是扩散/流匹配类生成模型的主干，常被用作“动作专家（action expert）”，通过▲流匹配（flow matching）▲预测一个动作向量场（action vector field），再从噪声积分出动作序列。此外还要知道▲AdaRMS（Adaptive Root Mean Square Normalization）▲：一种用外部条件调制归一化层缩放/偏移的机制，类似FiLM，能把条件信号注入网络内部而非仅拼在输入上。最后，▲条件保真度（condition fidelity）▲指策略实际“感受到”的条件与数据真实质量是否一致——这是本文的核心抓手。\n\n【核心问题】\n真实人类采集的机器人操作数据天然混杂：同一任务里既有干净成功的示范，也有反复重试、停顿、恢复、甚至失败的片段。AC-BC本应是把这些“混合质量数据”变废为宝的关键路线，但现有流水线在两个环节上把优势信号弄脏了：其一，用critic估计出的连续优势分数再经阈值化（thresholding）离散成条件标签，阈值附近噪声极大，导致条件本身不可靠；其二，把条件通过prompt文本或简单拼接送进策略，条件对动作向量场的调制很弱，策略实际上没怎么“听”条件的话。结果是：条件估得不准、条件用得也不狠，AC-BC退化成普通BC，混合数据里的恢复/纠错信息被浪费。这个gap在领域里很重要，因为真实机器人数据的采集成本极高、质量参差是常态，能否稳健利用混合质量数据直接决定了VLA能否规模化落地。\n\n【方法】\nALIGN的核心思想是“让条件的估计空间与策略的标签空间对齐，并让条件深度调制动作向量场”，具体分三点。\n\n1. ▲直接在策略面向的标签空间里预测成对类别条件（categorical pairwise conditions）▲。常规做法是先训一个critic估计连续优势，再阈值化成离散标签，两步之间误差累积。ALIGN改成让估计器直接输出“成对比较”的类别标签——即对同一状态下的两个动作/片段判断哪个更优（pairwise preference），标签空间与策略最终使用的条件空间完全一致。这样避免了连续分数→阈值的噪声放大，条件保真度显著提升。为什么之前没人这么做：AC-BC社区习惯沿用离线RL的critic+阈值范式，很少反思“估计空间”和“使用空间”不一致本身就是误差源。\n\n2. ▲把条件注入DiT动作专家，用AdaRMS调制并与流时间（flow time）融合▲。条件不是拼在prompt里，而是通过AdaRMS对DiT各层的归一化做仿射调制，并且这个调制与流匹配的时间步嵌入相融合——也就是说，条件信号随去噪进程一起参与动作向量场的生成。原理上，AdaRMS让条件直接改变每层的特征缩放，影响远强于文本prompt的间接注意力路由；与flow time融合则保证条件在整条积分轨迹上都起作用，而不是只在初始步。这解决了“条件路由太弱、动作向量场对条件不敏感”的问题。\n\n3. ▲强化条件向量场的可分性（conditional vector-field separability）▲。因为条件被深度注入且标签空间对齐，策略在不同优势条件下预测的动作向量场能被清晰区分——高优势条件指向“纠错/恢复”方向，低优势条件指向“重试/失败”方向。这种可分性是AC-BC真正生效的前提：如果不同条件下的向量场几乎重合，条件就形同虚设。ALIGN通过前两步联合保证了这一点，并在实验中专门度量了条件保真度和向量场可分性来验证。\n\n【实验结果】\n实验在两个刻意构造的混合质量真实机器人数据集上做：ARX X5 叠碗（bowl stacking）和 Franka 挂钥匙（key hanging），每个数据集都把标准示范与重试密集（retry-heavy）的轨迹混在一起，模拟真实采集的混杂质量。闭环成功率上，ALIGN在ARX X5叠碗达到▲90.0%▲，最强AC-BC基线为▲56.7%▲；在Franka挂钥匙达到▲56.7%▲，基线为▲33.3%▲——两个任务分别提升33.3和23.4个百分点，相对提升约59%和70%。除成功率外，论文还报告了条件保真度（condition fidelity）和条件向量场可分性两项诊断指标均有提升，说明增益来自“条件估得准+用得狠”这条因果链，而非偶然。需要说明的是，摘要未给出消融实验的具体数字，但从方法设计看，条件标签空间对齐与AdaRMS注入是两个可独立消融的组件，正文应有对应验证；读者若关心各组件贡献比例，需查阅全文的消融表。\n\n【局限性】\n1. ▲任务规模与多样性有限▲：只在两个真实机器人任务（叠碗、挂钥匙）上验证，且都是桌面级操作，样本量和任务复杂度都不足以证明方法在长程、多物体、开放指令场景下同样有效。对实际应用意味着：迁移到更复杂产线或家庭场景前，需要更大规模验证，不能直接外推。\n2. ▲依赖成对比较标签的构造▲：成对类别条件需要定义“同一状态下哪段更好”，这本身依赖分段、对齐或人工/启发式标注；在长程任务里“同一状态”难以精确匹配，标签构造可能成为新瓶颈。对应用意味着：数据预处理成本可能上升，且标签质量会重新引入偏差。\n3. ▲仍需critic/估计器参与▲：虽然改成类别预测，但优势估计器本身的泛化误差仍在，分布外状态下的条件可能失真；闭环时策略可能被错误条件误导。对部署意味着：在分布漂移的真实环境中需要在线监控条件可靠性。\n4. ▲未涉及多模态/语言泛化▲：论文聚焦条件对齐，未系统评估语言指令变化下的表现，VLA的“L”部分贡献不明确。对产品化意味着：面向多任务指令的通用性尚未被证明。\n\n【个人视角点评】\n位置判断：这是一篇▲填补空白型▲工作，而非范式突破。AC-BC本身不是新概念，但“条件估计空间与策略标签空间不一致”“条件经prompt注入太弱”这两个具体缺陷此前少有人系统处理；ALIGN把这两个环节对齐并给出可度量的诊断指标（条件保真度、向量场可分性），属于把一个已知路线的工程与建模短板补扎实。判断依据是：方法组件（成对偏好、AdaRMS、flow time融合）都是已有技术的组合创新，但组合点精准命中AC-BC失效的因果链，且闭环成功率提升幅度大（相对提升约60-70%），说明补的确实是关键短板而非边角。\n\n与其他子方向相比：这类“数据利用效率”工作不像VLA基础模型或世界模型那样有高天花板，但价值密度高——它不追求新能力，而是让现有VLA在昂贵真实数据上少浪费。天花板受限于AC-BC范式本身：条件化只能利用数据中已有的优劣结构，无法凭空创造超越数据的策略；若数据里根本没有高质量恢复行为，条件对齐也救不了。因此它的层级是“使能型/效率型”贡献，而非“能力型”突破。\n\n落地价值：距离实际部署较近但非即插即用。卡点有三：一是成对条件的自动构造需要可靠的分段与状态对齐工具链，目前偏手工；二是估计器在分布外状态的条件可靠性缺乏在线保障；三是只在两个任务验证，跨本体（不同机器人）迁移未证。落地条件：需要一套自动化的数据质量标注/分段流水线，加上闭环时的条件置信度监控，才可能进入产线级数据飞轮。\n\n如果只记住一件事：▲“条件的估计空间必须和策略的使用空间对齐，并且条件要深度调制动作生成而非停留在prompt里”▲。这个idea特别之处在于它把AC-BC的失败归因从“critic不够准”转向“估计与使用脱节+注入太浅”，是一个视角层面的诊断，而非单纯堆模型；对任何做条件生成式策略（不限于优势条件，也包括语言、目标、质量条件）的人都有迁移价值。\n\n【代码/数据开源情况】\n摘要与提供的元信息中未提及代码或数据开源，也未给出项目页链接。论文是否承诺后续公开，需查阅arXiv全文的“Code/Data Availability”或项目页说明；就目前可见信息而言，无法确认开源状态，读者应以arXiv页面（http://arxiv.org/abs/2610.26455v1）及作者主页的后续更新为准。"
+      }
+    ]
   }
 ]
