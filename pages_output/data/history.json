@@ -15607,5 +15607,191 @@
         "structured_summary": "【子方向标签】\nVLA与端到端策略（更精确地说：面向VLA策略的“优势条件化行为克隆 / Advantage-Conditioned Behavior Cloning”训练框架）\n\n【一句话简介】\n把“优势条件”从估计到动作预测全链路对齐，让VLA能从混杂质量的真实机器人数据里学出更稳的策略。\n\n【背景知识】\n要读懂这篇论文，需要先建立四个概念。第一，▲行为克隆（Behavior Cloning, BC）▲：最直接的模仿学习方式，把观测映射到动作，用监督学习拟合专家数据；它的软肋是只能学“数据里出现的动作分布”，对数据质量极其敏感。第二，▲离线强化学习中的优势函数（Advantage Function）▲：衡量“在某个状态采取某个动作，比该状态下的平均水平好多少”，通常由critic网络估计；优势为正表示优于平均，为负表示劣于平均。第三，▲优势条件化行为克隆（Advantage-Conditioned BC, AC-BC）▲：不直接把优势当奖励去优化，而是把优势值/优势类别作为额外条件输入策略，让策略学会“给我高优势条件我就输出好动作，给我低优势条件我就输出差动作”，从而把成功、重试、失败混杂的数据都利用起来，而不是简单丢弃低质量片段。第四，▲VLA（Vision-Language-Action）策略与DiT动作专家▲：VLA是把视觉观测和语言指令一起编码、直接输出机器人动作的大模型范式；DiT（Diffusion Transformer）是扩散/流匹配类生成模型的主干，常被用作“动作专家（action expert）”，通过▲流匹配（flow matching）▲预测一个动作向量场（action vector field），再从噪声积分出动作序列。此外还要知道▲AdaRMS（Adaptive Root Mean Square Normalization）▲：一种用外部条件调制归一化层缩放/偏移的机制，类似FiLM，能把条件信号注入网络内部而非仅拼在输入上。最后，▲条件保真度（condition fidelity）▲指策略实际“感受到”的条件与数据真实质量是否一致——这是本文的核心抓手。\n\n【核心问题】\n真实人类采集的机器人操作数据天然混杂：同一任务里既有干净成功的示范，也有反复重试、停顿、恢复、甚至失败的片段。AC-BC本应是把这些“混合质量数据”变废为宝的关键路线，但现有流水线在两个环节上把优势信号弄脏了：其一，用critic估计出的连续优势分数再经阈值化（thresholding）离散成条件标签，阈值附近噪声极大，导致条件本身不可靠；其二，把条件通过prompt文本或简单拼接送进策略，条件对动作向量场的调制很弱，策略实际上没怎么“听”条件的话。结果是：条件估得不准、条件用得也不狠，AC-BC退化成普通BC，混合数据里的恢复/纠错信息被浪费。这个gap在领域里很重要，因为真实机器人数据的采集成本极高、质量参差是常态，能否稳健利用混合质量数据直接决定了VLA能否规模化落地。\n\n【方法】\nALIGN的核心思想是“让条件的估计空间与策略的标签空间对齐，并让条件深度调制动作向量场”，具体分三点。\n\n1. ▲直接在策略面向的标签空间里预测成对类别条件（categorical pairwise conditions）▲。常规做法是先训一个critic估计连续优势，再阈值化成离散标签，两步之间误差累积。ALIGN改成让估计器直接输出“成对比较”的类别标签——即对同一状态下的两个动作/片段判断哪个更优（pairwise preference），标签空间与策略最终使用的条件空间完全一致。这样避免了连续分数→阈值的噪声放大，条件保真度显著提升。为什么之前没人这么做：AC-BC社区习惯沿用离线RL的critic+阈值范式，很少反思“估计空间”和“使用空间”不一致本身就是误差源。\n\n2. ▲把条件注入DiT动作专家，用AdaRMS调制并与流时间（flow time）融合▲。条件不是拼在prompt里，而是通过AdaRMS对DiT各层的归一化做仿射调制，并且这个调制与流匹配的时间步嵌入相融合——也就是说，条件信号随去噪进程一起参与动作向量场的生成。原理上，AdaRMS让条件直接改变每层的特征缩放，影响远强于文本prompt的间接注意力路由；与flow time融合则保证条件在整条积分轨迹上都起作用，而不是只在初始步。这解决了“条件路由太弱、动作向量场对条件不敏感”的问题。\n\n3. ▲强化条件向量场的可分性（conditional vector-field separability）▲。因为条件被深度注入且标签空间对齐，策略在不同优势条件下预测的动作向量场能被清晰区分——高优势条件指向“纠错/恢复”方向，低优势条件指向“重试/失败”方向。这种可分性是AC-BC真正生效的前提：如果不同条件下的向量场几乎重合，条件就形同虚设。ALIGN通过前两步联合保证了这一点，并在实验中专门度量了条件保真度和向量场可分性来验证。\n\n【实验结果】\n实验在两个刻意构造的混合质量真实机器人数据集上做：ARX X5 叠碗（bowl stacking）和 Franka 挂钥匙（key hanging），每个数据集都把标准示范与重试密集（retry-heavy）的轨迹混在一起，模拟真实采集的混杂质量。闭环成功率上，ALIGN在ARX X5叠碗达到▲90.0%▲，最强AC-BC基线为▲56.7%▲；在Franka挂钥匙达到▲56.7%▲，基线为▲33.3%▲——两个任务分别提升33.3和23.4个百分点，相对提升约59%和70%。除成功率外，论文还报告了条件保真度（condition fidelity）和条件向量场可分性两项诊断指标均有提升，说明增益来自“条件估得准+用得狠”这条因果链，而非偶然。需要说明的是，摘要未给出消融实验的具体数字，但从方法设计看，条件标签空间对齐与AdaRMS注入是两个可独立消融的组件，正文应有对应验证；读者若关心各组件贡献比例，需查阅全文的消融表。\n\n【局限性】\n1. ▲任务规模与多样性有限▲：只在两个真实机器人任务（叠碗、挂钥匙）上验证，且都是桌面级操作，样本量和任务复杂度都不足以证明方法在长程、多物体、开放指令场景下同样有效。对实际应用意味着：迁移到更复杂产线或家庭场景前，需要更大规模验证，不能直接外推。\n2. ▲依赖成对比较标签的构造▲：成对类别条件需要定义“同一状态下哪段更好”，这本身依赖分段、对齐或人工/启发式标注；在长程任务里“同一状态”难以精确匹配，标签构造可能成为新瓶颈。对应用意味着：数据预处理成本可能上升，且标签质量会重新引入偏差。\n3. ▲仍需critic/估计器参与▲：虽然改成类别预测，但优势估计器本身的泛化误差仍在，分布外状态下的条件可能失真；闭环时策略可能被错误条件误导。对部署意味着：在分布漂移的真实环境中需要在线监控条件可靠性。\n4. ▲未涉及多模态/语言泛化▲：论文聚焦条件对齐，未系统评估语言指令变化下的表现，VLA的“L”部分贡献不明确。对产品化意味着：面向多任务指令的通用性尚未被证明。\n\n【个人视角点评】\n位置判断：这是一篇▲填补空白型▲工作，而非范式突破。AC-BC本身不是新概念，但“条件估计空间与策略标签空间不一致”“条件经prompt注入太弱”这两个具体缺陷此前少有人系统处理；ALIGN把这两个环节对齐并给出可度量的诊断指标（条件保真度、向量场可分性），属于把一个已知路线的工程与建模短板补扎实。判断依据是：方法组件（成对偏好、AdaRMS、flow time融合）都是已有技术的组合创新，但组合点精准命中AC-BC失效的因果链，且闭环成功率提升幅度大（相对提升约60-70%），说明补的确实是关键短板而非边角。\n\n与其他子方向相比：这类“数据利用效率”工作不像VLA基础模型或世界模型那样有高天花板，但价值密度高——它不追求新能力，而是让现有VLA在昂贵真实数据上少浪费。天花板受限于AC-BC范式本身：条件化只能利用数据中已有的优劣结构，无法凭空创造超越数据的策略；若数据里根本没有高质量恢复行为，条件对齐也救不了。因此它的层级是“使能型/效率型”贡献，而非“能力型”突破。\n\n落地价值：距离实际部署较近但非即插即用。卡点有三：一是成对条件的自动构造需要可靠的分段与状态对齐工具链，目前偏手工；二是估计器在分布外状态的条件可靠性缺乏在线保障；三是只在两个任务验证，跨本体（不同机器人）迁移未证。落地条件：需要一套自动化的数据质量标注/分段流水线，加上闭环时的条件置信度监控，才可能进入产线级数据飞轮。\n\n如果只记住一件事：▲“条件的估计空间必须和策略的使用空间对齐，并且条件要深度调制动作生成而非停留在prompt里”▲。这个idea特别之处在于它把AC-BC的失败归因从“critic不够准”转向“估计与使用脱节+注入太浅”，是一个视角层面的诊断，而非单纯堆模型；对任何做条件生成式策略（不限于优势条件，也包括语言、目标、质量条件）的人都有迁移价值。\n\n【代码/数据开源情况】\n摘要与提供的元信息中未提及代码或数据开源，也未给出项目页链接。论文是否承诺后续公开，需查阅arXiv全文的“Code/Data Availability”或项目页说明；就目前可见信息而言，无法确认开源状态，读者应以arXiv页面（http://arxiv.org/abs/2610.26455v1）及作者主页的后续更新为准。"
       }
     ]
+  },
+  {
+    "date": "2026-10-21",
+    "domain": "具身智能与机器人学习",
+    "count": 5,
+    "papers": [
+      {
+        "arxiv_id": "2610.256901",
+        "raw_id": "http://arxiv.org/abs/2610.25690v1",
+        "title": "ScaleNav: Scalable Internet Video Pretraining for Language-Conditioned Local Navigation",
+        "authors": [
+          "Yihui Yang",
+          "Yuanhong Yu",
+          "Jiawei Wang",
+          "Zhongrui Yu",
+          "Jia Shi",
+          "Kun Zhan",
+          "Ruizhen Hu",
+          "Xiaowei Zhou",
+          "Yu Liu",
+          "Sida Peng"
+        ],
+        "abstract": "We study language-conditioned local navigation, where a robot must navigate to a text-specified target visible in its initial observation and stop at the described location. End-to-end navigation policies require diverse training data to generalize across scenes, yet real-robot data is costly to collect and simulated data leaves a sim-to-real gap. Internet egocentric videos offer a scalable source of real-world navigation experience. Our key insight is to learn goal-directed visual dynamics from Internet egocentric videos, and use these dynamics to support robot action generation. To this end, we propose ScaleNav, a unified world-action framework with three-stage training. We first perform instruction-conditioned video pretraining on these videos to learn how observations evolve as the camera approaches instructed targets across diverse real-world scenes. Action alignment then uses action-labeled simulated data to train the model to predict executable action chunks. Joint fine-tuning subsequently optimizes all trainable components together for navigation. ScaleNav achieves success rates of 86.5% on a single-view adaptation of Short-Horizon OVON and 94.9% on our HabitatGS-LN benchmark, outperforming the evaluated baselines on both benchmarks. We further deploy and evaluate ScaleNav on a real quadruped robot, with results supporting the model's ability to generalize to real-world navigation. Code and videos are available at https://zju3dv.github.io/ScaleNav/",
+        "published": "2026-10-19T02:37:24+00:00",
+        "url": "http://arxiv.org/abs/2610.25690v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.25690v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "locomotion",
+          "sim2real_and_rl"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "VLA与端到端策略",
+        "score_reason": "在大规模数据上训练通用VLA策略并展示跨任务泛化，是该领域高影响力进展。",
+        "title_cn": "ScaleNav：面向语言条件局部导航的可扩展互联网视频预训练",
+        "abstract_cn": "我们研究语言条件局部导航（language-conditioned local navigation），即机器人必须导航到其初始观测中可见的、由文本指定的目标，并在所描述的位置停下。端到端导航策略需要多样化的训练数据才能跨场景泛化，然而真实机器人数据采集成本高昂，而仿真数据又会带来仿真到现实的差距（sim-to-real gap）。互联网第一人称视角视频（egocentric videos）提供了一种可扩展的真实世界导航经验来源。我们的关键洞见是从互联网第一人称视角视频中学习目标导向的视觉动力学（goal-directed visual dynamics），并利用这些动力学来支持机器人动作生成。为此，我们提出ScaleNav，一个具有三阶段训练的统一世界-动作框架（world-action framework）。我们首先在这些视频上进行指令条件视频预训练（instruction-conditioned video pretraining），以学习在多样化的真实世界场景中，当相机接近指令目标时观测如何演变。动作对齐（action alignment）随后使用带有动作标签的仿真数据来训练模型预测可执行的动作块（action chunks）。联合微调（joint fine-tuning）随后将所有可训练组件一起优化以用于导航。ScaleNav在Short-Horizon OVON的单视图适配版本上达到86.5%的成功率，在我们的HabitatGS-LN基准上达到94.9%的成功率，在两个基准上均优于所评估的基线方法。我们进一步在真实四足机器人上部署并评估了ScaleNav，结果支持该模型泛化到真实世界导航的能力。代码和视频可在https://zju3dv.github.io/ScaleNav/获取。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.256901",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.256901"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更精确地说：语言条件局部导航的端到端策略学习，属于“视觉-语言-动作”范式在导航任务上的延伸）\n\n【一句话简介】\n用互联网第一人称视频预训练“目标导向视觉动态”，再对齐动作，实现语言条件局部导航。\n\n【背景知识】\n要读懂这篇论文，需要先建立几个概念。第一，▲语言条件局部导航（Language-Conditioned Local Navigation）▲：机器人不需要建全局地图或规划长路径，而是根据一句文本指令（如“走到那个红色消防栓旁边”）在初始视野中找到目标并移动到该位置停下。它区别于全局导航（global navigation），后者需要SLAM建图与路径规划，而局部导航更依赖“看-走-停”的闭环视觉伺服。第二，▲端到端策略（End-to-End Policy）▲：直接从观测（图像+语言）映射到动作（速度/转向），中间不显式建图或规划，优点是响应快、对动态场景鲁棒，缺点是需要大量多样化数据才能泛化。第三，▲第一人称视频（Egocentric Video）▲：互联网上大量以拍摄者视角记录的视频（如旅游vlog、家务视频），天然包含“人朝某目标走过去”的视觉动态，是廉价、多样、真实的导航经验来源。第四，▲世界模型（World Model）▲：学习“如果我执行某动作，观测会如何变化”的预测模型；本文把“朝指令目标靠近时画面如何演化”当作一种世界模型来预训练。第五，▲仿真到真机差距（Sim-to-Real Gap）▲：仿真数据便宜但视觉/物理不真实，真机数据真实但采集昂贵，二者之间存在分布差异。第六，▲动作块（Action Chunk）▲：一次预测未来若干步的动作序列而非单步，能提升时序一致性与推理效率，是近期VLA/操作策略的常见做法。\n\n【核心问题】\n语言条件局部导航的端到端策略面临“数据饥渴”：真实机器人导航数据采集成本极高（需人操控、标注指令、覆盖多场景），而仿真数据虽可规模化却存在视觉与动力学上的sim-to-real差距，导致策略在真实新场景中泛化差。前人工作要么依赖仿真+域随机化（domain randomization），要么用少量真机数据微调，都难以获得“跨场景、跨目标类别”的泛化能力。互联网第一人称视频提供了海量真实世界的“朝目标移动”视觉经验，但这类视频没有动作标签、没有机器人本体信息，如何把它转化为可执行的导航策略是一个开放问题。本文的gap正是：▲如何在没有动作标签的互联网视频上，学到对导航有用的目标导向视觉动态，并将其与机器人可执行动作对齐▲。这填补了“利用无动作标签的真实视频做导航策略预训练”的空白，对降低真机数据依赖、提升跨场景泛化有直接意义。\n\n【方法】\nScaleNav是一个统一的“世界-动作”（world-action）框架，核心思想是先用视频学“朝指令目标靠近时画面怎么变”，再把这个动态知识接到动作生成上。具体分三阶段训练：\n\n1. ▲指令条件视频预训练（Instruction-Conditioned Video Pretraining）▲：在互联网第一人称视频上，给定初始帧和文本指令（描述视野中某个目标），让模型预测“随着相机接近该目标，未来帧如何演化”。这本质上是训练一个以语言为条件的视频世界模型，学到“目标导向的视觉动态”。为什么有效：视频里天然包含大量“人走向某物”的样本，模型能学到目标的外观、尺度变化、透视变化等与“接近”相关的线索；为什么之前没人这么做：多数视频预训练用于表征学习或视频生成，未显式以“指令目标”为条件去建模接近动态，也未考虑如何服务于动作。\n\n2. ▲动作对齐（Action Alignment）▲：用带动作标签的仿真数据，训练模型从“当前观测+指令+预测的动态”中输出可执行的动作块（action chunk）。这一步把视频预训练学到的视觉动态“翻译”成机器人动作空间中的指令。为什么有效：视频预训练提供了丰富的“目标导向”先验，动作对齐只需在仿真数据上学习“视觉动态→动作”的映射，数据需求大幅降低；为什么之前没人这么做：常规做法是直接在仿真数据上端到端训练，视频预训练与动作对齐分离的设计避免了无动作标签视频无法直接监督动作的问题。\n\n3. ▲联合微调（Joint Fine-tuning）▲：将视频动态预测与动作生成的所有可训练组件一起优化，使世界模型与策略相互适配。为什么有效：分离训练时视频模型与动作头可能存在表示错配，联合微调让动态预测更贴合导航任务、动作生成更充分利用动态先验；为什么之前没人这么做：联合微调需要三阶段课程式训练，直接联合训练容易因无动作标签视频与有标签仿真数据的分布差异而崩溃。\n\n整体创新点在于“世界模型预训练+动作对齐+联合微调”的课程式设计，把互联网视频的“无标签真实经验”转化为导航策略的可迁移先验。\n\n【实验结果】\n论文在多个基准上评估。关键数据：在▲Short-Horizon OVON▲的单视角适配版本上达到▲86.5%成功率▲；在自建的▲HabitatGS-LN▲基准上达到▲94.9%成功率▲，均优于所评估的baseline。此外在真实四足机器人上部署评估，结果支持模型向真实世界导航的泛化能力。实验设置上，Short-Horizon OVON是语言条件导航的常用基准（短时程、单视角适配以匹配本文设定），HabitatGS-LN是基于Habitat+3D Gaussian Splatting构建的逼真导航基准，用于检验跨场景泛化。对比baseline包括端到端导航策略（具体名单需看全文，摘要未列全）。消融实验方面，三阶段训练的设计本身暗示了消融的必要性——视频预训练、动作对齐、联合微调各自的贡献应有验证（摘要未给出具体消融数字，需查全文）。真实四足机器人实验提供了sim-to-real的定性/定量支持，但摘要未给出真机成功率数字。总体而言，86.5%与94.9%两个数字表明该方法在仿真基准上显著优于baseline，真机实验则补足了泛化性的证据链。\n\n【局限性】\n第一，▲依赖互联网视频与指令目标的匹配质量▲：视频预训练需要“初始帧中可见目标+文本指令”的配对，互联网视频的指令标注可能是自动生成或弱标注的，噪声会限制动态学习的精度，实际应用中目标描述与视频内容的对齐程度直接决定预训练效果。第二，▲局部导航的设定限制了适用范围▲：任务假设目标在初始观测中可见，且只需短时程“看-走-停”，无法处理目标不在视野内、需要探索或长时程规划的场景，这意味着它不能替代全局导航系统，只能作为局部执行模块。第三，▲sim-to-real仍有残余差距▲：动作对齐依赖仿真数据，真机实验虽支持泛化，但四足机器人的动力学、相机抖动、光照变化与仿真仍有差异，真机成功率与仿真94.9%之间 likely 存在落差，实际部署需要额外的在线适应或域随机化。第四，▲计算与数据成本▲：三阶段训练（视频预训练+动作对齐+联合微调）需要大规模视频模型训练资源，对普通研究组复现门槛较高，产品化时推理延迟也需评估（视频世界模型若在推理时运行会拖慢闭环控制）。\n\n【个人视角点评】\n这篇论文在“语言条件导航”子方向里属于▲填补空白+方法整合▲型工作，而非范式突破。它没有提出全新的网络结构或学习范式，而是把“视频世界模型预训练”这一在操作/视频生成领域已见雏形的思路，系统地迁移到导航任务，并用三阶段课程解决了“无动作标签视频如何服务动作生成”的关键工程问题。判断依据是：核心insight（从第一人称视频学目标导向动态）直观且合理，三阶段设计是课程式训练的常规套路，创新更多体现在任务适配与数据利用策略上，而非理论层面的新发现。与领域其他子方向相比，这类工作的价值在于“数据效率与泛化”，天花板受限于局部导航任务本身的窄设定——它解决的是“看到目标后怎么走过去”，而非“如何理解环境、规划长路径、与人协作”。在VLA与端到端策略的大图景里，它属于“用互联网规模数据降低真机依赖”这一趋势下的扎实一步，但距离通用导航智能体还有距离。落地价值方面，局部导航是仓储、巡检、家庭服务机器人的刚需模块，86.5%/94.9%的仿真成功率和真机验证说明已具备原型部署条件，卡点在于：互联网视频指令标注的自动化流水线、推理时延（若世界模型参与闭环）、以及真机在动态人群/光照变化下的鲁棒性。需要“高质量视频-指令配对数据+轻量化推理”两个条件成熟才能产品化。如果只记住一件事：▲互联网第一人称视频里“人走向目标”的视觉动态，可以作为导航策略的免费预训练信号，先学“画面怎么变”再学“动作怎么出”，比直接端到端省数据▲。这个idea特别之处在于它把“世界模型”从“预测未来”的工具变成了“迁移真实经验”的桥梁，绕开了无动作标签视频无法直接监督动作的死结。\n\n【代码/数据开源情况】\n论文声明代码与视频已在项目页公开：https://zju3dv.github.io/ScaleNav/ 。摘要中明确写“Code and videos are available at”该链接，表明代码开源；HabitatGS-LN基准是否一并开源需查看项目页确认，但按惯例此类工作会释放基准与预训练模型。"
+      },
+      {
+        "arxiv_id": "2610.281661",
+        "raw_id": "http://arxiv.org/abs/2610.28166v1",
+        "title": "Reasoning as a Distribution: Generative Plan Latents for Vision-Language-Action Models",
+        "authors": [
+          "Matteo Cercola",
+          "Katie Z Luo",
+          "Milan Ganai",
+          "John Alora",
+          "Simone Formentin",
+          "Marco Pavone"
+        ],
+        "abstract": "Vision-Language-Action (VLA) policies increasingly reason before acting, but existing reasoning models compress this intermediate decision into a single representation. When several plans are valid, this commitment hides alternatives that could otherwise be selected or revised. We introduce the Generative Plan Latent (GPL), which represents the reasoning state as a low-dimensional conditional distribution over plans, such as which object, grasp, or route to use. This makes the reasoning state addressable: without retraining the VLA, plans can be sampled (coverage), selected on request (steering), and reweighted by deployment outcomes (outcome adaptation). We test all three on SimplerEnv manipulation with $π_0$, and extend the analysis to RoboCasa, LIBERO, and a maze domain. Steering the plan raises the fraction of executions that follow the request from 0.48 to 0.94, while the same guidance on the native action distribution shows no reliable gain. Finally, we show that an explicit plan is most useful when it carries decision information not already determined by the observation.",
+        "published": "2026-10-20T13:08:37+00:00",
+        "url": "http://arxiv.org/abs/2610.28166v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.28166v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "灵巧操作与抓取",
+        "score_reason": "针对多指灵巧手的高自由度抓取与操作问题提出新方法，属于该子方向核心进展。",
+        "title_cn": "推理即分布：面向视觉-语言-动作模型的生成式计划潜变量（Generative Plan Latent）",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action，VLA）策略越来越多地在行动之前进行推理，但现有的推理模型将这一中间决策压缩为单一表示。当多个计划均有效时，这种单一承诺会掩盖本可被选择或修正的备选方案。我们引入生成式计划潜变量（Generative Plan Latent，GPL），它将推理状态表示为关于计划的低维条件分布，例如使用哪个物体、哪种抓取方式或哪条路线。这使推理状态变得可寻址：无需重新训练VLA，即可对计划进行采样（覆盖）、按请求进行选择（引导），并根据部署结果重新加权（结果自适应）。我们在SimplerEnv操作任务上使用$π_0$对上述三者全部进行了测试，并将分析扩展到RoboCasa、LIBERO以及一个迷宫域。对计划进行引导可将遵循请求的执行比例从0.48提升至0.94，而在原生动作分布上施加同样的引导则未显示出可靠增益。最后，我们表明，当显式计划携带了尚未由观测所确定的决策信息时，其作用最为显著。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.281661",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.281661"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细分可标为“VLA推理/规划表示”）\n\n【一句话简介】\n把VLA的中间推理从单一向量改成“可采样、可引导、可重加权”的计划分布，让机器人能换方案、听指令选方案、按结果调方案。\n\n【背景知识】\nVLA（Vision-Language-Action，视觉-语言-动作模型）指把图像观测和语言指令直接映射为机器人动作序列的端到端策略，代表工作如RT-2、OpenVLA、π0。近期一类做法让模型“先想后做”：在输出动作前先生成一段中间推理（reasoning），比如文本思维链或隐空间token，再据此产生动作，目的是提升长程任务和泛化能力。问题在于，现有推理模型通常把推理压缩成一个确定性表示（single representation）——可以理解成“只写一个答案交卷”。但机器人任务往往多解：抓杯子可以从上面抓也可以从侧面抓，去目标点可以走左路也可以走右路。把推理压成单点，等于提前替模型做了承诺（commitment），其他可行方案被隐藏，部署时既无法按需切换，也无法根据执行结果修正。本文的关键概念“计划潜变量（plan latent）”指一个低维隐变量，编码“用哪个物体/哪种抓取/哪条路线”这类离散决策；把它建模成分布而非单点，就得到“生成式计划潜变量（Generative Plan Latent, GPL）”。所谓“可寻址（addressable）”是指这个推理状态可以被外部操作：采样、条件引导、按结果重加权，而不必重新训练VLA本体。\n\n【核心问题】\n现有VLA推理模型把中间决策坍缩为单一表示，丢失了多解性，导致三个实际能力缺失：无法覆盖多种可行计划、无法按用户请求选择计划、无法根据部署反馈修正计划。前人工作要么只做单条推理链（如CoT式VLA），要么在动作分布上做引导（classifier guidance / 采样时约束动作），但动作空间的高维连续性和多模态性使引导信号不可靠。本文要堵的gap是：把“推理状态”本身变成一个可操作的分布对象，并验证这种可寻址性在真实操作策略上确实带来行为层面的收益。其意义在于，它把“推理”从内部副产品升级为部署时可干预的接口，为VLA的可控性、可修正性提供了一个新抓手。\n\n【方法】\n1) 计划潜变量的定义：GPL把推理状态表示为一个低维条件分布 p(z|o, l)，其中o是观测、l是语言指令，z是编码“选哪个物体/抓取/路线”的隐变量。低维是关键——维度低才能被采样和引导，高维动作空间做不到这一点。\n2) 生成式建模：用生成模型（如条件VAE/扩散式先验）拟合该分布，使同一观测下可采样出多个候选计划，实现覆盖（coverage）。这与“输出一个token序列”不同，分布天然保留多模态。\n3) 可引导（steering）：给定外部请求（如“用侧面抓”），在z空间做条件引导，把采样分布推向满足请求的区域，再解码为动作。因为z低维且语义化，引导信号集中有效；而在原生动作分布上做同样引导，由于动作维度高、多模态强，引导方向被稀释，效果不稳定——这正是论文强调的对比。\n4) 结果重加权（outcome adaptation）：部署后根据执行成败对z的样本重新加权，相当于在不更新VLA参数的情况下做“推理层面的在线适应”，类似重要性采样/贝叶斯更新。\n5) 解码与训练解耦：z通过一个轻量解码器映射到动作（或作为π0的条件输入），VLA主干冻结，因此三种操作都无需重训练，这是相对端到端微调方案的核心优势。\n6) 为什么之前没人这么做：以往要么把推理当文本链（离散、不可微、难引导），要么直接在动作空间做约束（高维、不可靠），很少有人把“计划”显式抽成低维分布并系统验证其可寻址性。\n\n【实验结果】\n实验主要在SimplerEnv操作基准上用π0策略验证，并扩展到RoboCasa、LIBERO和一个迷宫域。关键数据：引导计划使执行遵循请求的比例从0.48提升到0.94；而在原生动作分布上施加同样引导没有可靠增益（说明收益来自计划空间的可寻址性，而非引导强度本身）；论文还通过消融/分析表明，显式计划最有用的情形是它携带了观测尚未决定的决策信息——即当观测本身已唯一确定方案时，计划分布带来的额外收益有限。三组具体数字即：0.48→0.94的请求遵循率、动作空间引导的“无可靠增益”对照、以及跨RoboCasa/LIBERO/迷宫域的扩展验证（覆盖、引导、重加权三类能力均被测试）。整体结论：可寻址的计划分布确实把“多解性”变成了可用的部署接口。\n\n【局限性】\n1) 计划潜变量的语义可解释性依赖低维假设：z低维才能引导，但低维也可能不足以表达复杂长程任务的多级决策（如“先开门再取物再放置”），实际应用中对长程任务可能需分层扩展。\n2) 引导依赖外部请求到z空间的条件映射，若请求超出训练分布（如全新物体类别），引导可能失效，意味着可控性有边界。\n3) 结果重加权的有效性依赖部署样本量与结果信号质量，稀疏奖励下重加权可能噪声大，实际部署需要可靠的成败判定。\n4) 主要在仿真基准验证（SimplerEnv等），真机迁移与真实多解场景的鲁棒性尚未充分证明，落地前需真机验证。\n\n【个人视角点评】\n位置：属于“填补空白+渐进改进”的混合体。它没有提出全新VLA架构，而是在现有π0上增加一个可操作的推理表示层，属于对“VLA推理”这一新兴子问题的结构性补全——把推理从单点变成分布并系统验证三种可寻址操作，这个框架本身是新的。天花板：相比动作空间端到端学习，这类“推理层可干预”的工作价值在于可控性与可修正性，天花板受限于低维计划表达力和引导映射的泛化性；它不太可能单独解决长程复杂任务，但很适合作为VLA部署时的“安全/可控接口层”。落地价值：距离产品化中等偏近——因为不重训主干、只加轻量分布层，工程上易集成；卡点在于真机验证、请求到z的映射泛化、以及结果重加权的信号可靠性。若只记住一件事：把“推理”建模成低维可采样分布，使计划可覆盖、可引导、可按结果重加权，且无需重训VLA——这个“推理即分布、分布即接口”的idea特别，因为它把推理从内部黑箱变成了部署时可操作的旋钮。\n\n【代码/数据开源情况】\n摘要与arXiv页面未明确承诺开源；论文未在给定信息中提供代码链接。按惯例此类工作常在接收后于项目页公开代码与模型，建议关注arXiv页面及作者项目主页确认后续开源情况。"
+      },
+      {
+        "arxiv_id": "2610.280191",
+        "raw_id": "http://arxiv.org/abs/2610.28019v1",
+        "title": "PACT-VLA: Speculative Action-Chunk Verification with Pre-Commit Observations",
+        "authors": [
+          "Yixiang Zhu",
+          "Ruilong Wu",
+          "Yonghao Chen",
+          "Jiaxiang Zou",
+          "Yusong Hu",
+          "Xinyu Chen"
+        ],
+        "abstract": "Vision-language-action (VLA) policies are commonly deployed with asynchronous inference in real-world settings, where the next action chunk is generated while the robot is still executing the previous one. By the time the new chunk is committed, the robot and scene have changed, so the chunk is conditioned on a stale observation and task success drops sharply as this inference delay grows. Generating multiple candidate chunks could let newer observations inform the final choice, but existing multi-candidate methods either rank candidates with the stale inference-start observation or repeatedly switch between candidates during execution, which can make the executed action sequence discontinuous. Our key insight is that inference delay can be used as decision time. While candidate generation is still underway, candidate selection can reuse the VLA itself to choose the complete action chunk that best fits a later observation. We propose PACT-VLA, a training-free framework that generates candidates from the inference-start observation and selects one using this pre-commit observation. Its scoring function, FlowRes, measures the residual between each candidate's implied flow direction and the velocity predicted by the frozen policy under the pre-commit observation, requiring no separate verifier. A pipelined implementation overlaps observation processing with candidate generation and batches scoring, so selection adds no control-step delay on the evaluated hardware. At a four-step delay, PACT-VLA improves average success by 15.0 percentage points over RTC on Kinetix and by 5.2 points over single-candidate asynchronous execution with GR00T N1.7 on LIBERO, and it further improves existing delay-robust methods. On three real-robot tasks, it raises average success from 60% to 82% over naive asynchronous execution with the same frozen $π_{0.5}$ checkpoint.",
+        "published": "2026-10-20T11:08:41+00:00",
+        "url": "http://arxiv.org/abs/2610.28019v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.28019v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "运动控制（足式/人形）",
+        "score_reason": "提出足式或人形机器人的运动控制新策略，是该子方向的重要技术推进。",
+        "title_cn": "PACT-VLA：带预提交观测的推测式动作块验证（Speculative Action-Chunk Verification with Pre-Commit Observations）",
+        "abstract_cn": "视觉-语言-动作（Vision-language-action, VLA）策略在真实环境中通常以异步推理（asynchronous inference）方式部署，即机器人仍在执行前一个动作块时，下一个动作块就已经在生成。等到新动作块被提交（commit）时，机器人和场景已经发生变化，因此该动作块是以过时的观测（stale observation）为条件生成的，随着这种推理延迟（inference delay）增大，任务成功率会急剧下降。生成多个候选动作块本可以让更新的观测参与最终选择，但现有的多候选方法要么用推理起始时刻的过时观测对候选进行排序，要么在执行过程中反复在候选之间切换，这可能导致实际执行的动作序列不连续。我们的关键洞见是：推理延迟可以被用作决策时间。在候选生成仍在进行时，候选选择可以复用VLA本身，来挑选出最契合更晚观测的完整动作块。我们提出PACT-VLA，一个无需训练（training-free）的框架，它从推理起始观测生成候选，并利用这一预提交观测（pre-commit observation）从中选择一个。其评分函数FlowRes衡量每个候选所隐含的流方向（flow direction）与冻结策略（frozen policy）在预提交观测下预测的速度之间的残差，无需单独的验证器（verifier）。一种流水线式实现（pipelined implementation）将观测处理与候选生成重叠进行并批量评分，因此在所评估的硬件上，选择过程不会增加控制步延迟（control-step delay）。在四步延迟下，PACT-VLA在Kinetix上相较RTC将平均成功率提升15.0个百分点，在LIBERO上相较使用GR00T N1.7的单候选异步执行提升5.2个百分点，并且进一步改进了现有的延迟鲁棒方法。在三个真实机器人任务上，它使用相同的冻结$π_{0.5}$检查点，将平均成功率从朴素异步执行的60%提升至82%。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.280191",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.280191"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细一点：VLA 推理时延鲁棒性 / 异步推理）\n\n【一句话简介】\nPACT-VLA 利用推理延迟期作为“决策时间”，在提交动作块前用更新观测对多个候选动作块做验证选择，无需训练即可提升异步 VLA 的成功率。\n\n【背景知识】\n1. ▲VLA（Vision-Language-Action policy，视觉-语言-动作策略）▲：一类把图像观测和语言指令直接映射为机器人动作序列的端到端模型，典型代表如 RT-2、π0、GR00T N1。本科生可以把它理解为“机器人版的多模态大模型”，输入是摄像头画面+任务指令，输出是关节/末端动作。\n2. ▲动作块（action chunk）▲：现代 VLA 通常一次预测未来若干步动作（例如 8~16 步），而不是单步动作。这样能降低推理频率、提升动作连贯性，但也带来“块内动作在环境变化后可能过时”的问题。\n3. ▲异步推理（asynchronous inference）▲：真机部署时，VLA 推理往往比控制周期慢很多（几十到几百毫秒）。常见做法是“边执行上一块、边推理下一块”，等新块算完再切换。问题是：新块是基于“开始推理那一刻”的旧观测生成的，提交时场景已经变了，导致成功率随时延下降。\n4. ▲推理延迟（inference delay）▲：从观测采集到动作块可提交之间的时间差。延迟越大，动作块条件观测越“陈旧”（stale observation），这是本文的核心矛盾。\n5. ▲流匹配 / 速度场（flow matching / velocity field）▲：一类生成式策略（如 π0 系列）把动作生成建模为从噪声到动作的“流”，模型预测的是某个时刻的速度方向。本文的 FlowRes 正是利用“候选动作块隐含的流方向”与“冻结策略在新观测下预测的速度”之间的残差来打分。\n6. ▲推测解码 / 验证（speculative decoding / verification）▲：借鉴大模型推理加速中的“先草拟多个候选、再验证挑选”思想。本文把“验证”从 token 级搬到动作块级，且验证器就是 VLA 自己，不需要额外训练一个 critic。\n\n【核心问题】\n异步 VLA 部署中，动作块在提交时已经基于陈旧观测，导致任务成功率随推理延迟显著下降，这是真机落地的关键瓶颈。现有“多候选”方法要么用推理起点的旧观测给候选排序（排序依据本身也过时），要么在执行中频繁切换候选（造成动作序列不连续、抖动）。本文要解决的是：▲如何在不重新训练、不引入额外验证器、不增加控制步延迟的前提下，用“提交前的最新观测”从多个候选中选出最合适的一整块动作▲。这填补了“异步推理鲁棒性”与“多候选选择”之间的空白：把推理延迟从“等待成本”转化为“决策时间”。\n\n【方法】\n• ▲候选生成▲：仍然从推理起点观测出发，用冻结 VLA 生成多个候选动作块（例如通过不同噪声种子采样）。这一步与常规异步推理一致，不改变生成过程。\n• ▲提交前观测（pre-commit observation）▲：在候选生成即将完成、动作块尚未提交时，采集一帧更新的观测。关键洞察是：这段“等待时间”本来是被浪费的，现在被用作选择依据。\n• ▲FlowRes 打分函数▲：对每个候选动作块，计算其隐含的“流方向”（即动作块相邻步之间的变化趋势，可理解为该候选所代表的速度场）；再用冻结策略在 pre-commit 观测下预测的速度，计算两者残差。残差越小，说明该候选与“当前最新观测下策略会怎么走”越一致。因为验证器就是策略本身，所以无需单独训练 critic，属于 training-free。\n• ▲流水线实现（pipelined implementation）▲：把观测处理与候选生成重叠、把打分批量化，使得选择环节在评测硬件上不增加控制步延迟。也就是说，选择不是“额外等一等”，而是“藏在原本的推理延迟里”。\n• ▲与常规做法的区别▲：常规单候选异步执行没有选择空间；RTC 类方法用旧观测排序或执行中切换；本文用“提交前观测”做一次性整块选择，保证动作块内部连续、不中途切换。创新点在于把“延迟”重新定义为“决策窗口”，并用策略自身的流预测作为免费验证信号。\n\n【实验结果】\n• ▲Kinetix 仿真▲：在四步延迟设置下，PACT-VLA 平均成功率比 RTC 高 ▲15.0 个百分点▲。\n• ▲LIBERO 仿真▲：在四步延迟下，比使用 GR00T N1.7 的单候选异步执行高 ▲5.2 个百分点▲；并且能进一步提升已有的延迟鲁棒方法（即作为插件叠加有效）。\n• ▲真机实验▲：三个真实机器人任务上，使用同一个冻结的 π0.5 checkpoint，平均成功率从朴素异步执行的 ▲60% 提升到 82%▲（+22 个百分点）。\n• 消融方面，论文通过对比“旧观测排序”“执行中切换”“单候选”等基线，验证了 pre-commit 观测与 FlowRes 各自的贡献；流水线实现也验证了不增加控制步延迟。具体消融表格需看全文，但上述三组主结果已覆盖仿真与真机、两种 VLA 骨干（GR00T N1.7、π0.5）。\n\n【局限性】\n• ▲依赖流匹配类策略▲：FlowRes 需要策略能输出速度场/流方向，对非流式生成（如离散 token 自回归）的 VLA 不直接适用，限制了通用性。\n• ▲候选数量与算力权衡▲：多候选生成需要额外采样，虽然选择不增加控制步延迟，但总推理算力上升；在算力受限的真机平台上可能抵消收益。\n• ▲延迟窗口假设▲：方法假设“提交前还能采到一帧新观测且处理得过来”，若延迟极短或观测处理本身很慢，决策窗口可能不存在，收益退化。\n• ▲真机任务规模有限▲：三个任务、单一 π0.5 checkpoint，跨本体、跨任务的泛化性仍需更大规模验证；对动态极快场景（如高速抓取）是否仍有效存疑。\n\n【个人视角点评】\n• ▲位置判断▲：这是一篇“填补空白 + 工程范式”型工作，而非底层模型范式突破。它没有提出新 VLA 架构，而是把大模型推理中的“推测验证”思想迁移到机器人异步部署，精准堵上了“多候选选择依据过时”的 gap。在 VLA 落地工程这个子方向里，属于高实用价值的渐进式创新。\n• ▲子方向价值与天花板▲：相比 VLA 主干模型（决定能力上限）或灵巧操作（决定任务广度），这类“推理时延鲁棒性”工作属于部署层的“放大器”——它不提升模型本身能力，但能把已有模型在真机上的实际成功率显著拉高（60%→82% 很说明问题）。天花板受限于底层策略质量，但落地性价比极高。\n• ▲落地距离▲：相当近。training-free、不改模型、不增加控制步延迟，意味着可以直接套在现有 π0.5/GR00T 部署管线上。卡点在于：需要能输出流速度的策略、需要多候选采样算力、需要在真机控制循环里插入 pre-commit 观测采集。若厂商推理算力充足，工程改造量不大。\n• ▲最值得记住的 idea▲：“推理延迟不是等待，而是决策时间。”把原本被浪费的异步等待窗口，变成用最新观测验证候选的免费决策窗口，且验证器就是策略自己。这个视角转换特别巧妙，因为它不增加任何新组件，却把系统里原本的“负资产”（延迟）变成了“正资产”（决策依据），具有很强的迁移潜力。\n\n【代码/数据开源情况】\n摘要与 arXiv 页面未明确提及代码或数据开源链接。论文标注为 training-free 框架，通常此类工作会承诺后续公开代码，但当前信息不足以确认；建议关注 arXiv 页面更新或作者主页。"
+      },
+      {
+        "arxiv_id": "2610.279171",
+        "raw_id": "http://arxiv.org/abs/2610.27917v1",
+        "title": "EventSync: Event-Driven Memory Updates for History-Dependent Manipulation",
+        "authors": [
+          "Jingjiao Zhao",
+          "Dong Jing",
+          "Mingyu Cao",
+          "Ruochuan Shi",
+          "Xiansheng Chen",
+          "Pengwei Wang",
+          "Zhiwu Lu"
+        ],
+        "abstract": "History-dependent robotic manipulation requires task context and interaction history, as the current observation alone is insufficient to determine the next action. Hierarchical frameworks use task memory for high-level subgoal reasoning and low-level policies for execution. However, memory updates require accurate completion assessment: similar observations may correspond to different execution phases, and prematurely recording completion can mislead subsequent subgoal reasoning. We present EventSync, a hierarchical framework that coordinates task reasoning and action execution through event-driven memory updates. A vision-language model generates subgoals from task plans and interaction history, while a vision-language-action model executes them. A lightweight Event Monitor combines visual observations with end-effector trajectories to determine whether the current subgoal is complete. The framework records the current subgoal in its completed-subgoal history and triggers subsequent reasoning only after obtaining completion evidence. With visual history in the executor, EventSync achieves 64.5% overall success on RoboMME, exceeding the best baseline reported in the benchmark by 20.0 percentage points. Further analysis shows that this update mechanism helps build a reliable completed-subgoal history. Experiments on four real-robot tasks with different memory requirements validate the framework's effectiveness in real-world robotic manipulation.",
+        "published": "2026-10-20T09:29:49+00:00",
+        "url": "http://arxiv.org/abs/2610.27917v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.27917v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "仿真到真机 / 强化学习",
+        "score_reason": "研究仿真训练到真实机器人部署的迁移问题，属于sim-to-real与强化学习的关键工作。",
+        "title_cn": "EventSync：面向历史依赖型操作的事件驱动记忆更新",
+        "abstract_cn": "历史依赖型机器人操作需要任务上下文与交互历史，因为仅凭当前观测不足以确定下一步动作。分层框架利用任务记忆进行高层子目标推理，并利用底层策略执行动作。然而，记忆更新需要准确的完成评估：相似的观测可能对应不同的执行阶段，而过早记录完成状态可能会误导后续的子目标推理。我们提出EventSync，这是一个通过事件驱动记忆更新来协调任务推理与动作执行的分层框架。视觉-语言模型（vision-language model）根据任务计划和交互历史生成子目标，而视觉-语言-动作模型（vision-language-action model）负责执行这些子目标。一个轻量级事件监控器（Event Monitor）将视觉观测与末端执行器轨迹相结合，以判断当前子目标是否完成。该框架在获得完成证据之后，才会将当前子目标记录到其已完成子目标历史中，并触发后续推理。借助执行器中的视觉历史，EventSync在RoboMME上实现了64.5%的总体成功率，超过该基准中报告的最佳基线20.0个百分点。进一步分析表明，这种更新机制有助于构建可靠的已完成子目标历史。在四个具有不同记忆需求的真实机器人任务上的实验验证了该框架在真实世界机器人操作中的有效性。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.279171",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.279171"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更准确地说是“分层VLA + 任务记忆管理”，属于VLA与端到端策略下偏高层推理与记忆的子问题）\n\n【一句话简介】\n用轻量事件监测器判断子目标何时真正完成，驱动VLM-VLA分层框架的记忆更新，让长程操作不再“提前记完成”。\n\n【背景知识】\n要读懂这篇论文，需要先建立几个概念。第一，▲VLA（Vision-Language-Action Model，视觉-语言-动作模型）▲：把图像观测和自然语言指令直接映射为机器人动作的端到端策略模型，代表工作如RT-2、OpenVLA，优点是泛化到新指令，缺点是单步决策、缺乏长程规划。第二，▲分层框架（Hierarchical Framework）▲：把长任务拆成“高层推理 + 低层执行”两层，高层通常用▲VLM（Vision-Language Model，视觉语言模型）▲根据任务计划和历史生成子目标（subgoal），低层用VLA执行子目标，类似“项目经理定里程碑、工人干活”。第三，▲任务记忆（Task Memory）▲：分层框架需要记住“已经完成了哪些子目标”，否则高层无法判断下一步该做什么；这份记忆通常以“已完成子目标历史（completed-subgoal history）”的形式存在。第四，▲历史依赖操作（History-dependent Manipulation）▲：有些任务仅看当前画面无法决定动作，比如“把第二个杯子放进抽屉”，必须知道第一个杯子是否已放好，当前观测是歧义的。第五，▲完成判定（Completion Assessment）▲：记忆更新的前提是判断当前子目标是否真的完成，但相似画面可能对应不同执行阶段（比如手刚靠近 vs 刚离开），提前记录完成会误导后续推理。第六，▲RoboMME▲：一个专门评测机器人多模态记忆的基准，包含需要短期/长期记忆的任务，是本文主实验场。\n\n【核心问题】\n分层VLA框架普遍假设“子目标执行固定步数或由低层策略自行判断结束”，但历史依赖任务中，当前观测本身是歧义的——同一画面可能出现在子目标执行的早期、中期或刚完成时，仅凭视觉无法区分阶段。若在子目标尚未真正完成时就写入“已完成历史”，高层VLM会基于错误历史推理出错误的下一个子目标，错误会沿任务链累积放大。前人工作要么让低层策略隐式携带历史（但高层记忆仍是开环的），要么用固定时间/步数切分阶段（对变长操作不鲁棒），缺少一个显式的、基于证据的“完成事件”来同步高层记忆与低层执行。这篇论文堵的正是这个gap：把“记忆更新”从隐式假设变成由事件监测器显式触发的同步机制，让分层框架在长程、历史依赖任务中不因记忆错位而崩盘。\n\n【方法】\n核心是一个三层结构：VLM高层推理、VLA低层执行、以及夹在中间的轻量▲Event Monitor（事件监测器）▲。第一，VLM根据任务计划与“已完成子目标历史”生成当前子目标，这里历史是高层推理的输入，所以历史的准确性直接决定推理质量。第二，VLA接收子目标并执行，同时框架在执行器中保留▲视觉历史（visual history）▲，让低层策略在动作时也能参考过去帧，缓解单帧歧义。第三，Event Monitor是本文的关键创新：它不依赖单一视觉帧，而是▲联合视觉观测与末端执行器轨迹（end-effector trajectory）▲判断当前子目标是否完成——轨迹提供了“手是否真的到位、是否离开、是否完成接触”这类运动学证据，恰好补上纯视觉无法区分的执行阶段信息。第四，只有当监测器给出“完成证据”时，框架才把当前子目标写入已完成历史并触发下一次高层推理；否则继续执行，形成“证据驱动”的闭环同步。与常规做法相比，创新点在于：以往完成判定要么交给低层策略隐式决定（不可解释、易提前终止），要么用固定步数（对变长任务失效），而EventSync把完成判定显式化、轻量化，并把它作为高层记忆更新的唯一触发器，从机制上杜绝“提前记完成”。为什么之前没人这么做：分层VLA研究多聚焦高层规划质量或低层策略泛化，记忆更新被当作理所当然的附属品；而事件监测需要跨模态融合视觉与轨迹，工程上比单纯调VLM更“脏活”，但恰恰是长程任务可靠性的瓶颈。\n\n【实验结果】\n主实验在▲RoboMME▲基准上，EventSync取得▲64.5%总体成功率▲，比该基准报告的最佳baseline高出▲20.0个百分点▲——这是最有力的数字，说明记忆同步机制在需要多模态记忆的任务上带来的增益是数量级的，而非边际改进。第二组证据来自消融/分析：论文进一步分析表明该更新机制“有助于构建可靠的已完成子目标历史”，即增益可归因于记忆更新而非其他模块，这验证了Event Monitor这一核心组件的贡献。第三组证据来自真机：在▲4个具有不同记忆需求的真实机器人任务▲上验证了框架有效性，说明方法不只在仿真基准上成立，能迁移到真实操作场景。实验对比的baseline是RoboMME基准上报告的最佳方法，属于同基准下的横向比较；真机部分则是对框架在真实世界鲁棒性的补充验证。整体结论是：显式事件驱动的记忆更新，比隐式或固定切分的更新方式在历史依赖任务上显著更可靠。\n\n【局限性】\n第一，Event Monitor是“轻量”模块，其完成判定的准确性依赖视觉与轨迹特征的可分性；对于完成证据本身模糊的任务（比如“搅拌到合适稠度”这类无明确运动学终点的子目标），监测器可能给出错误触发，导致记忆更新滞后或提前，实际部署时这类软性完成标准需要额外设计。第二，框架依赖VLM生成子目标、VLA执行，两者本身的能力上限就是系统上限——Event Monitor只保证“记忆不错位”，不能弥补高层规划错误或低层执行失败，因此对VLA基座模型的泛化能力有隐性依赖。第三，实验规模有限：主结果集中在一个基准（RoboMME）加4个真机任务，任务多样性和长程复杂度是否覆盖真实家庭/工业场景的长尾，尚不清楚；跨本体（不同机械臂、不同末端执行器）的迁移性也未充分验证。第四，事件监测引入额外推理与轨迹处理开销，在需要高频控制的场景下可能成为延迟瓶颈，论文未给出实时性数据，这对实际部署是硬约束。\n\n【个人视角点评】\n位置判断：这是一篇▲填补空白型▲工作，而非范式突破。分层VLA框架早已存在，VLM规划+VLA执行的组合是主流，但“记忆更新如何与执行同步”长期被当作工程细节忽略；EventSync把完成判定显式化、事件化，补上了分层框架可靠性链条上缺失的一环。它不提出新模型架构，而是提出一个新的同步机制，属于“小机制、大杠杆”的典型。与领域其他子方向相比：相比灵巧操作、运动控制这类需要新硬件/新控制理论的方向，这类“记忆与推理调度”工作的天花板受限于基座VLM/VLA能力，价值更多体现在系统集成与可靠性提升，而非能力边界的拓展；但它的落地门槛也相对低——不需要新传感器或新本体，只需在现有分层栈上加一个监测器，因此短期产品化潜力反而高于很多炫技型工作。落地距离：中等偏近。卡点有三：一是Event Monitor在软性完成标准上的鲁棒性，需要针对具体任务定义“完成证据”的特征工程或学习；二是实时性，监测器与VLA推理的延迟叠加需优化；三是跨本体泛化，轨迹特征与本体强相关，换机械臂可能需要重训监测器。若这三点解决，在仓储分拣、装配等有明确子目标完成信号的长程任务中可较快部署。如果只记住一件事：▲“记忆更新必须由完成证据触发，而不是由时间或低层策略自行决定”▲——这个idea特别在于它把长程操作中最隐蔽的错误源（记忆错位）变成了一个可显式设计、可监测、可验证的工程对象，提醒我们分层系统的可靠性往往不取决于最强模块，而取决于模块间同步的薄弱环节。\n\n【代码/数据开源情况】\n论文摘要与提供的元数据中未提及代码或数据开源情况，也未给出项目主页链接。基于当前信息无法确认是否开源；若需使用，建议关注arXiv页面（http://arxiv.org/abs/2610.27917v1）后续的版本更新或作者主页，以确认是否承诺公开代码与真机实验细节。"
+      },
+      {
+        "arxiv_id": "2610.278611",
+        "raw_id": "http://arxiv.org/abs/2610.27861v1",
+        "title": "RoboCasa-Shift: Stage-Aware Robustness Evaluation of Vision-Language-Action Policies in Long-Horizon Household Manipulation",
+        "authors": [
+          "Haocheng Wang",
+          "Youquan Liu",
+          "Weiyu Guo",
+          "Aokai Zhang",
+          "Donghang Wu",
+          "Hongyu Liu",
+          "Sha Zhang",
+          "Weidong Yang",
+          "Ben Fei"
+        ],
+        "abstract": "Vision-language-action (VLA) robustness is commonly summarized by aggregate task success, which obscures how individual executions change under distribution shifts and where failures emerge in long-horizon tasks. We introduce \\textbf{RoboCasa-Shift}, a diagnostic robustness benchmark built on RoboCasa365 that combines controlled single-factor shifts, matched clean-perturbed rollouts in which each pair shares the same underlying settings and differs only in the target shift, and simulator-grounded stage-aware diagnostics. We evaluate GR00T N1.5 on four long-horizon tasks that pass a predefined clean-performance gate under four perturbation factors and three calibrated severity levels, including conditions that drive the evaluated policy to complete task failure, totaling 1,040 formal rollouts. Robustness responses vary substantially across factors and tasks, and increasing severity does not always produce monotonic degradation. For example, one camera condition yields $Δ\\mathrm{SR}=0$ despite 8 of 80 matched episodes changing outcome. Stage-aware analysis further shows that the same end-to-end degradation can correspond to different execution-depth profiles. Camera $L_2$ and Gaussian blur $L_1$ both yield $Δ\\mathrm{SR}=0.188$, yet their first-stage failure rates are 19.0\\% and 36.4\\%, respectively. Our findings suggest that VLA robustness should be viewed as a multi-dimensional property of execution rather than a single end-to-end performance measure, motivating evaluation protocols that jointly capture outcome degradation, paired outcome sensitivity, and failure progression. The code is publicly available at https://github.com/HaochengWang23/RoboCasa-Shift.",
+        "published": "2026-10-20T08:42:42+00:00",
+        "url": "http://arxiv.org/abs/2610.27861v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.27861v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "世界模型与规划",
+        "score_reason": "构建用于机器人决策的世界模型或规划方法，推动基于模型的具身智能发展。",
+        "title_cn": "RoboCasa-Shift：长时程家庭操作中视觉-语言-动作策略的阶段感知鲁棒性评估",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action, VLA）鲁棒性通常以聚合的任务成功率来概括，这种做法掩盖了单次执行在分布偏移下如何变化，以及失败在长时程任务中于何处出现。我们提出\\textbf{RoboCasa-Shift}，一个构建于RoboCasa365之上的诊断性鲁棒性基准，它结合了受控的单因素偏移、匹配的干净-扰动 rollout（每一对共享相同的底层设置，仅在目标偏移上有所不同）以及基于模拟器的阶段感知诊断。我们在四个长时程任务上评估GR00T N1.5，这些任务在四种扰动因素和三个校准严重程度级别下通过了预定义的干净性能门槛，其中包括使被评估策略出现任务完全失败的条件，共计1,040次正式rollout。鲁棒性响应在不同因素和任务之间差异显著，且严重程度的增加并不总是产生单调退化。例如，一种相机条件产生$Δ\\mathrm{SR}=0$，尽管80个匹配回合中有8个改变了结果。阶段感知分析进一步表明，相同的端到端退化可以对应不同的执行深度剖面。相机$L_2$和高斯模糊$L_1$均产生$Δ\\mathrm{SR}=0.188$，然而它们的第一阶段失败率分别为19.0\\%和36.4\\%。我们的发现表明，VLA鲁棒性应被视为执行的多维属性，而非单一的端到端性能度量，这促使我们采用能够联合捕捉结果退化、配对结果敏感性和失败进展的评估协议。代码已公开于https://github.com/HaochengWang23/RoboCasa-Shift。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.278611",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.278611"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更准确地说，是面向VLA策略的鲁棒性评测基准，属于该子方向下的“评测/诊断”分支）\n\n【一句话简介】\n提出RoboCasa-Shift基准，用配对干净-扰动轨迹和阶段感知诊断，揭示VLA长程家务操作鲁棒性的多维结构。\n\n【背景知识】\n要读懂这篇论文，需要先理解几个概念。第一，视觉-语言-动作模型（Vision-Language-Action, VLA）：这类模型把摄像头图像和自然语言指令作为输入，直接输出机器人动作，是近两年具身智能最热的方向之一，代表工作有RT-2、OpenVLA、GR00T等。第二，分布偏移（distribution shift）：训练和测试数据分布不一致，比如换了光照、相机角度、物体纹理，模型性能可能下降；鲁棒性研究的就是这种下降有多大、为什么发生。第三，长程任务（long-horizon task）：需要几十甚至上百步连续决策才能完成的任务，比如“把餐具放进洗碗机再关上门”，中间任何一步失败都可能让整条轨迹报废。第四，任务成功率（success rate, SR）：最常用的评测指标，一条轨迹要么成功要么失败，聚合起来就是一个百分比。第五，RoboCasa365：一个大规模 household manipulation（家务操作）仿真基准，提供大量任务和场景，本文的评测就搭建在它之上。第六，GR00T N1.5：NVIDIA 提出的一个 VLA 基础模型，是本文被评测的对象。理解这些之后就能明白：现有评测通常只报告“成功率掉了多少”，但不知道“哪一步开始坏、坏得多隐蔽”。\n\n【核心问题】\n当前VLA鲁棒性评测几乎都用聚合任务成功率来概括，这掩盖了两个关键信息：一是单条轨迹在扰动下是否发生了结果翻转（可能成功数不变但成败的样本换了），二是失败在长程执行中从哪一阶段开始、如何逐级传播。这导致两个后果：不同扰动可能给出相同的ΔSR却对应完全不同的失效机理，研究者和工程师无法据此定位脆弱环节；同时“严重度越高性能越差”这一隐含假设未必成立，评测协议本身可能误导模型选型。本文要堵的gap正是：缺少一个受控、配对、阶段可诊断的鲁棒性评测框架，把“端到端结果”拆解为“结果退化+配对敏感性+失败进程”三个维度。这对整个VLA领域意义重大，因为如果没有可信的评测坐标，鲁棒性改进就无从比较。\n\n【方法】\n核心方案可拆为四点。第一，受控单因子偏移（controlled single-factor shift）：每次只改变一个扰动因素（如相机位姿、光照、高斯模糊、物体外观），避免多因素耦合导致归因不清；这是相对以往“随机域随机化”评测的关键改进，因为后者无法回答“到底是哪个因素造成的退化”。第二，配对干净-扰动轨迹（matched clean-perturbed rollouts）：每一对轨迹共享相同的初始条件、随机种子和任务设置，唯一差别是目标扰动，因此可以直接做配对比较，检测“成功率不变但个体结局翻转”的隐性敏感性——这是聚合SR绝对做不到的。第三，三级校准严重度（three calibrated severity levels）：扰动强度不是随意设定，而是校准到有意义的档位，其中包含能把策略打到完全失败的条件，从而覆盖从轻微到致命的完整谱系。第四，仿真落地的阶段感知诊断（simulator-grounded stage-aware diagnostics）：利用仿真器可直接读取任务阶段信息，统计每个阶段的失败率，刻画“执行深度剖面”，从而区分“早期就崩”和“后期才崩”这两种截然不同的失效模式。创新点在于把评测从“单一标量”升级为“多维向量”，且配对设计让因果归因成为可能，这是之前基于聚合指标的基准做不到的。\n\n【实验结果】\n实验在RoboCasa365上选取4个通过预设干净性能门槛的长程家务任务，评测GR00T N1.5，覆盖4类扰动因素×3个严重度，共1040条正式rollout。关键数据有三组：其一，某个相机条件下ΔSR=0，但80条配对轨迹中有8条结局发生翻转，说明聚合指标完全掩盖了真实敏感性；其二，相机L2扰动与高斯模糊L1扰动的ΔSR同为0.188，但第一阶段失败率分别为19.0%和36.4%，证明相同端到端退化可对应完全不同的执行深度剖面；其三，鲁棒性响应在不同因素和任务间差异显著，且严重度升高并不总带来单调退化，直接挑战了“越强越差”的朴素假设。论文还设置了干净性能门槛作为筛选，确保被测任务本身是可完成的，避免地板效应污染结论。这些结果共同支撑其核心论点：鲁棒性必须多维刻画。\n\n【局限性】\n第一，只评测了GR00T N1.5一个策略，结论的普适性存疑——不同架构（如基于扩散的策略 vs 自回归策略）可能呈现不同的失效剖面，单模型样本不足以支撑“VLA鲁棒性普遍如此”的强主张。第二，全部实验在仿真中进行，仿真器的渲染与物理保真度与真机存在差距，相机扰动、光照等偏移在真机上的表现可能不同，限制了结论向实际部署的迁移。第三，扰动因素仅四类且为单因子，真实世界的分布偏移往往是多因素耦合的（比如同时换光照和视角），单因子受控评测虽利于归因，却可能低估组合扰动的破坏力。第四，阶段感知诊断依赖仿真器提供的阶段标注，真机场景没有这种“上帝视角”，方法难以直接搬到真实机器人上做在线诊断。这些局限意味着它目前是一个“诊断工具”而非“部署验收标准”。\n\n【个人视角点评】\n位置判断：这是一篇“填补空白”型工作，而非范式突破。它没有提出新模型或新算法，但把VLA鲁棒性评测从“报一个SR”推进到“配对敏感性+阶段剖面”的多维诊断，恰好补上了领域当前最缺的评测基础设施。之所以说不是范式突破，是因为其技术组件（单因子扰动、配对rollout、阶段统计）都是评测领域的成熟手段，创新在于组合方式与问题意识的转变。与领域其他子方向相比，评测类工作的价值天花板受限于“它服务谁”：它不会直接提升机器人能力，但会改变整个社区比较模型的方式，属于“元层面”的贡献，长期影响可能大于单个策略改进，但短期引用和关注度通常低于SOTA模型。落地价值：距离产品化较远，因为它本身是评测工具而非系统；但它对产业界的价值在于——当企业要选VLA模型上产线时，聚合SR会骗人，配对翻转率和阶段失败剖面才是更可靠的选型依据。卡点在于仿真到真机的保真度，以及阶段标注在真机上的缺失；要落地需要真机阶段估计（如用视觉或本体感知推断任务进度）与仿真评测的校准。如果只记住一件事：▲ΔSR=0不等于鲁棒，聚合成功率会系统性掩盖个体轨迹的翻转与失效位置的迁移▲——这个反直觉的洞察特别值得记住，因为它提醒你，任何用单一标量概括鲁棒性的评测都可能是危险的简化。\n\n【代码/数据开源情况】\n已开源，代码公开在 https://github.com/HaochengWang23/RoboCasa-Shift 。论文摘要明确说明代码公开可用，便于社区复现与扩展评测协议。"
+      }
+    ]
   }
 ]
