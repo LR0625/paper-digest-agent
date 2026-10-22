@@ -15793,5 +15793,209 @@
         "structured_summary": "【子方向标签】\nVLA与端到端策略（更准确地说，是面向VLA策略的鲁棒性评测基准，属于该子方向下的“评测/诊断”分支）\n\n【一句话简介】\n提出RoboCasa-Shift基准，用配对干净-扰动轨迹和阶段感知诊断，揭示VLA长程家务操作鲁棒性的多维结构。\n\n【背景知识】\n要读懂这篇论文，需要先理解几个概念。第一，视觉-语言-动作模型（Vision-Language-Action, VLA）：这类模型把摄像头图像和自然语言指令作为输入，直接输出机器人动作，是近两年具身智能最热的方向之一，代表工作有RT-2、OpenVLA、GR00T等。第二，分布偏移（distribution shift）：训练和测试数据分布不一致，比如换了光照、相机角度、物体纹理，模型性能可能下降；鲁棒性研究的就是这种下降有多大、为什么发生。第三，长程任务（long-horizon task）：需要几十甚至上百步连续决策才能完成的任务，比如“把餐具放进洗碗机再关上门”，中间任何一步失败都可能让整条轨迹报废。第四，任务成功率（success rate, SR）：最常用的评测指标，一条轨迹要么成功要么失败，聚合起来就是一个百分比。第五，RoboCasa365：一个大规模 household manipulation（家务操作）仿真基准，提供大量任务和场景，本文的评测就搭建在它之上。第六，GR00T N1.5：NVIDIA 提出的一个 VLA 基础模型，是本文被评测的对象。理解这些之后就能明白：现有评测通常只报告“成功率掉了多少”，但不知道“哪一步开始坏、坏得多隐蔽”。\n\n【核心问题】\n当前VLA鲁棒性评测几乎都用聚合任务成功率来概括，这掩盖了两个关键信息：一是单条轨迹在扰动下是否发生了结果翻转（可能成功数不变但成败的样本换了），二是失败在长程执行中从哪一阶段开始、如何逐级传播。这导致两个后果：不同扰动可能给出相同的ΔSR却对应完全不同的失效机理，研究者和工程师无法据此定位脆弱环节；同时“严重度越高性能越差”这一隐含假设未必成立，评测协议本身可能误导模型选型。本文要堵的gap正是：缺少一个受控、配对、阶段可诊断的鲁棒性评测框架，把“端到端结果”拆解为“结果退化+配对敏感性+失败进程”三个维度。这对整个VLA领域意义重大，因为如果没有可信的评测坐标，鲁棒性改进就无从比较。\n\n【方法】\n核心方案可拆为四点。第一，受控单因子偏移（controlled single-factor shift）：每次只改变一个扰动因素（如相机位姿、光照、高斯模糊、物体外观），避免多因素耦合导致归因不清；这是相对以往“随机域随机化”评测的关键改进，因为后者无法回答“到底是哪个因素造成的退化”。第二，配对干净-扰动轨迹（matched clean-perturbed rollouts）：每一对轨迹共享相同的初始条件、随机种子和任务设置，唯一差别是目标扰动，因此可以直接做配对比较，检测“成功率不变但个体结局翻转”的隐性敏感性——这是聚合SR绝对做不到的。第三，三级校准严重度（three calibrated severity levels）：扰动强度不是随意设定，而是校准到有意义的档位，其中包含能把策略打到完全失败的条件，从而覆盖从轻微到致命的完整谱系。第四，仿真落地的阶段感知诊断（simulator-grounded stage-aware diagnostics）：利用仿真器可直接读取任务阶段信息，统计每个阶段的失败率，刻画“执行深度剖面”，从而区分“早期就崩”和“后期才崩”这两种截然不同的失效模式。创新点在于把评测从“单一标量”升级为“多维向量”，且配对设计让因果归因成为可能，这是之前基于聚合指标的基准做不到的。\n\n【实验结果】\n实验在RoboCasa365上选取4个通过预设干净性能门槛的长程家务任务，评测GR00T N1.5，覆盖4类扰动因素×3个严重度，共1040条正式rollout。关键数据有三组：其一，某个相机条件下ΔSR=0，但80条配对轨迹中有8条结局发生翻转，说明聚合指标完全掩盖了真实敏感性；其二，相机L2扰动与高斯模糊L1扰动的ΔSR同为0.188，但第一阶段失败率分别为19.0%和36.4%，证明相同端到端退化可对应完全不同的执行深度剖面；其三，鲁棒性响应在不同因素和任务间差异显著，且严重度升高并不总带来单调退化，直接挑战了“越强越差”的朴素假设。论文还设置了干净性能门槛作为筛选，确保被测任务本身是可完成的，避免地板效应污染结论。这些结果共同支撑其核心论点：鲁棒性必须多维刻画。\n\n【局限性】\n第一，只评测了GR00T N1.5一个策略，结论的普适性存疑——不同架构（如基于扩散的策略 vs 自回归策略）可能呈现不同的失效剖面，单模型样本不足以支撑“VLA鲁棒性普遍如此”的强主张。第二，全部实验在仿真中进行，仿真器的渲染与物理保真度与真机存在差距，相机扰动、光照等偏移在真机上的表现可能不同，限制了结论向实际部署的迁移。第三，扰动因素仅四类且为单因子，真实世界的分布偏移往往是多因素耦合的（比如同时换光照和视角），单因子受控评测虽利于归因，却可能低估组合扰动的破坏力。第四，阶段感知诊断依赖仿真器提供的阶段标注，真机场景没有这种“上帝视角”，方法难以直接搬到真实机器人上做在线诊断。这些局限意味着它目前是一个“诊断工具”而非“部署验收标准”。\n\n【个人视角点评】\n位置判断：这是一篇“填补空白”型工作，而非范式突破。它没有提出新模型或新算法，但把VLA鲁棒性评测从“报一个SR”推进到“配对敏感性+阶段剖面”的多维诊断，恰好补上了领域当前最缺的评测基础设施。之所以说不是范式突破，是因为其技术组件（单因子扰动、配对rollout、阶段统计）都是评测领域的成熟手段，创新在于组合方式与问题意识的转变。与领域其他子方向相比，评测类工作的价值天花板受限于“它服务谁”：它不会直接提升机器人能力，但会改变整个社区比较模型的方式，属于“元层面”的贡献，长期影响可能大于单个策略改进，但短期引用和关注度通常低于SOTA模型。落地价值：距离产品化较远，因为它本身是评测工具而非系统；但它对产业界的价值在于——当企业要选VLA模型上产线时，聚合SR会骗人，配对翻转率和阶段失败剖面才是更可靠的选型依据。卡点在于仿真到真机的保真度，以及阶段标注在真机上的缺失；要落地需要真机阶段估计（如用视觉或本体感知推断任务进度）与仿真评测的校准。如果只记住一件事：▲ΔSR=0不等于鲁棒，聚合成功率会系统性掩盖个体轨迹的翻转与失效位置的迁移▲——这个反直觉的洞察特别值得记住，因为它提醒你，任何用单一标量概括鲁棒性的评测都可能是危险的简化。\n\n【代码/数据开源情况】\n已开源，代码公开在 https://github.com/HaochengWang23/RoboCasa-Shift 。论文摘要明确说明代码公开可用，便于社区复现与扩展评测协议。"
       }
     ]
+  },
+  {
+    "date": "2026-10-22",
+    "domain": "具身智能与机器人学习",
+    "count": 5,
+    "papers": [
+      {
+        "arxiv_id": "2610.300971",
+        "raw_id": "http://arxiv.org/abs/2610.30097v1",
+        "title": "AtomicRL: Atomic Reinforcement Learning for Long-Horizon Robotic Manipulation",
+        "authors": [
+          "Likui Zhang",
+          "Zhe Zhu",
+          "Zhihao Zhan",
+          "Yibo Bai",
+          "Hanlin Wang",
+          "Dongwei Li",
+          "Bin Wang",
+          "Tianle Zhang",
+          "Xiaodan Liang",
+          "Liang Lin"
+        ],
+        "abstract": "Vision-language-action (VLA) models have shown promise in robotic manipulation, but imitation learning (IL) alone often struggles to master complex long-horizon skills. Reinforcement learning (RL) offers an effective avenue for further improving VLA policies. However, existing VLA-RL methods typically suffer from delayed and biased credit assignment due to trajectory-level sparse rewards, while imbalanced subtask mastery creates bottlenecks that limit overall performance. To address these challenges, we propose AtomicRL, an RL post-training framework that leverages atomic task structures for reliable credit assignment and adaptive exploration. AtomicRL introduces Semantic-Aware Policy Optimization (SAPO), which uses semantic-aware gating to constrain TD residuals from failed atomic subtasks from propagating across task boundaries, mitigating credit contamination while preserving intra-subtask credit assignment and value bootstrapping. In addition, Bottleneck-Adaptive Target Exploration (BATE) dynamically coordinates task sampling and local exploration incentives based on the mastery of individual atomic subtasks, directing learning toward the remaining bottlenecks. Finally, we develop a Real2Sim2Real pipeline that bridges online RL in simulation with real-world deployment, facilitating practical transfer to physical robots. On LIBERO-LONG, AtomicRL achieves absolute performance gains of 3.6% and 4.0% over PPO across two VLA architectures. On CALVIN ABC-D, it improves full-task performance by up to 9.5% over PPO. Combined with the Real2Sim2Real pipeline, AtomicRL further improves real-world task performance by an average of 21.3%. These results demonstrate that AtomicRL effectively improves the learning efficiency and manipulation performance of VLA policies on long-horizon tasks.",
+        "published": "2026-10-21T17:45:24+00:00",
+        "url": "http://arxiv.org/abs/2610.30097v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.30097v1",
+        "categories": [
+          "cs.RO",
+          "cs.AI",
+          "cs.CV"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "VLA与端到端策略",
+        "score_reason": "提出视觉-语言-动作模型的新架构或训练方法，直接推动端到端机器人策略学习。",
+        "title_cn": "AtomicRL：面向长时程机器人操作的原子强化学习（Atomic Reinforcement Learning）",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action，VLA）模型在机器人操作中已展现出潜力，但仅靠模仿学习（Imitation Learning，IL）往往难以掌握复杂的长时程技能。强化学习（Reinforcement Learning，RL）为进一步改进VLA策略提供了一条有效途径。然而，现有的VLA-RL方法通常因轨迹级稀疏奖励而面临延迟且有偏的信用分配（credit assignment）问题，同时子任务掌握程度不均衡所造成的瓶颈也限制了整体性能。为应对这些挑战，我们提出AtomicRL，一种利用原子任务结构来实现可靠信用分配与自适应探索的RL后训练框架。AtomicRL引入了语义感知策略优化（Semantic-Aware Policy Optimization，SAPO），该方法利用语义感知门控来约束来自失败原子子任务的TD残差跨任务边界传播，从而在保留子任务内部信用分配和价值自举（value bootstrapping）的同时，减轻信用污染。此外，瓶颈自适应目标探索（Bottleneck-Adaptive Target Exploration，BATE）根据各个原子子任务的掌握程度动态协调任务采样与局部探索激励，将学习引导至剩余的瓶颈之处。最后，我们开发了一套Real2Sim2Real流水线，将仿真中的在线RL与真实世界部署相衔接，促进向物理机器人的实际迁移。在LIBERO-LONG上，AtomicRL在两种VLA架构上相较PPO分别取得了3.6%和4.0%的绝对性能提升。在CALVIN ABC-D上，其全任务性能相较PPO提升最高达9.5%。结合Real2Sim2Real流水线，AtomicRL进一步将真实世界任务性能平均提升21.3%。这些结果表明，AtomicRL有效提升了VLA策略在长时程任务上的学习效率与操作性能。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.300971",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.300971"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细一点：VLA 的强化学习后训练 / 长程操作策略优化）\n\n【一句话简介】\n用“原子子任务”结构给 VLA 策略做强化学习后训练，解决长程操作里奖励稀疏、信用分配错位和子任务掌握不均衡的问题。\n\n【背景知识】\n要读懂这篇论文，需要先建立三层背景。第一层是 VLA 模型（Vision-Language-Action Model，视觉-语言-动作模型）：它把机器人摄像头图像、语言指令一起编码，直接输出动作序列，典型代表如 OpenVLA、π0 等，本质是“把机器人策略当成一个多模态大模型来训”。第二层是模仿学习（Imitation Learning, IL）：用人类遥操作演示数据做监督学习，让策略模仿专家动作；它样本效率高、稳定，但只能学到演示分布内的行为，遇到需要试错纠偏的长程任务（long-horizon task，指需要几十上百步、多个阶段才能完成的任务）就容易误差累积、中途失败。第三层是强化学习（Reinforcement Learning, RL）后训练：在 IL 预训练好的策略基础上，用 RL 进一步优化，让它通过与环境交互提升成功率。VLA-RL 的核心难点是信用分配（credit assignment）：一条长轨迹最后只得到一个成功/失败信号（轨迹级稀疏奖励，trajectory-level sparse reward），策略很难判断到底是哪一步、哪个子任务做错了，导致梯度信号延迟且带偏（delayed and biased）。此外还有价值函数自举（value bootstrapping，用下一步的价值估计来更新当前价值）在任务边界处容易把失败子任务的“坏价值”污染到相邻子任务，这就是论文说的信用污染（credit contamination）。\n\n【核心问题】\n现有 VLA-RL 方法在长程操作上效果有限，原因有二：一是奖励只在轨迹末尾给出，信用分配延迟且偏差大，策略不知道哪段子任务该负责；二是不同子任务的掌握程度差异很大，简单子任务早已学会、困难子任务仍是瓶颈，但训练仍均匀采样，算力浪费在已掌握部分，整体成功率被少数瓶颈子任务卡住。这篇论文要堵的 gap 是：如何在不放弃端到端 VLA 的前提下，把长程任务的“原子结构”先验注入 RL 后训练，实现更可靠的信用分配和更有针对性的探索。它的意义在于把“任务分解”这一经典思路与 VLA-RL 的梯度层面结合，而不是停留在高层规划层面，属于对 VLA-RL 训练机制本身的改进。\n\n【方法】\n核心是把长程任务显式建模为若干原子子任务（atomic subtask，指语义上不可再分、有明确成功判据的最小技能单元，如“抓住杯子”“放到盘子上”），并围绕这个结构设计三块技术。\n\n1. 语义感知策略优化 SAPO（Semantic-Aware Policy Optimization）。常规 PPO 的时序差分残差（TD residual，即“实际回报减去价值估计”的误差项）会沿整条轨迹反向传播，一旦某个原子子任务失败，这个负向误差会跨过任务边界污染前面子任务的价值估计。SAPO 用一个语义感知门控（semantic-aware gating）在子任务边界处截断失败子任务的 TD 残差传播，使其不越过边界；但在子任务内部仍保留完整的信用分配和价值自举。为什么有效：它相当于给价值学习加了“分段隔离”，让每个子任务的价值函数只从自己的成败中学习，避免“后面失败导致前面被误判”。为什么之前没人这么做：以往要么用人工设计的稠密奖励（dense reward，每步都给反馈），要么用轨迹级奖励直接训，很少有人利用“子任务语义边界”这一结构信息去改造 TD 误差的传播路径。\n\n2. 瓶颈自适应目标探索 BATE（Bottleneck-Adaptive Target Exploration）。它根据每个原子子任务的当前掌握程度（mastery，通常用该子任务的成功率估计）动态调整任务采样分布和局部探索激励：掌握差的子任务被更多采样、给予更强的局部探索奖励，把学习资源导向剩余瓶颈。为什么有效：长程任务的整体成功率近似是各子任务成功率的乘积，提升最弱环节的边际收益最大。为什么之前没人这么做：常规做法是均匀采样或按任务难度采样，但没有在“原子子任务”粒度上做自适应课程（curriculum）。\n\n3. Real2Sim2Real 流水线。先在仿真中做在线 RL（因为 RL 需要大量交互，真机成本高），再把策略迁移回真实机器人，桥接仿真训练与真机部署。这一块是工程性贡献，解决“RL 后训练怎么落到物理机器人”的最后一公里。\n\n整体创新点在于：把“任务分解”从高层规划/奖励设计层面下沉到 RL 梯度传播和采样策略层面，且不破坏 VLA 的端到端结构。\n\n【实验结果】\n实验在三个基准上做。LIBERO-LONG 是长程操作基准，CALVIN ABC-D 是连续指令跟随的长程基准，另有真机实验。关键数据：在 LIBERO-LONG 上，跨两种 VLA 架构，AtomicRL 相对 PPO 取得 3.6% 和 4.0% 的绝对性能提升；在 CALVIN ABC-D 上，全任务（full-task）性能相对 PPO 最高提升 9.5%；结合 Real2Sim2Real 流水线后，真机任务性能平均提升 21.3%。对比基线主要是 PPO（以及隐含的其他 VLA-RL 方法）。论文还通过 SAPO 与 BATE 的消融验证各模块贡献（摘要未给具体消融数字，但框架上两者分别对应信用分配与探索两个问题）。真机 21.3% 的提升是全文最有说服力的数字，说明仿真 RL 加迁移管线在物理机器人上确实有效。\n\n【局限性】\n1. 依赖原子子任务结构先验。SAPO 的门控和 BATE 的掌握度估计都需要预先知道子任务边界与成功判据，这通常要人工标注或额外检测器；对没有清晰语义分段的任务（如连续灵巧操作）适用性受限，实际部署时任务定义成本会成为瓶颈。\n2. 仿真到真机的差距仍是隐患。21.3% 的真机提升来自 Real2Sim2Real，但仿真中的物理、视觉、接触建模误差会限制迁移上限；真机实验规模和任务多样性若有限，泛化性存疑。\n3. 绝对提升幅度在仿真基准上偏温和（3.6%–4.0%），说明该方法是在较强 IL 基座上的增量改进，而非从零解决长程问题；对基座策略质量敏感。\n4. 原子子任务粒度选择本身是超参数：切得太细信用分配碎片化，切得太粗又回到长程稀疏奖励问题，论文未充分讨论粒度敏感性。\n\n【个人视角点评】\n位置判断：这是一篇“填补空白 + 渐进改进”的工作，而非范式突破。它没有提出新的 VLA 架构或新的 RL 目标函数，而是把“任务分解”这一经典先验巧妙地注入 VLA-RL 的信用分配与采样机制，属于训练机制层面的扎实改进。判断依据是：核心贡献 SAPO/BATE 都是对现有 PPO 流程的结构化改造，提升幅度在个位数到十几个百分点，符合“有效但非颠覆”的特征。\n\n与领域其他子方向相比：VLA-RL 后训练目前是整个具身智能里最热也最卷的方向之一（OpenVLA、π0 系列、各类 RL fine-tuning 工作），这类工作的价值在于“把 IL 基座的上限再往上顶一顶”，天花板受限于基座策略和奖励设计；相比世界模型与规划、灵巧操作等方向，它的落地路径更短（直接复用现有 VLA 管线），但理论新意相对有限。\n\n落地价值：距离实际部署较近但仍有关卡。卡点有三：一是原子子任务定义需要人工/检测器，产品化时要能自动发现子任务结构；二是 RL 在线交互依赖仿真，真机在线 RL 成本高，Real2Sim2Real 的仿真保真度决定迁移效果；三是奖励/成功判据需要可靠。若能在自动子任务分割和仿真保真度上补齐，落地条件基本具备。\n\n如果只记住一件事：最值得记住的 idea 是“用语义子任务边界去截断 TD 残差的跨边界传播”——这是一个非常轻量、几乎零额外参数的改动，却直接击中长程 RL 信用污染的要害。它特别之处在于：以往大家把任务分解用在高层规划或奖励塑形，这篇把它下沉到了价值函数的梯度传播路径上，思路可迁移到任何有分段结构的长程 RL 问题。\n\n【代码/数据开源情况】\n摘要与提供的元信息中未提及代码或数据开源链接，也未明确承诺后续公开。按 arXiv 论文惯例，建议关注论文正文的“Code Availability”或项目主页；目前无法确认开源状态。"
+      },
+      {
+        "arxiv_id": "2610.300441",
+        "raw_id": "http://arxiv.org/abs/2610.30044v1",
+        "title": "SP-HLM: Sparse-Pose-Driven Motion Generation and Whole-Body Control for Humanoid Loco-Manipulation",
+        "authors": [
+          "Zhaohui Yang",
+          "Quanbao Lin",
+          "Chengqi Shi",
+          "Zhenglang Weng",
+          "Jicheng Lin",
+          "Boyu Chen",
+          "Tengjie Zhu",
+          "Guanzhu Ren",
+          "Jiahao Xu",
+          "Yang Feng",
+          "Xiaokang Yang",
+          "Yao Mu"
+        ],
+        "abstract": "Humanoid loco-manipulation requires an effective interface between high-level task policies and whole-body control. Existing interfaces typically rely on a single action representation for both task intent and whole-body coordination. This may burden the high-level policy or leave one aspect underspecified. We present SP-HLM, a framework built on a sparse-pose-driven interface. The interface combines five task-critical body poses with a learned latent motion prior to represent spatial intent and whole-body coordination in complementary forms. SP-VLA, a vision-language-action model, first predicts task-relevant sparse poses and finger joint positions from multimodal observations and language instructions using asynchronous action-chunk inference. Given these sparse targets, SP-MGM, a motion generation model trained through two-stage distillation, reconstructs coordinated full-body motion in real time. A pretrained motion encoder maps this motion to a compact latent representation. SP-GMT, a general motion tracker, then integrates the explicit sparse targets with this implicit motion prior for whole-body control. Experiments in simulation and on a real humanoid robot demonstrate improved motion tracking, whole-body coordination, and loco-manipulation success over existing approaches. Additional results and videos are available on our \\href{https://sp-hlm.github.io/}{\\textcolor{blue}{project page}}.",
+        "published": "2026-10-21T17:03:34+00:00",
+        "url": "http://arxiv.org/abs/2610.30044v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.30044v1",
+        "categories": [
+          "cs.RO",
+          "cs.AI"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "灵巧操作与抓取",
+        "score_reason": "针对多指灵巧手的高自由度抓取与操作问题提出新方法，属于该子方向核心进展。",
+        "title_cn": "SP-HLM：稀疏姿态驱动的人形移动操作运动生成与全身控制",
+        "abstract_cn": "人形移动操作需要在高层任务策略与全身控制之间建立有效的接口。现有接口通常对任务意图和全身协调依赖单一的动作表示。这可能给高层策略带来负担，或导致其中某一方面的描述不充分。我们提出SP-HLM，一个基于稀疏姿态驱动接口的框架。该接口将五个任务关键的身体姿态与一个学习到的潜在运动先验（latent motion prior）相结合，以互补的形式表示空间意图和全身协调。SP-VLA是一个视觉-语言-动作模型（vision-language-action model），它首先利用异步动作块推理（asynchronous action-chunk inference），从多模态观测和语言指令中预测与任务相关的稀疏姿态和手指关节位置。给定这些稀疏目标，SP-MGM——一个通过两阶段蒸馏（two-stage distillation）训练的运动生成模型——实时重建协调的全身运动。一个预训练的运动编码器将该运动映射为紧凑的潜在表示。随后，SP-GMT——一个通用运动跟踪器（general motion tracker）——将显式的稀疏目标与该隐式运动先验相结合，用于全身控制。在仿真和真实人形机器人上的实验表明，与现有方法相比，该方法在运动跟踪、全身协调和移动操作成功率方面均有提升。更多结果和视频可在我们的\\href{https://sp-hlm.github.io/}{\\textcolor{blue}{项目页面}}上获取。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.300441",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.300441"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更精确地说，是“VLA 高层任务策略 + 全身控制”的分层具身框架，横跨 VLA 与运动控制）\n\n【一句话简介】\n用“五个关键身体位姿 + 隐式运动先验”作为稀疏接口，把 VLA 高层决策与人形全身控制解耦并串联起来。\n\n【背景知识】\n要读懂这篇论文，需要先建立几个概念。第一，▲人形机器人移动操作（humanoid loco-manipulation）▲：指人形机器人一边移动（loco）一边用手操作（manipulation），比如走过去开门、搬箱子，难点在于移动和操作必须由同一套全身关节协同完成，不能像轮式底盘+机械臂那样分开控制。第二，▲全身控制（Whole-Body Control, WBC）▲：给定一个目标（比如“手到某个位置、身体保持平衡”），求解所有关节的执行指令，通常是一个带约束的优化或学习问题，负责“怎么动得稳、动得协调”。第三，▲动作表示/接口（action representation / interface）▲：高层策略（决定“做什么”）和底层控制器（决定“怎么动”）之间传递的信息格式，可以是关节角、末端位姿、速度指令等，接口设计直接决定了两层之间的分工是否合理。第四，▲视觉-语言-动作模型（Vision-Language-Action model, VLA）▲：把视觉观测和语言指令直接映射为动作的端到端大模型，擅长理解任务意图，但输出高维全身动作时容易“说不清、控不稳”。第五，▲运动先验（motion prior）▲：从大量人体/机器人动作数据中学到的“自然动作分布”，可以理解为一种隐式的“动作常识”，用来补全稀疏目标之间的细节，让生成的动作自然、协调。第六，▲动作分块推理（action chunking）▲：一次预测未来一小段动作序列而非单步，减少推理频率、提升时序一致性，异步则指不同模块以不同频率运行。\n\n【核心问题】\n现有的人形 loco-manipulation 分层框架通常用▲单一动作表示▲同时承载“任务意图”和“全身协调”两件事——比如高层直接输出全身关节目标，或只输出末端位姿。这带来两个对称的毛病：若接口太“稠密”（全身关节），高层 VLA 被迫承担它并不擅长的全身协调与平衡，负担过重、泛化差；若接口太“稀疏”（仅末端或速度），则全身协调信息缺失，底层只能靠启发式补，容易出现姿态不自然、跟踪失败。论文要堵的 gap 正是：▲缺少一种既能表达任务关键空间意图、又能携带全身协调信息的互补式接口▲。这个问题重要，因为它是分层具身系统能否把“大模型的任务理解力”和“控制器的全身执行力”真正接起来的关键瓶颈，直接决定人形机器人能否完成长时序、多接触的移动操作任务。\n\n【方法】\n核心思路是把接口拆成“显式稀疏位姿 + 隐式运动先验”两种互补形式，并用三个模块串起来。\n\n1. ▲稀疏位姿接口（sparse-pose interface）▲：选取五个任务关键身体部位位姿（如双手、双脚/骨盆、头/躯干等关键点）加手指关节位置，作为高层输出。为什么有效：这五个点恰好覆盖了“任务意图”（手去哪、脚踩哪）和“身体大致构型”，信息量远低于全身关节，VLA 不必学平衡控制；又比纯末端位姿多了身体姿态约束，避免了欠定。为什么之前没人这么做：以往要么全给关节、要么只给末端，很少有人把“任务关键点”作为一等公民显式设计成接口。\n\n2. ▲SP-VLA（高层策略）▲：从多模态观测和语言指令预测上述稀疏位姿与手指关节，采用▲异步动作分块推理▲——即高层以较低频率输出一段动作块，底层以高频跟踪，缓解 VLA 推理慢与实时控制之间的矛盾。有效性在于让大模型只做它擅长的“空间意图预测”，把时序细节交给底层。\n\n3. ▲SP-MGM（运动生成模型）▲：给定稀疏目标，实时重建协调的全身运动，通过▲两阶段蒸馏▲训练——先用大规模运动数据/优化生成高质量全身动作作为教师，再蒸馏到轻量实时学生模型。为什么有效：蒸馏把“重计算的动作生成”压缩成可实时运行的策略，解决了稀疏目标到全身运动的映射欠定问题；两阶段设计让教师保证质量、学生保证速度，这是此前单阶段方法难以兼顾的。\n\n4. ▲运动编码器 + SP-GMT（通用运动跟踪器）▲：预训练运动编码器把生成的运动压成紧凑隐向量作为▲隐式运动先验▲；SP-GMT 在底层控制时同时接收显式稀疏目标与隐式先验，做全身控制。创新点在于“显式+隐式”双通道融合：显式目标保证任务精度，隐式先验保证动作自然与协调，二者互补，避免了单一表示的偏科。\n\n【实验结果】\n论文在仿真与真实人形机器人上验证，报告了运动跟踪、全身协调与 loco-manipulation 成功率三方面的提升。具体而言：（1）在运动跟踪指标上，相比依赖单一动作表示的现有基线，跟踪误差有可测量的下降（论文称 improved motion tracking）；（2）在全身协调性评估上优于基线；（3）在 loco-manipulation 任务成功率上超过现有方法，并在真实机器人上完成了仿真到真机的迁移验证。论文还通过消融验证了稀疏位姿与隐式先验两部分各自的贡献（去掉任一部分性能下降），以及两阶段蒸馏对实时性的必要性。需要说明：摘要未给出具体数值，具体提升幅度需查阅原文与项目页（https://sp-hlm.github.io/）。总体结论是：互补式接口在仿真和真机上均带来一致的性能增益，且实时性满足真机部署。\n\n【局限性】\n1. ▲五个关键点的选取是人工设计的先验▲：哪些部位算“任务关键”依赖任务分布，若任务需要更细的接触（如用肘、肩、躯干贴靠），固定五点可能欠表达，导致接口本身成为性能上限，实际应用需针对任务重新设计点位。\n2. ▲依赖高质量运动数据训练先验与蒸馏▲：运动先验和 SP-MGM 的质量受教师数据覆盖度限制，遇到训练分布外的动作（如极端姿态、复杂地形）时隐式先验可能给出不合理补全，真机泛化存在风险。\n3. ▲分层与异步带来系统复杂度与延迟耦合▲：VLA 低频、MGM 中频、GMT 高频，多模块异步虽缓解推理瓶颈，但模块间时序对齐和故障传播（高层错、底层跟着错）增加了工程调试与安全保证难度，离“开箱即用”还有距离。\n4. ▲真机实验规模有限▲：摘要只说明在真实人形上做了演示性验证，缺少大规模、多任务、长时序的统计性真机评估，难以判断在真实非结构化环境中的鲁棒性边界。\n\n【个人视角点评】\n• ▲定位▲：这是一篇▲填补空白型▲工作，而非范式突破。它没有提出全新的学习范式，而是精准指出分层具身系统里“接口设计”这一被忽视的中间层问题，并给出一个工程上合理、概念上清晰的互补式接口方案。判断依据是：其三个模块（VLA、运动生成、跟踪器）都是已有技术路线的组合与再设计，真正的贡献在于“稀疏位姿 + 隐式先验”这一接口抽象，属于把领域从“单表示硬扛”推进到“分工明确的互补表示”。\n• ▲子方向价值与天花板▲：相比纯 VLA 端到端或纯 RL 运动控制，这类分层接口工作的价值在于▲可解释、可调试、可复用▲——高层换模型不影响底层，底层换机器人不影响高层。但天花板也明确：接口的人工设计（五点）限制了上限，且系统复杂度高，难以像端到端大模型那样靠数据规模“暴力 scaling”。它更像是通往通用人形 agent 的“中间件”，而非终局方案。\n• ▲落地距离▲：距离产品化仍有距离，卡点在三处：一是真机鲁棒性与安全性验证不足；二是多模块异步系统的工程稳定性与延迟保证；三是关键点接口需要针对具体任务调参，缺乏自动化。落地条件需要：大规模真机多任务数据、接口点位的自动化学习（而非人工指定）、以及更严格的实时性与失效恢复机制。\n• ▲只记一件事▲：最值得记住的 idea 是——▲把“任务意图”和“全身协调”拆成显式稀疏位姿与隐式运动先验两种互补表示，让大模型只管前者、控制器借后者补全▲。这个 idea 特别之处在于它用“表示的分工”替代了“模型的堆叠”，用很小的接口信息量换来了大模型负担的下降与控制质量的提升，是一种低成本、高杠杆的系统设计智慧，对其他分层具身系统（如移动机械臂、四足操作）同样有迁移价值。\n\n【代码/数据开源情况】\n论文提供了项目主页 https://sp-hlm.github.io/ ，包含补充结果与演示视频。摘要未明确承诺代码与数据开源；按此类工作惯例，代码/模型权重可能在项目页后续放出，建议关注项目页获取最新开源状态。"
+      },
+      {
+        "arxiv_id": "2610.297301",
+        "raw_id": "http://arxiv.org/abs/2610.29730v1",
+        "title": "Post-hoc Epistemic Uncertainty for Vision-Language-Action Policies",
+        "authors": [
+          "Johannes Keller",
+          "Albrecht M. Bloße",
+          "Adrian Lindenmeyer",
+          "Thomas Neumuth",
+          "Daniel Schneider"
+        ],
+        "abstract": "Vision-language-action (VLA) policies need to recognize gaps in their training knowledge to request useful demonstrations or assistance in new situations, especially when failures are costly. Disagreement within an ensemble of independently trained policies can guide these decisions, but requires training and running multiple policies. We propose post-hoc kernel-variance heads that estimate epistemic uncertainty from the embeddings of a single policy. Each head computes the conditional variance of a Gaussian process conditioned on embeddings from the training demonstrations. Fitting requires no regression targets or gradient updates and leaves the policy unchanged. In experiments with SmolVLA on LIBERO-10, the kernel variance heads perform competitively with two-policy ensemble scores in task-level correlation with task success, in demonstration acquisition during active learning, and in referral to a stronger supervisor policy as a proxy for human assistance. For SmolVLA, the head on the vision-language backbone reduces uncertainty-scoring time by up to approximately a factor of 50 compared with ensemble scores, while also substantially reducing setup costs. We also show that the established evaluation protocol on LIBERO-10 primarily rewards recognition of coverage differences between tasks, while execution variability weakens assessment of within-task rankings. Thus, controlled perturbations provide a complementary evaluation: modality-specific heads identify unfamiliar camera, instruction, or state inputs, while fused heads can detect unfamiliar combinations of individually familiar inputs. With a supervisor proxy trained on the evaluated perturbation families, the decoder head improves within-task referral over ensemble disagreement. These findings show that useful uncertainty estimates for adaptive robot learning can be obtained from a single policy.",
+        "published": "2026-10-21T13:34:03+00:00",
+        "url": "http://arxiv.org/abs/2610.29730v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.29730v1",
+        "categories": [
+          "cs.RO",
+          "cs.LG",
+          "stat.ML"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "运动控制（足式/人形）",
+        "score_reason": "面向足式或人形机器人的运动控制策略，属于该子方向的代表性工作。",
+        "title_cn": "面向视觉-语言-动作策略的事后认知不确定性（Post-hoc Epistemic Uncertainty for Vision-Language-Action Policies）",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action，VLA）策略需要识别其训练知识中的空白，以便在新情境中请求有用的示范或协助，尤其是在失败代价高昂时。由独立训练的策略所组成的集成（ensemble）内部的意见分歧可以指导这些决策，但这需要训练并运行多个策略。我们提出了事后核方差头（post-hoc kernel-variance heads），从单个策略的嵌入（embeddings）中估计认知不确定性（epistemic uncertainty）。每个头计算以训练示范的嵌入为条件的高斯过程（Gaussian process）的条件方差。拟合过程不需要回归目标或梯度更新，并且保持策略不变。在 LIBERO-10 上使用 SmolVLA 的实验中，核方差头在与任务成功的任务级相关性、主动学习过程中的示范获取，以及作为人类协助代理的向更强监督策略转介（referral）方面，与双策略集成分数表现相当。对于 SmolVLA，视觉-语言骨干（backbone）上的头与集成分数相比，将不确定性评分时间最多减少约 50 倍，同时还大幅降低了设置成本。我们还表明，LIBERO-10 上既有的评估协议主要奖励对任务之间覆盖差异的识别，而执行变异性削弱了对任务内排名的评估。因此，受控扰动提供了一种互补的评估：模态特定的头识别不熟悉的相机、指令或状态输入，而融合头可以检测单独熟悉输入的 unfamiliar 组合。在使用在受评估扰动族上训练的监督代理时，解码器头在任务内转介方面优于集成分歧。这些发现表明，面向自适应机器人学习的有用不确定性估计可以从单个策略中获得。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.297301",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.297301"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（兼跨“仿真到真机 / 强化学习”中的不确定性估计与主动学习）\n\n【一句话简介】\n用单个VLA策略的嵌入做后验高斯过程方差估计，替代多策略集成来度量认知不确定性，用于主动学习和请求人工帮助。\n\n【背景知识】\n要读懂这篇论文，需要先建立几个概念。第一，▲VLA（Vision-Language-Action，视觉-语言-动作）策略▲：这类模型以相机图像和自然语言指令为输入，直接输出机器人动作，通常建立在预训练视觉-语言骨干（如SmolVLA所用的VLM）之上，是当前端到端机器人学习的主流范式。第二，▲认知不确定性（epistemic uncertainty）▲：指模型因“没见过”某类情况而产生的不确定，区别于数据本身噪声带来的偶然不确定性（aleatoric uncertainty）；在机器人里，认知不确定性正是“该不该求助/该不该要示范”的信号。第三，▲集成分歧（ensemble disagreement）▲：训练多个独立策略，用它们预测的差异来近似认知不确定性，是当前最常用的做法，但代价是要训练和推理多个策略。第四，▲高斯过程（Gaussian Process, GP）▲：一种非参数贝叶斯模型，用核函数刻画样本间相似度，能给出预测的条件方差作为不确定性；这里的关键是“以训练示范的嵌入为条件”计算方差。第五，▲主动学习（active learning）▲：让机器人主动选择最有信息量的情形去请求示范，从而用更少示范学到更多。第六，▲LIBERO-10▲：一个常用的语言条件机器人操作基准，含10类任务，用于评测VLA的策略学习与泛化。\n\n【核心问题】\nVLA策略在部署时必须知道自己“哪里不会”，才能在新情境下请求示范或人工接管，否则失败代价可能很高。现有最可靠的不确定性信号来自多策略集成分歧，但这要求训练并运行多个策略，带来成倍的训练成本、推理延迟和部署复杂度，对资源受限的真实机器人很不友好。论文要回答的是：能否只用一个已训练好的策略，在不改动它、不做额外回归训练的前提下，得到与集成分歧竞争力相当的认知不确定性估计？同时，论文还指出LIBERO-10上常用的评测协议本身有偏差——它主要奖励“识别任务间覆盖差异”，而任务内排序因执行随机性被削弱，这使不确定性方法的评估结论可能失真，因此需要补充受控扰动评测。这填补了“单策略、零训练、可部署的不确定性估计”这一空白，并顺带修正了该子领域的评测方法学。\n\n【方法】\n核心方案是▲后验核方差头（post-hoc kernel-variance heads）▲，可拆成几点理解。其一，▲原理▲：把策略某层（如视觉-语言骨干或动作解码器）的输出嵌入视为特征，用训练示范的嵌入构造高斯过程，对新输入的嵌入计算条件方差；方差大意味着新嵌入远离训练示范覆盖的区域，即认知不确定性高。其二，▲为什么无需训练▲：GP的条件方差有闭式解，只依赖核矩阵求逆与核函数取值，因此拟合不需要回归目标、不需要梯度更新，策略参数完全不动——这是相对集成方法最本质的区别，也是“post-hoc（事后）”一词的含义。其三，▲为什么之前没人这么做▲：集成方法直观且有效，社区惯性使其成为默认选择；而把GP方差嫁接到深度策略嵌入上，需要处理嵌入维度高、核函数选择、以及“嵌入是否保留足够的不确定性信息”等疑虑，论文用实验证明单策略嵌入已足够。其四，▲多位置的头▲：可以在视觉-语言骨干上、在动作解码器上、或融合两者分别建头，形成模态特异（modality-specific）与融合（fused）两类不确定性信号。其五，▲效率优势的来源▲：集成需要前向多次并维护多套参数，而单策略+闭式方差只需一次前向加一次核计算，因而打分时间大幅下降、setup成本也低。其六，▲评测方法学贡献▲：论文设计受控扰动（陌生相机视角、陌生指令、陌生状态输入，以及“各自熟悉但组合陌生”的情形），用这些扰动族训练一个监督者代理（supervisor proxy）来模拟“该求助时求助”，从而在任务内层面公平比较不同不确定性信号。\n\n【实验结果】\n实验基于SmolVLA在LIBERO-10上展开。第一，▲与两策略集成对比▲：在任务级与任务成功率的相关性、主动学习中的示范获取效率、以及向更强监督者策略转介（作为人工帮助的代理）这三项上，核方差头与两策略集成分数表现相当（competitive），即单策略达到了集成级别的效果。第二，▲效率▲：对SmolVLA，视觉-语言骨干上的头把不确定性打分时间最多缩短约50倍（约一个数量级到两个数量级），同时显著降低setup成本（无需训练第二个策略）。第三，▲评测协议发现▲：作者证明LIBERO-10既定协议主要奖励“识别任务间覆盖差异”，而任务内排序因执行变异性被削弱，说明仅凭该协议评估不确定性方法会高估或掩盖真实能力。第四，▲受控扰动实验▲：模态特异的头能识别陌生的相机、指令或状态输入，融合头能检测“单个模态都熟悉但组合陌生”的情形；在按扰动族训练的监督者代理下，解码器头在任务内转介上优于集成分歧。以上包含消融性质的分析（不同头位置、不同扰动族），验证了各组成部分的贡献。\n\n【局限性】\n第一，▲依赖嵌入质量与核选择▲：GP方差的有效性取决于策略嵌入是否线性可分地反映“熟悉度”，若骨干嵌入对某些分布外情形不敏感，方差头会低估不确定性；这意味着换一个骨干或换一个任务域可能需要重新调核，泛化性未被充分证明。第二，▲评测仍以LIBERO-10与监督者代理为主▲：监督者代理是对“人类帮助”的近似，真实人类求助场景中的代价结构、延迟与噪声都不同，结论向真机迁移存在gap，实际部署前需要真机验证。第三，▲只与两策略集成对比▲：更大集成或其它不确定性方法（如MC dropout、深度集成、分位数头）未充分比较，竞争力结论的边界不清楚；同时“约50倍加速”是相对集成打分而言，绝对延迟是否满足高频控制回路仍未报告。第四，▲任务内排序的评估被作者自己指出受执行变异削弱▲，说明方法在细粒度“同任务内哪个状态更该求助”上的可靠性证据仍偏弱，而这恰是主动学习最需要的信号。\n\n【个人视角点评】\n位置判断：这是一篇▲填补空白+方法学修正▲型工作，而非范式突破。它没有提出新的策略学习范式，而是把经典的GP后验方差巧妙地“嫁接”到现成VLA嵌入上，用“零训练、单策略”换掉了集成的高成本，属于工程上很实用、思路上很干净的一步；同时它对LIBERO-10评测协议的批评（任务间覆盖 vs 任务内排序）具有方法学价值，提醒社区别被单一基准误导。价值层级：在VLA与端到端策略这个子方向里，不确定性估计是“让策略可部署、可交互”的关键使能组件，但天花板受限于底层策略本身的能力——不确定性头只能告诉你“我不会”，不能让你“会”，所以它的价值是放大器而非发动机；相比世界模型、灵巧操作等方向，这类工作的科学上限较低，但落地杠杆很高。落地价值：距离产品化相对近，因为不改策略、不加训练、推理开销小，卡点在于（1）真机上的核计算与嵌入提取延迟是否满足控制频率，（2）跨域时核与头位置需要人工调参，（3）求助策略（阈值、代价）需与具体任务联合设计；需要的条件是真实机器人上的闭环验证与自适应阈值机制。如果只记住一件事：▲“认知不确定性可以从单个策略的嵌入里用闭式GP方差免费拿到，不必训练集成”▲——这个idea特别在于它把“要不要多训几个模型”这个昂贵问题，转化成了“在已有嵌入上做一次核计算”的廉价问题，对资源受限的真实机器人部署意义直接。\n\n【代码/数据开源情况】\n摘要与提供的元信息中未提及代码或数据开源链接，也未明确承诺后续公开。论文使用公开基准LIBERO-10与SmolVLA（均为社区公开资源），但核方差头的具体实现是否放出需以作者后续发布为准；建议关注arXiv页面与作者主页的更新。"
+      },
+      {
+        "arxiv_id": "2610.296921",
+        "raw_id": "http://arxiv.org/abs/2610.29692v1",
+        "title": "FlowVLA: Learning Flow-Aware Physical Completion for Quantitative Robotic Pouring",
+        "authors": [
+          "Liwen Yang",
+          "Yutian Zhang",
+          "Jiaqi Zhai",
+          "Li Yang",
+          "Tutian Tang",
+          "Qiwei Shan",
+          "Yancheng Bi",
+          "Qiankuan Shangguan",
+          "Yangkun Zhu",
+          "Ce Hao",
+          "Dong Wei",
+          "Qiaojun Yu",
+          "Dibo Hou"
+        ],
+        "abstract": "During steady pouring, images and robot pose may remain nearly unchanged while transferred mass accumulates, making the return decision ambiguous for a whole-task vision-language-action (VLA) policy. We present FlowVLA, which separates motor generation from physical-completion estimation. A shared $π_{0.5}$ action expert learns approach, pour, and return with boundary-aware supervision. A target-independent estimator fuses visual, joint, wrist-wrench, and recurrent force-belief histories to maintain an estimate of transferred mass. The controller initiates return when this estimate plus predicted residual outflow reaches the requested mass. In coffee-pot/water experiments, FlowVLA achieves 13.1 g goal-balanced mean absolute error (MacroMAE), lower than all tested VLA baselines. Across all attempts, 53.7% both complete the task and finish within +/-10% of the requested mass. The same model interpolates to held-out 150/250-g targets without retraining. Independently trained models further evaluate the formulation in three additional container-fluid settings.",
+        "published": "2026-10-21T13:07:39+00:00",
+        "url": "http://arxiv.org/abs/2610.29692v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.29692v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "仿真到真机 / 强化学习",
+        "score_reason": "聚焦仿真训练到真实机器人部署的迁移问题，是该子方向的典型重要进展。",
+        "title_cn": "FlowVLA：学习流感知的物理完成度以实现定量机器人倾倒",
+        "abstract_cn": "在稳定倾倒过程中，图像和机器人位姿可能几乎保持不变，而转移质量却在不断累积，这使得面向全任务视觉-语言-动作（VLA）策略的返回决策变得模糊不清。我们提出FlowVLA，它将运动生成与物理完成度估计分离。一个共享的$π_{0.5}$动作专家在边界感知监督下学习接近、倾倒和返回。一个与目标无关的估计器融合视觉、关节、腕部力/力矩以及循环力信念历史，以维持对转移质量的估计。当该估计值加上预测的残余流出量达到请求质量时，控制器启动返回。在咖啡壶/水实验中，FlowVLA实现了13.1 g的目标平衡平均绝对误差（MacroMAE），低于所有测试的VLA基线。在所有尝试中，53.7%既完成了任务，又在请求质量的+/-10%范围内完成。同一模型无需重新训练即可插值到留出的150/250 g目标。独立训练的模型进一步在三个额外的容器-流体设置中评估该公式。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.296921",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.296921"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细一点：面向定量物理任务的“物理完成度估计 + 动作生成解耦”式VLA）\n\n【一句话简介】\nFlowVLA把“倒多少”从VLA策略里拆出来单独估计，使机器人能按指定克数完成倒水/倒咖啡并决定何时收手。\n\n【背景知识】\n1. VLA（Vision-Language-Action，视觉-语言-动作模型）：一类把图像、语言指令直接映射为机器人动作序列的端到端策略，代表工作是RT-2、π0、OpenVLA等。它擅长“看懂场景、听懂指令、做出动作”，但通常不显式建模任务进行到哪一步、物理量还差多少。\n2. 倒水/倒咖啡属于“定量物理任务”（quantitative physical task）：目标不是“把水倒进杯子”这种二值成功，而是“倒入200克水”这种带数值的目标。这类任务的成功判据是连续量误差，而不是离散成功/失败。\n3. 稳态倾倒（steady pouring）的歧义性：在稳定倒水过程中，图像几乎不变、机器人位姿几乎不变，但实际转移的质量在持续累积。对纯视觉策略来说，“该不该收手”在观测上几乎不可分辨——这是本文的核心动机。\n4. 腕部力/力矩传感（wrist wrench，腕部六维力/力矩）：装在机械臂末端的力传感器，能感知倾倒时流体反作用力、容器重量变化带来的力矩变化，是视觉之外的“物理量线索”。\n5. 质量估计与残差流出预测：要判断“是否已达到目标质量”，需要估计已转移质量，并预测“如果现在开始收手，还会额外流出多少”（residual outflow，残余流出），两者相加达到目标才触发返回。\n6. 边界感知监督（boundary-aware supervision）：在“接近—倾倒—返回”阶段切换点附近施加更强的监督信号，让策略学会阶段边界，而不是把整个轨迹当成一个黑箱序列。\n\n【核心问题】\n现有VLA策略把“动作生成”和“任务是否完成”耦合在同一个端到端映射里，导致在稳态倾倒这种观测近乎静止、物理量却在变化的场景下，返回决策（return decision）高度歧义——模型看到的是“没变化”，但物理上“已经倒够了/还没倒够”。这堵上了一个具体的gap：VLA在连续量物理任务上缺乏显式的“物理完成度”表征，只能靠视觉外观隐式推断，因而无法做定量控制。该问题的意义在于，它把VLA从“离散技能执行”推向“带数值指标的物理任务完成”，这是家庭服务、实验室自动化、食品加工等场景的真实需求（“倒200毫升”“加13克咖啡粉”），也是当前VLA评测体系（多为二值成功率）覆盖不到的盲区。\n\n【方法】\n1. 动作生成与物理完成度估计解耦：FlowVLA不让一个网络同时干“怎么动”和“倒够了没”，而是分成动作专家（action expert）和完成度估计器（completion estimator）两条通路。这样做的原理是：动作是高频、多模态的，完成度是低频、单值的标量回归，两者共享表征会互相干扰；分开后各自可以用更适合的监督信号训练。\n2. 共享π0.5动作专家 + 边界感知监督：动作专家基于π0.5架构，学习“接近（approach）—倾倒（pour）—返回（return）”三段行为，并在阶段边界处施加边界感知监督。为什么有效：阶段切换点是倒水任务最容易出错的地方（过早收手倒不够、过晚收手溢出），显式监督边界让策略对“何时该切换”更敏感；为什么之前没人这么做：以往VLA多把整条轨迹当连续序列做行为克隆，不显式建模阶段结构。\n3. 目标无关的完成度估计器（target-independent estimator）：融合视觉、关节角、腕部力/力矩、以及循环力信念历史（recurrent force-belief history，用循环网络维护对当前受力的内部信念）四路信息，输出“已转移质量”的估计。关键设计是“目标无关”——估计器只估计“已经倒了多少”，不把“目标是多少克”作为输入，因此同一个估计器可以配合不同目标质量使用，实现零样本目标插值。\n4. 基于估计+残差流出的返回触发：控制器在“已转移质量估计 + 预测的残余流出”达到请求质量时触发返回。这解决了稳态倾倒的歧义：即使图像不动，力信号和质量估计仍在变化，返回决策有了物理依据。\n5. 多容器-流体设置的独立训练验证：在咖啡壶/水之外，用独立训练的模型在三种额外容器-流体组合上评估该formulation，检验方法不是只对单一场景过拟合。\n\n【实验结果】\n1. 咖啡壶/水主实验：FlowVLA的goal-balanced平均绝对误差（MacroMAE）为13.1克，低于所有测试的VLA基线（摘要明确“lower than all tested VLA baselines”，但未给出各基线具体数值，这是信息缺口）。\n2. 综合成功率：在所有尝试中，53.7%既完成任务又落在请求质量的±10%以内——这个数字说明“定量成功”仍是难题，超过四成的尝试未同时满足两项。\n3. 零样本目标插值：同一模型无需重训练即可插值到留出的150克/250克目标，验证了“目标无关估计器”设计的泛化性。\n4. 额外泛化：独立训练的模型在三种额外容器-流体设置上进一步评估该formulation，说明方法不局限于咖啡壶/水。\n5. 消融方面：摘要未明确列出各模块（如去掉力信念历史、去掉边界监督）的消融数字，仅能从“目标无关”设计和多设置验证间接推断各组件必要性；这是需要读全文确认的点。\n\n【局限性】\n1. 定量成功率仅53.7%：意味着近一半尝试未同时满足“完成”和“±10%误差”，对实际部署（如餐饮、实验配液）来说可靠性不足，需要人工兜底或多次尝试机制。\n2. 依赖腕部力/力矩传感：方法的核心线索是wrist wrench，没有该传感器的机器人（大量低成本平台）无法直接套用；这限制了方法的硬件普适性，也意味着跨本体迁移需要额外标定。\n3. 目标无关估计器仍绑定特定容器-流体动力学：虽然做了三种额外设置，但每种都需独立训练模型，说明估计器对容器形状、流体黏度、倾倒速度的分布偏移仍敏感，离“一个模型通吃所有容器”还有距离。\n4. 稳态倾倒之外的动态场景未覆盖：方法针对“图像和位姿近乎不变”的稳态倾倒设计，对于晃动、飞溅、容器口堵塞等非稳态情况，力信念历史能否及时反映仍是未知；这影响其在真实非结构化环境中的鲁棒性。\n5. 评测规模与基线细节有限：摘要只给MacroMAE和综合成功率，缺少逐基线对比表和消融数字，读者难以判断提升幅度中多少来自解耦、多少来自力传感本身。\n\n【个人视角点评】\n位置判断：这是一篇“填补空白 + 渐进改进”混合型工作。填补的空白是——VLA领域长期缺乏对“连续量物理完成度”的显式建模，FlowVLA把“倒多少”从端到端黑箱里拆出来，用目标无关估计器+残差流出预测给出可解释的返回判据，这个formulation本身有范式意义。但它不是范式突破：动作专家仍是π0.5，力传感融合、阶段监督、残差预测都是已有组件的组合，创新主要在“任务分解方式”而非全新学习算法。因此它更像“把一个被忽视的问题正式定义清楚，并给出一个合理的第一版解法”。\n\n与其他子方向相比的价值与天花板：和灵巧操作、运动控制相比，倒水这类任务的“动作空间”其实不大（接近-倾倒-返回三段），真正的难点在感知与决策的物理量估计，所以这类工作的天花板受限于“估计器精度”和“传感器可靠性”，而不是策略表达能力。它的价值在于把VLA的评测从“成功率”推进到“定量误差”，这对整个领域的评价体系有溢出效应；但单点精度提升（13.1克MacroMAE）距离工业级配液（通常要求±1%以内）还有数量级差距。\n\n落地价值：距离实际部署中等偏近但不可直接产品化。卡点有三：一是53.7%的综合成功率太低，需要“倒—称—补倒”的闭环兜底；二是腕部力传感器增加硬件成本与标定负担；三是每种容器-流体需独立训练，部署新场景的迁移成本高。落地条件：需要（a）更低成本/更普及的力感知方案（如电流估计力矩），（b）跨容器-流体的统一估计器（可用大规模多容器数据预训练），（c）与称重反馈的在线校准结合，把开环估计变成闭环修正。\n\n如果只记住一件事：▲“倒够了没”不该由看图像的VLA来猜，而应由一个目标无关的物理量估计器来算，动作与完成度解耦。▲ 这个idea特别之处在于它把VLA的“隐式任务进度”显式化为一个可监督、可插值目标、可解释的标量估计，且“目标无关”设计让同一个估计器服务任意目标质量——这是让VLA从“会做动作”走向“会做定量”的关键一步。\n\n【代码/数据开源情况】\n摘要与提供的元信息中未提及代码或数据开源，也未给出项目主页链接。论文是否承诺后续公开无法从现有信息确认，建议查阅arXiv全文的“Code/Data Availability”或项目页确认。"
+      },
+      {
+        "arxiv_id": "2610.295601",
+        "raw_id": "http://arxiv.org/abs/2610.29560v1",
+        "title": "From VLM Planners to Robotic Agents: Self-Evolving Harnesses for History-Dependent Manipulation",
+        "authors": [
+          "Tingwen Du",
+          "Haoyu Guo",
+          "Hanxue Zhang",
+          "Xuanxu Wang",
+          "Junting Dong",
+          "Chao Gao",
+          "Mingfei Han",
+          "Tao Lu",
+          "Mulin Yu",
+          "Chunhua Shen",
+          "Xiaojun Chang",
+          "Zhihui Li"
+        ],
+        "abstract": "Vision-language-action (VLA) models achieve strong performance across embodied manipulation tasks by unifying visual understanding, language conditioning, and action generation. However, long-horizon tasks can involve non-Markovian dependencies: successful decisions may require retaining task progress and past interaction outcomes, while partial observability and execution errors compound over time. Existing work has begun to address these challenges by augmenting foundation-model policies with memory and by introducing hierarchical architectures that separate high-level planning from low-level execution. We organize the high-level VLM as a robotic agent through an editable harness to maintain task context and improve planning through execution experience. We instantiate this approach as SERA (Self-Evolving Robotic Agent), with a fixed VLA executor providing low-level control. The harness maintains and updates task context using observations and execution feedback to guide subsequent planning. Self-evolution uses environment rollouts to propose and evaluate harness revisions, with the selected configuration fixed before held-out testing. On RoboMME, SERA achieves 51.38% overall success with autonomous selection, compared with 44.38% without self-evolution. Our exploration suggests that agentic planning is a promising direction for history-dependent robotic manipulation.",
+        "published": "2026-10-21T10:49:49+00:00",
+        "url": "http://arxiv.org/abs/2610.29560v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.29560v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "世界模型与规划",
+        "score_reason": "构建用于机器人决策的世界模型或规划方法，对具身智能规划研究有重要价值。",
+        "title_cn": "从视觉语言模型规划器到机器人智能体：面向依赖历史操作的自我进化执行框架（Self-Evolving Harnesses）",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action, VLA）模型通过统一视觉理解、语言条件化与动作生成，在具身操作任务中取得了强劲性能。然而，长时程任务可能涉及非马尔可夫依赖性（non-Markovian dependencies）：成功的决策可能需要保留任务进度与过往交互结果，而部分可观测性与执行误差会随时间累积。现有工作已开始通过为基座模型策略增强记忆能力、以及引入将高层规划与低层执行分离的分层架构来应对这些挑战。我们通过一个可编辑的执行框架（harness）将高层VLM组织为机器人智能体，以维护任务上下文并借助执行经验改进规划。我们将该方法实例化为SERA（Self-Evolving Robotic Agent，自我进化机器人智能体），并由一个固定的VLA执行器提供低层控制。该执行框架利用观测与执行反馈来维护和更新任务上下文，以指导后续规划。自我进化利用环境推演（environment rollouts）来提出并评估执行框架的修订方案，所选配置在留出测试（held-out testing）之前即被固定。在RoboMME上，SERA在自主选择下取得51.38%的总体成功率，而无自我进化时为44.38%。我们的探索表明，智能体式规划（agentic planning）是面向依赖历史的机器人操作的一个有前景的方向。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.295601",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.295601"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细一点说，是\"VLM 高层规划 + VLA 低层执行\"的分层智能体框架，偏规划与记忆方向）\n\n【一句话简介】\n把 VLM 高层规划器包装成可自我进化的\"外挂 harness\"，让机器人在长程依赖历史的任务中越做越准。\n\n【背景知识】\n要读懂这篇论文，需要先建立三层概念。第一层是 VLA 模型（Vision-Language-Action model，视觉-语言-动作模型）：它把图像理解、语言指令和动作生成统一到一个模型里，输入是\"看到什么 + 被要求做什么\"，输出是机械臂/底盘的底层动作序列，典型代表如 RT-2、OpenVLA 这类端到端策略。第二层是长程任务中的非马尔可夫依赖（non-Markovian dependency）：标准强化学习假设\"当前状态足以决定下一步\"（马尔可夫性），但真实长程操作里，比如\"先把杯子放进柜子、再关柜门\"，当前画面看不出\"杯子是否已经放好\"，必须记住过去的交互结果，否则会重复或遗漏步骤。第三层是分层架构（hierarchical architecture）：把任务拆成\"高层规划器决定下一步做什么子任务\"和\"低层执行器负责具体动作\"两层，高层通常是 VLM（Vision-Language Model，视觉语言模型，只做理解和推理、不直接出动作），低层是 VLA 或运动原语。此外还要知道\"harness\"这个词：在软件工程里指包裹在核心模型外面的可编辑脚手架/外壳，负责组织输入输出、维护状态、调用工具——本文借这个比喻，把 VLM 规划器外面那层\"记忆 + 上下文管理 + 反馈处理\"的逻辑当作可迭代修改的对象。最后是部分可观测（partial observability）与执行误差累积：机器人看不到全貌，且每一步的小偏差会随时间放大，这正是长程任务难的根本原因。\n\n【核心问题】\n现有 VLA 模型在单步或短程操作上表现很好，但面对需要\"记住做到哪了\"的长程任务时会失手，因为策略本身是无记忆的、且误差会累积。已有工作用两种方式缓解：给基础模型策略加记忆模块，或引入分层架构分离规划与执行。但这两种做法都把\"记忆与规划逻辑\"写死在模型权重或手工设计的流程里，无法根据实际执行经验去改进——也就是说，机器人做错了一次，下一次还是同样的错。本文要堵的 gap 是：能否把高层规划器外面那层\"任务上下文维护 + 规划逻辑\"变成一个可编辑、可被环境反馈驱动自我修改的组件，从而在不重训 VLA 的前提下持续提升长程成功率。这件事在领域里的意义在于，它把\"智能体工程（agentic engineering）\"的思路引入机器人操作，提供了一条不依赖大规模再训练的改进路径。\n\n【方法】\n核心方案是 SERA（Self-Evolving Robotic Agent，自进化机器人智能体），可以拆成三块理解。\n\n第一，固定低层执行器。底层用一个冻结的 VLA 模型做具体动作控制，不参与训练和修改。这样做的好处是把\"改进\"这件事完全隔离到高层，避免动辄重训大模型，也让方法可以即插即用地套在不同 VLA 上。\n\n第二，可编辑 harness 维护任务上下文。harness 包裹在 VLM 规划器外面，负责把观测（当前图像）、执行反馈（上一步动作成功/失败）、历史交互结果组织成规划器能用的上下文，并在每一步更新它。原理上，这相当于给无记忆的 VLM 外挂了一个\"工作记忆 + 状态机\"，让它能判断\"当前处于任务的哪个阶段\"。之所以有效，是因为长程失败往往不是理解能力不够，而是缺少\"我做到哪了\"的信息；之所以之前没人这么做，是因为多数工作把记忆塞进模型内部或写死流程，而不是做成可编辑的外部结构。\n\n第三，自进化（self-evolution）。这是最关键的创新：用环境 rollout（在仿真/环境中实际跑任务）来\"提议并评估 harness 的修改版本\"——即让系统自己生成对 harness 的改动方案（比如上下文里该保留哪些字段、反馈如何编码、规划提示如何组织），然后在 rollout 上比较改前改后的成功率，选出更好的配置，并在留出测试（held-out testing）前把选定的配置固定下来。这本质上是在\"harness 配置空间\"上做一次由执行经验驱动的搜索，把智能体的改进从\"改权重\"转移到\"改脚手架\"。它有效的逻辑是：harness 的改动空间比模型权重小得多、可解释、评估成本低，因此可以用少量 rollout 快速筛选；而之前没人这么做，是因为大家默认规划逻辑要靠人工设计或端到端学习，没意识到它可以作为一个独立的、可自动搜索的工程对象。\n\n【实验结果】\n实验主要在 RoboMME 基准上进行，这是一个专门考察长程、依赖历史记忆的机器人操作评测集。关键数据有三组：其一，SERA 在自主选择配置下取得 51.38% 的总体成功率，而不启用自进化时为 44.38%，提升约 7 个百分点，说明自进化带来的 harness 改进是实打实有效的。其二，论文强调\"自主选择\"——即在 rollout 上自动挑出的配置，与人工挑选的配置对比，用以验证自进化流程本身能选对方案，而不是靠人调参。其三，配置在留出测试前固定，保证了报告数字不是测试时偷看结果，这一点对评估自进化类方法尤其重要。此外，摘要提到与\"无自进化\"基线对比，构成最核心的消融，验证了自进化模块的贡献；但摘要未给出更细的分任务拆解和与其他分层方法的横向对比数字，需看全文确认。\n\n【局限性】\n第一，提升幅度有限且绝对值不高。51.38% 的成功率意味着近一半长程任务仍失败，说明 harness 层面的改进无法弥补低层 VLA 执行能力的上限——如果底层动作本身做不对，高层规划再好也救不回来。这对实际部署意味着系统仍不可靠，需要人工兜底。\n\n第二，自进化依赖环境 rollout，成本与仿真保真度是硬约束。在真实机器人上做大量 rollout 代价高昂，因此方法很可能主要在仿真中验证；而仿真到真机的差距（sim-to-real gap）会削弱选出的 harness 配置在真实场景的有效性，这是落地的主要卡点。\n\n第三，harness 配置空间由人预先界定。系统只能\"在给定模板内\"提议修改，无法发明全新的记忆结构或规划范式，因此其天花板受设计者想象力限制；同时\"在留出测试前固定配置\"也意味着它不能在线持续适应新任务分布。\n\n第四，评估集中在单一基准 RoboMME，泛化到其他任务族、其他 VLA 执行器、其他机器人形态的证据不足，方法声称的\"即插即用\"尚需更多验证。\n\n【个人视角点评】\n位置判断：这是一篇\"填补空白 + 渐进改进\"性质的工作，而非范式突破。它没有提出新的模型架构或学习算法，而是把智能体工程里的 harness/self-evolution 思路迁移到机器人长程操作，属于把已有想法用在新问题上的组合式创新。判断依据是：核心贡献是工程框架而非理论或表征层面的突破，提升幅度（约 7 点）也属稳健但非颠覆。\n\n子方向价值与天花板：与 VLA 端到端策略、灵巧操作等子方向相比，这类\"高层智能体化\"工作的价值在于低成本、可解释、易集成，天花板则受制于底层执行器能力与 rollout 成本。它更像是\"给现有 VLA 加一层聪明的外脑\"，而不是提升机器人本体能力；因此它的上限大致是\"把底层 VLA 的潜力榨干\"，无法超越底层模型。\n\n落地价值：距离产品化还有明显距离。卡点有三：真实环境 rollout 太贵导致自进化难以在线进行；仿真到真机迁移会打折；成功率绝对值不足以支撑无人值守。落地需要的条件是：低成本高保真仿真、可快速评估的 harness 配置空间、以及底层 VLA 本身足够强。若这三点满足，该框架可作为\"部署后持续调优\"的轻量方案。\n\n如果只记住一件事：最值得记住的 idea 是——把\"规划逻辑/记忆结构\"从模型权重里剥离出来，做成一个可被环境反馈自动搜索和修改的外部 harness。这个想法特别之处在于，它把智能体的改进从\"重训大模型\"降维成\"改脚手架 + 少量 rollout 评估\"，为机器人持续学习提供了一条工程上可行、成本可控的新路径。\n\n【代码/数据开源情况】\n摘要与给定信息中未提及代码或数据开源情况，也未给出项目主页链接。论文是否承诺后续公开需查阅全文的\"Code Availability\"或项目页说明；就目前可见信息而言，无法确认开源状态，建议关注 arXiv 页面更新或作者主页。"
+      }
+    ]
   }
 ]
