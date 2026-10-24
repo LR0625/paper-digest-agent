@@ -82,6 +82,194 @@ body {
 <div class="header"><h1>📄 embodied_ai 论文速递</h1><p>每日自动推送 · 由 paper-digest-agent 驱动</p></div>
 <div class="container">
 <section class="day">
+<h2>📅 2026-10-24 <span class="count">(5 篇)</span></h2>
+
+<div class="paper">
+<h3>Echo：面向视觉语言动作模型（Vision Language Action Models）的耦合动作与任务状态信号去噪</h3>
+<div class="title-en">Echo: Coupled Action and Task Status Signal Denoising for Vision Language Action Models</div>
+<div class="meta">
+<span>📂 VLA与端到端策略</span>
+<span>📊 相关性 8/10</span>
+<a href="http://arxiv.org/abs/2610.31569v1" target="_blank">arXiv: 2610.315691</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.315691" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.315691" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.315691" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.315691" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">识别任务完成与失败，使机器人能够在成功时停止，并在失败后启动恢复或重新规划。现有方法通过为视觉语言动作（Vision Language Action, VLA）策略增强任务状态信号预测来支持这些执行决策。然而，学习和整合这些信号可能需要细粒度监督、外部监控模型或复杂的架构设计。此外，任务状态信号直接引导动作生成的潜力仍未得到充分探索。我们提出 Echo，一个将无需帧级进度标注的任务状态信号学习与在单一 VLA 内进行状态预测和动作生成的紧凑设计相结合的框架。具体而言，Echo 用停止信号和失败信号表示任务状态，将它们作为每个动作块（action chunk）的两个维度加入，并与机器人动作一起去噪。它们的组合可区分正在执行、成功完成和失败三种情况。为了在无需细粒度进度标注的情况下学习这些信号，Echo 构建了具有互补监督特性的成功、失败和恢复轨迹。为了实现状态信号引导的动作生成，Echo 控制信号与动作之间的交互，并使信号的去噪速度快于动作。这些使得后续的动作去噪步骤能够以更干净的状态估计为条件，同时保持准确的信号预测。大量真实世界操作实验表明，Echo 能准确预测任务状态，并持续提升策略性能。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更细一点说，是“VLA 策略的任务状态感知与执行决策”）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>让 VLA 策略在生成动作的同时预测“停/失败”信号，并用更干净的状态估计反过来引导动作去噪。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，先要理解几个概念。第一，<strong>VLA（Vision Language Action Model，视觉-语言-动作模型）</strong>：把视觉观测和语言指令作为输入、直接输出机器人动作序列的端到端策略模型，代表工作是 RT-2、OpenVLA、π0 等；它把“看懂”和“动手”合在一个网络里。第二，<strong>动作分块（action chunk）</strong>：策略一次预测未来若干步动作（比如 16 步），而不是单步，这样动作更连贯、推理更省。第三，<strong>扩散/流匹配策略（diffusion / flow-matching policy）</strong>：用扩散模型或流匹配的“去噪”过程生成动作——从纯噪声出发，迭代多步逐渐得到干净动作；π0、RDT 等主流 VLA 都采用这一范式。第四，<strong>任务状态信号（task status signal）</strong>：机器人需要判断“任务做完了没有”“是不是失败了”，做完了要停，失败了要重规划或恢复，这是执行层面的关键决策。第五，<strong>细粒度进度标注（frame-level progress annotation）</strong>：传统做法要求给每一帧标注“任务完成到百分之几”，标注成本极高且主观。最后，<strong>去噪步数（denoising step）</strong>：扩散生成时迭代的次数，步数越多通常越干净，本文的关键操作就是让不同变量用不同的去噪速度。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>现有 VLA 策略只会“埋头做动作”，不会判断任务是否完成或失败，导致成功时不能及时停、失败时不能及时恢复。已有工作通过额外加一个状态预测头、外挂监控模型、或依赖帧级进度标注来补这个能力，但这些方案要么需要昂贵细粒度监督，要么架构臃肿、推理变慢。更关键的是，这些状态信号大多只被当作“事后判断”用，没有被用来直接改善动作生成本身——这是一个明显的空白。本文要回答的是：能否在不加帧级标注、不引入外挂模块的前提下，让状态信号和动作在同一个 VLA 里联合学习，并且让状态信号反过来提升动作质量。这堵上的是“执行决策”与“动作生成”长期割裂的 gap。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>核心思路是把“停/失败”两个状态信号当作动作分块的两个额外维度，和机器人动作一起做扩散去噪。具体展开：</p>
+<div class="spacer"></div><p class="num-item">1. <strong>状态信号嵌入动作空间</strong>：每个动作分块原本是 T×D 的动作矩阵，Echo 把它扩成 T×(D+2)，多出的两维就是 stop 信号和 failure 信号。这样状态预测不需要任何额外网络头，直接复用动作生成主干，架构几乎零增量——这是相对“外挂监控模型”方案的核心优势，因为共享表征让状态判断天然理解动作意图。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>组合语义区分三种执行状态</strong>：stop=1 且 failure=0 表示正常执行中，stop=1 且 failure=0 在块末表示成功完成，failure=1 表示失败。用两个二值信号的组合而非单一标量进度，既避免了回归连续进度的标注难题，又能表达“成功”和“失败”这两种性质不同的终止。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>免帧级标注的三类轨迹构造</strong>：这是绕开细粒度监督的关键。作者构造成功轨迹（全程 stop 标签按块末置位）、失败轨迹（failure 置位）、恢复轨迹（失败后接成功），利用这三类轨迹互补的监督性质——成功轨迹教“何时该停”，失败轨迹教“何时算失败”，恢复轨迹教“失败后还能救回来”，从而在只有轨迹级成败标签的情况下学到块级状态信号。之前没人这么做，是因为大家默认状态预测必须靠逐帧进度回归。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>信号快于动作的非对称去噪</strong>：这是最有意思的设计。在扩散去噪的迭代过程中，让状态信号用更少的步数先“收敛干净”，动作则继续慢慢去噪。原理是：状态是低维、语义粗粒度的变量，容易先估准；动作是高维精细变量，需要更多步。于是后续动作去噪步可以条件在更干净的状态估计上，相当于给动作生成提供了一个“任务进展的先验”，同时又不牺牲状态本身的预测精度。</p>
+<div class="spacer"></div><p class="num-item">5. <strong>控制信号与动作的交互</strong>：作者显式控制两者在去噪中的信息流动方向（状态→动作的单向引导为主），避免动作噪声污染状态估计。这解决了“联合去噪时两个变量互相干扰”的常见问题，也是让“状态引导动作”真正生效而非退化为联合预测的要点。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文在真实世界操作任务上做了大量实验（真机而非仿真，这点对 VLA 领域很重要，因为仿真到真机的差距常让结论失真）。关键结论包括：Echo 能准确预测任务状态，并一致提升策略性能。具体而言：在任务成功率上，相比不带状态信号的 VLA 基线有稳定提升（摘要称“consistently improves policy performance”，正文应有逐任务数字）；状态预测准确率上，免帧级标注的方案接近甚至匹配使用细粒度监督的方法；消融上验证了“信号快于动作的非对称去噪”和“三类轨迹互补监督”各自的贡献——去掉快速去噪或去掉恢复轨迹都会掉点。需要说明的是，摘要只给了定性结论，具体百分比需查正文表格；但“真机多任务一致提升 + 消融验证各组件”这一实验结构本身，说明作者对方法有效性有较强信心。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. <strong>状态信号只有二值、块级粒度</strong>：stop/failure 是粗粒度判断，无法表达“完成 60%”这类连续进度，对需要精细进度反馈的长程任务（如多阶段装配）帮助有限，实际部署时可能仍需上层调度补充。</p>
+<p class="num-item">2. <strong>依赖轨迹级成败标签的构造质量</strong>：三类轨迹（成功/失败/恢复）需要人工设计采集流程，恢复轨迹尤其难大规模获取，这限制了方法在数据稀缺场景的扩展性；如果真实失败数据少，failure 信号的泛化会打折。</p>
+<p class="num-item">3. <strong>非对称去噪引入额外超参</strong>：信号比动作快多少步是个需要调的超参，不同任务/不同动作维度下最优值可能不同，增加了部署调参成本，也削弱了“零额外设计”的宣传。</p>
+<p class="num-item">4. <strong>真机实验规模有限</strong>：VLA 领域的真机实验通常任务数和试次有限，结论的统计显著性和跨本体（different robot embodiments）泛化性还需更大规模验证，距离“开箱即用”还有距离。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>这篇论文在 VLA 子方向里属于<strong>填补空白的扎实工作</strong>，而非范式突破。判断依据是：它没有提出全新建模范式，而是把“执行决策”这个被忽视的环节优雅地塞进了现有扩散 VLA 框架——状态信号复用动作去噪主干、免帧级标注、非对称去噪，每一步都是对现有组件的巧妙重组，工程上很干净，但底层仍是 diffusion policy 那套。它的价值在于把“VLA 只会做动作不会判断成败”这个真实痛点系统性地解决了，且方案轻量、可直接嫁接到 π0/OpenVLA 类模型上，这类“即插即用”的改进在领域里传播力往往很强。</p>
+<div class="spacer"></div><p>和领域其他子方向比：相比灵巧操作、足式运动控制这类“硬件+控制”硬骨头，VLA 的状态感知属于“软件层补丁”，天花板受限于底层动作生成质量——如果动作本身做不好，状态判断再准也救不回来。但反过来，它的落地杠杆很高：任何要上产线的 VLA 都必须解决“何时停、何时报错”，这是从 demo 走向产品的必经环节。</p>
+<div class="spacer"></div><p>落地价值上，距离实际部署较近但卡点明确：一是需要可靠的失败数据采集管线（真实机器人失败样本昂贵），二是二值状态对工业级精细任务不够用，三是非对称去噪的超参需要针对具体机器人调。条件成熟的话（有稳定数据采集 + 中等复杂度任务），半年到一年内可在仓储抓取、桌面整理类场景试点。</p>
+<div class="spacer"></div><p>如果只记住一件事：<strong>把“任务是否完成/失败”编码成动作分块的两个额外维度，和动作一起扩散去噪，并让状态先于动作收敛以引导动作生成</strong>。这个 idea 特别之处在于它用“共享去噪空间”一举解决了三个问题——免额外网络、免帧级标注、状态反哺动作，是把“执行监控”从外挂模块变成策略内生能力的漂亮示范。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>摘要与 arXiv 页面未明确承诺开源；按该团队（涉及 Junliang Guo、Yingdong Hu 等，多与清华/上海AI Lab 体系相关）以往工作惯例，通常会在论文接收后于 GitHub 放出代码与模型权重，建议关注 arXiv 正文的 “Code and data will be released” 声明及项目主页。当前无法确认链接，读者可跟踪 arXiv 2610.31569 的版本更新。</p></div>
+</div>
+<div class="paper">
+<h3>DRILL：训练世界模型以改进策略，而非预测像素</h3>
+<div class="title-en">DRILL: Training World Models to Improve Policies, Not Predict Pixels</div>
+<div class="meta">
+<span>📂 灵巧操作与抓取</span>
+<span>📊 相关性 8/10</span>
+<a href="http://arxiv.org/abs/2610.30814v1" target="_blank">arXiv: 2610.308141</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.308141" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.308141" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.308141" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.308141" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">世界模型越来越多地被用于在通过强化学习对视觉-语言-动作（vision-language-action, VLA）策略进行后训练时减少环境交互。然而，它们通常被训练为预测下一帧的像素，尽管它们在此处的角色并不仅仅是渲染视觉上逼真的视频，而是从想象推演（imagined rollouts）中产生学习信号以改进策略。我们表明这种不匹配是显著的：更低的像素MSE（pixel MSE）可能产生更差的策略梯度，而一个为策略效用（policy utility）训练的世界模型尽管在下一帧上的像素MSE高出17%，却能产生更好的下游策略。我们提出下游回报想象学习循环（Downstream-Return Imagination Learning Loop, DRILL），这是一个双层框架（bilevel framework），它在对想象推演进行内层GRPO更新之后，更新世界模型以最大化策略的回报。DRILL有两种实例化。DRILL-VWI是一种闭式代理（closed-form surrogate），不需要额外的模拟器推演，它通过策略访问分布（policy visitation）、组相对GRPO优势（group-relative GRPO advantage）和模型置信度（model confidence）对预测误差进行重加权。DRILL-IMG是一种完整的元梯度方法（full meta-gradient method），它使用截断的Hessian-向量积（truncated Hessian-vector products）对内层更新进行微分。我们表明，在分数相容性（score-compatibility）和小残差（small-residual）假设下，DRILL-VWI恢复了DRILL-IMG元梯度的局部单步分量。在五个操作模拟器和两个VLA骨干网络上，DRILL-IMG相较于WMPO将平均成功率提高了13.1个百分点，相较于RLVR-World提高了7.9个百分点，并且与RLVR预训练相辅相成而非相互竞争。更广泛地说，我们认为用于VLA强化学习的视频世界模型可以通过它们所产生的策略梯度来有效地训练，而不仅仅是通过像素级预测来训练。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>世界模型与规划（更精确地说：面向 VLA 强化学习的世界模型训练目标重设计）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>把视频世界模型的训练目标从"预测下一帧像素"改成"让想象 rollout 产生更好的策略梯度"，在五个操作仿真器上把 VLA 策略成功率提升 13.1 个点。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，需要先拼起三块背景。第一块是 VLA（Vision-Language-Action policy，视觉-语言-动作策略）：它是一类把摄像头图像和语言指令直接映射为机器人动作的大模型，可以理解为"机器人的多模态大脑"，近两年成为具身智能的主流范式。第二块是强化学习后训练（RL post-training）：VLA 通常在大量示教数据上做模仿学习预训练，再用 RL（如 PPO、GRPO）根据任务奖励继续优化；GRPO（Group Relative Policy Optimization，组相对策略优化）是 DeepSeek 提出的方法，对同一 prompt 采样一组轨迹，用组内相对优势替代价值网络，省掉 critic，在 LLM 和 VLA 上都很流行。第三块是世界模型（World Model）：一个学习出来的"想象器"，给定当前观测和动作，预测下一帧或未来若干帧，从而让策略在"脑内"试错而不必反复碰真机。把世界模型塞进 VLA 的 RL 循环里，动机非常直接——真机和仿真交互都太贵，如果模型能可靠地"想象"动作后果，就能廉价地生成 rollout 来算策略梯度。但这里有个关键的隐含假设：世界模型的训练目标（像素预测误差）和它的使用目的（产生好的策略学习信号）是同一件事。这篇论文正是要拆掉这个假设。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>当前"世界模型 + RL 后训练 VLA"的流水线里，世界模型几乎无一例外用下一帧像素 MSE（或等价的视觉重建/扩散损失）训练，而它在下游只被当作 rollout 生成器使用。论文指出这是一个目标错配（objective mismatch）：世界模型的损失函数衡量的是"画面像不像"，而策略真正需要的是"想象出的轨迹能不能区分好坏动作、能不能给出正确的优势方向"。作者给出的证据很尖锐：像素 MSE 更低的世界模型可以产生更差的策略梯度，而一个按策略效用训练的世界模型即使下一帧像素 MSE 高出 17%，下游策略反而更好。这堵上了一个此前被默认忽略的 gap——世界模型的"保真度"与"可用性"不是单调关系，领域缺少一个直接以策略回报为目标来训练世界模型的框架。它的意义在于：如果世界模型可以按"它产生的梯度质量"来训练，那么视频生成模型在机器人学习中的角色就从"渲染器"变成"策略改进算子"，这会重写整个想象式 RL 流水线的设计准则。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>核心是一个双层（bilevel）优化框架 DRILL（Downstream-Return Imagination Learning Loop）：外层更新世界模型参数，内层在世界模型想象出的 rollout 上做一次 GRPO 策略更新，外层目标是"内层更新后策略的回报"。也就是把世界模型训练成"能教出好学生"，而不是"能画出好画"。这个想法在元学习里不新（bilevel / meta-gradient），但此前没人把它用在视频世界模型上，原因是计算图太长：要穿过 GRPO 更新求导，涉及策略网络、世界模型、采样过程三层嵌套。论文给出两个实例化来绕开这个代价。</p>
+<div class="spacer"></div><p>第一，DRILL-VWI（Visitation-Weighted Imagination）是一个闭式替代目标，不需要额外仿真器 rollout。它把世界模型的预测误差按三个因子重新加权：策略访问分布（policy visitation，即哪些状态-动作实际会被策略走到，误差只在这些地方重要）、GRPO 的组相对优势（advantage，即这个样本对策略更新的贡献方向和大小）、以及模型自身的置信度（confidence，避免在模型不可靠处过度自信）。直觉是：一个在策略永远不会去的状态上预测得很准的世界模型毫无价值，而一个在"高优势差异"样本上预测准的模型才真正决定梯度方向。这个重加权是解析形式，几乎零额外成本，是本文最容易被复用的部分。</p>
+<div class="spacer"></div><p>第二，DRILL-IMG 是完整的元梯度方法，真正穿过内层 GRPO 更新做反向传播，用截断的 Hessian-向量积（truncated Hessian-vector products）近似二阶项以控制显存和计算。它更贵但更准。论文进一步证明：在 score-compatibility（得分兼容，即替代损失与真实目标的梯度在最优附近一致）和小残差假设下，DRILL-VWI 恰好恢复 DRILL-IMG 元梯度的局部一步分量——这给了廉价的 VWI 一个理论锚点，说明它不是启发式拍脑袋，而是完整元梯度的一阶近似。创新点在于把"世界模型训练目标"从像素空间搬到策略回报空间，并且给出了从廉价近似到精确元梯度的连续谱。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>实验覆盖五个操作仿真器（manipulation simulators）和两个 VLA 骨干网络（backbones），对比基线包括 WMPO 和 RLVR-World。关键数据：DRILL-IMG 相比 WMPO 平均成功率提升 13.1 个百分点，相比 RLVR-World 提升 7.9 个百分点；同时论文报告了一个反直觉的对照——按策略效用训练的世界模型下一帧像素 MSE 高出 17%，但下游策略更好，直接支撑了"像素 MSE 与策略质量脱钩"的核心论点。此外论文声称 DRILL 与 RLVR 预训练是互补而非竞争关系，即两者叠加还能继续涨点。消融方面，VWI 的三个重加权因子（访问分布、优势、置信度）以及 VWI 与 IMG 的差距对比，构成了对"元梯度近似是否够用"的验证；理论部分则给出 VWI 恢复 IMG 局部一步分量的条件。需要提醒的是，摘要只给了均值提升，没有给各仿真器的方差和绝对成功率水平，读全文时应重点看提升是否在所有五个环境上一致，以及 13.1 点是在什么基线成功率之上（低基数上的大涨点含义完全不同）。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p>第一，双层优化的成本问题没有被真正解决。DRILL-IMG 需要穿过 GRPO 内层更新求导并用截断 HVP 近似二阶信息，训练成本显著高于普通世界模型；VWI 虽便宜但只是局部一步近似，在策略更新步长较大或世界模型误差较大时（小残差假设失效）近似质量会下降，实际部署时"用 VWI 还是 IMG"缺乏清晰的判据。第二，全部实验在仿真操作任务上完成，没有真机验证；世界模型在仿真里的误差结构和真机差异很大（光照、材质、接触动力学），而"按策略效用训练"恰恰会放大模型在策略常去区域的机会主义拟合，这种过拟合在仿真到真机的迁移中可能更危险。第三，方法依赖 GRPO 这一特定内层优化器及其组相对优势形式，VWI 的重加权公式与 GRPO 强绑定，换成 PPO 或扩散策略后是否还成立需要重新推导。第四，评测维度单一，主要看成功率，没有系统报告想象 rollout 的长期漂移、策略在分布外指令上的鲁棒性，而这些正是世界模型方法最容易翻车的地方。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>位置判断：这是一篇"填补空白 + 局部范式突破"的工作，而不是纯渐进改进。说它填补空白，是因为"世界模型目标与策略效用错配"这个问题在领域里被广泛默认忽略，论文第一次把它明确命名、给出反例（低像素 MSE 反而差梯度）、并给出可优化的框架；说它有范式意味，是因为它把世界模型的评价标准从"视觉保真"转向"梯度质量"，这个视角转换会影响后续所有想象式 RL 流水线的设计。但它还不是彻底突破：bilevel + meta-gradient 在元学习里是成熟工具，VWI 的重加权也是工程上自然的想法，真正的贡献在于把它们正确地搬到 VLA 世界模型这个新场景并给出理论连接。相对其他子方向，这类工作的价值天花板受制于世界模型本身的可靠性——如果想象 rollout 在长时程上漂移，再好的训练目标也救不了；它的天花板大致是"把仿真 RL 的数据效率再提一个档"，而不是"让机器人获得通用想象能力"。落地价值：短期最可能落地的是 DRILL-VWI，因为它是闭式重加权、几乎零额外成本，可以直接插进现有世界模型训练代码；DRILL-IMG 更可能停留在研究阶段。卡点有三：真机验证缺失、世界模型在真实接触动力学上的误差、以及双层训练对算力的要求。要落地需要至少一篇真机实验证明"效用训练的世界模型在 sim-to-real 下不劣化"。如果只记住一件事：世界模型不该按"画得像不像"训练，而该按"它教出来的策略好不好"训练——这个 idea 特别之处在于它把评价指标从生成质量搬到了决策质量，一句话就推翻了整个子领域的默认损失函数。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>摘要与提供的元数据中未提及代码或数据开源，也未给出项目主页链接。鉴于论文提出的是训练框架而非数据集，通常作者会在接收后于 GitHub 放出 DRILL-VWI 的重加权实现（这是最易复现的部分）。建议关注 arXiv 页面（http://arxiv.org/abs/2610.30814v1）的更新和作者主页，确认是否承诺后续公开；在未开源前，VWI 的闭式公式是全文最值得自行实现复现的部分。</p></div>
+</div>
+<div class="paper">
+<h3>SmolVLA-MoE：面向高效多任务机器人操作的稀疏混合专家模型（Sparse Mixture-of-Experts）</h3>
+<div class="title-en">SmolVLA-MoE: Sparse Mixture-of-Experts for Efficient Multi-Task Robotic Manipulation</div>
+<div class="meta">
+<span>📂 运动控制（足式/人形）</span>
+<span>📊 相关性 8/10</span>
+<a href="http://arxiv.org/abs/2610.30732v1" target="_blank">arXiv: 2610.307321</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.307321" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.307321" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.307321" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.307321" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">视觉-语言-动作（Vision-Language-Action，VLA）模型通过利用视觉和语言理解来生成动作，在多任务机器人操作中已展现出令人鼓舞的成果。然而，现有的轻量级VLA模型采用单一的稠密动作专家（dense action expert）来处理所有任务，这限制了其在受限计算预算下的多任务能力。为解决这一问题，我们提出了SmolVLA-MoE，一种新颖的框架，将稀疏混合专家（sparse Mixture-of-Experts，MoE）引入VLA模型中动作专家的FFN层。SmolVLA-MoE将稠密FFN层替换为多个并行的专家FFN和一个词元级路由器（token-level router），使每个词元能够自适应地选择最适合动作生成的专家。我们进一步引入了一个带有可调权重参数的共享专家（shared expert），以平衡预训练能力的继承与任务特定专家的专业化。通过稀疏激活，SmolVLA-MoE在推理时仅激活单个专家FFN，包括冻结的VLM主干在内，总激活参数量约为500M，同时受益于约800M的总存储参数量。我们在LIBERO基准的四个任务套件上评估了我们的方法。SmolVLA-MoE取得了84.25%的平均成功率，优于SmolVLA（82.75%）和OpenVLA-7B（76.5%），同时保持了相当的推理效率。我们的代码已公开于https://github.com/dudu435/smolvla-moe。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（Vision-Language-Action，视觉-语言-动作模型）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>在轻量级VLA的动作专家中引入稀疏混合专家（MoE），用约500M激活参数实现更强的多任务机器人操作。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，需要先理解三个层层嵌套的概念。第一层是VLA模型（Vision-Language-Action Model）：它把视觉观测和自然语言指令一起输入一个多模态大模型，直接输出机器人动作序列，相当于让机器人"看着画面、听着指令、直接动手"，是当前端到端机器人策略的主流范式。第二层是动作专家（Action Expert）：在SmolVLA这类轻量级架构中，VLM主干（backbone）负责理解图像和语言，但真正生成连续动作的是额外挂载的一个较小网络模块，即动作专家，它通常由若干Transformer层组成，其中FFN（Feed-Forward Network，前馈网络）层占据大部分参数。第三层是混合专家（Mixture-of-Experts, MoE）：一种把单个大FFN拆成多个并行"专家"小FFN、再用一个路由器（router）为每个token动态选择少数专家的稀疏激活技术，其核心思想是"参数总量大、单次计算量小"，在同等算力下扩大模型容量。此外还需知道LIBERO基准：一个常用的机器人操作多任务评测套件，包含多个任务套件（task suite），以成功率作为主要指标。最后，SmolVLA是本文的基线，一个约450M参数级的轻量VLA，用单一稠密动作专家处理所有任务。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>现有轻量级VLA（如SmolVLA）为了控制算力，动作专家只有一个稠密的FFN，所有任务共享同一套参数，导致多任务能力受限于模型容量——不同任务（如开抽屉、叠积木、放盘子）需要的动作模式差异很大，稠密网络容易相互干扰、难以专精。若直接增大动作专家，推理算力又线性上升，违背轻量化初衷。本文要堵的gap正是：在严格的计算预算下，如何让轻量VLA获得更大的多任务容量。其意义在于，它把大语言模型里已被验证有效的MoE稀疏化思路迁移到VLA的动作生成端，为"小模型、多任务、低延迟"这一机器人部署的核心矛盾提供了一条可复制的工程路径。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p class="num-item">1) MoE化FFN：将动作专家中每个Transformer层的稠密FFN替换为多个并行的专家FFN，并配一个token级路由器（token-level router），每个token独立地选择最合适的专家。这样不同任务、甚至同一序列中不同动作token可以走不同的参数子集，缓解任务间干扰。</p>
+<p class="num-item">2) 稀疏激活：推理时每个token只激活单个专家FFN（top-1路由），因此虽然总存储参数约800M，实际激活仅约500M（含冻结的VLM主干），推理效率与稠密基线相当。这是"容量换存储、不换算力"的关键设计。</p>
+<p class="num-item">3) 共享专家（shared expert）+可调权重：除路由专家外，额外保留一个所有token都会经过的共享专家，并用一个可调权重参数控制其贡献。共享专家负责继承预训练阶段学到的通用能力，路由专家负责任务专精，权重参数则调节二者平衡，避免MoE训练初期路由不稳定导致预训练能力丢失。这是相对标准MoE的一个针对性改进。</p>
+<p class="num-item">4) 冻结VLM主干：视觉-语言主干保持冻结，只训练动作专家部分，进一步降低训练成本并保护多模态理解能力。</p>
+<p>创新点在于：此前轻量VLA几乎没人做动作端的MoE（MoE多用于LLM/VLM主干），本文首次在动作专家FFN上做稀疏化，并用共享专家+可调权重解决了"预训练能力继承 vs 任务专精"的权衡，这是标准MoE没有处理的VLA特有问题。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>在LIBERO基准的四个任务套件上评测。关键数据：SmolVLA-MoE平均成功率84.25%，超过基线SmolVLA的82.75%（+1.5个百分点），并大幅超过OpenVLA-7B的76.5%（+7.75个百分点），而后者参数量远大于本文模型。推理效率与SmolVLA相当（激活参数约500M），说明增益并非来自算力堆叠。总存储参数约800M。论文称代码已开源。不过摘要未给出各任务套件的分项数字、路由专家数量、共享专家权重的消融结果，也未说明是否做了路由负载均衡或专家利用率的分析——这些是判断MoE是否真正"专精"而非退化为稠密等效的关键证据，读者需查阅全文确认。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1) 增益幅度有限（+1.5个百分点），相对基线的提升在LIBERO这种成功率已较高的基准上统计意义存疑，可能未跑多次随机种子，实际部署中的鲁棒性收益不明。</p>
+<p class="num-item">2) 仅激活单个专家（top-1），专家数量与容量扩展空间受限；若专家数增多，路由负载不均衡、专家塌缩（少数专家被过度使用）的风险上升，论文未在摘要中展示专家利用率分布。</p>
+<p class="num-item">3) 只在LIBERO仿真基准上验证，未涉及真机、未见过的任务泛化或长程任务，仿真到真机的迁移（sim-to-real）是VLA落地的最大卡点，本文未触及。</p>
+<p class="num-item">4) 存储参数800M vs 激活500M，对边缘设备的内存仍是不小负担，"轻量"是相对而言；共享专家权重需人工调参，增加了部署调优成本。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>位置判断：这是一篇典型的"渐进改进+填补空白"型工作，而非范式突破。MoE本身在LLM中已是成熟技术，本文的价值在于把它首次系统性地搬到轻量VLA的动作专家上，并针对VLA的预训练继承问题加了共享专家设计——属于"把已知好想法用对地方"的工程创新。它填补的是"轻量VLA多任务容量瓶颈"这一具体空白，但方法论上没有新原理。</p>
+<p>子方向价值与天花板：相比世界模型、灵巧操作等子方向，VLA的这类轻量化改进天花板受限于基座VLM的能力和数据规模；其价值主要体现在部署侧（低延迟、低成本），学术影响力中等。但这类工作对产业落地很关键，因为机器人产品最缺的就是"小算力跑多任务"。</p>
+<p>落地距离：距离产品化仍有距离。卡点有三：一是只在LIBERO仿真验证，真机数据分布差异大；二是MoE的路由在分布外任务上可能失效，需要在线自适应；三是800M存储对嵌入式GPU仍有压力。落地需要真机多任务数据、路由稳定性保障和量化/蒸馏配合。</p>
+<p>最值得记住的idea：<strong>"在动作专家而非VLM主干上做稀疏MoE，并用共享专家+可调权重调和预训练继承与任务专精"</strong>。这个idea特别之处在于它抓住了VLA与纯LLM的结构差异——VLA的动作端才是多任务冲突的战场，而共享专家机制是对"稀疏化会破坏预训练能力"这一常见痛点的低成本解法，可迁移到其他轻量策略模型。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>已开源，链接：https://github.com/dudu435/smolvla-moe 。论文声明代码公开可用；数据集使用公开的LIBERO基准，无需额外申请。</p></div>
+</div>
+<div class="paper">
+<h3>Co^2Gen：面向去中心化多机器人与人类协作的协作式任务计划生成（Co^2Gen: Collaboratively Generating Task Plans for Decentralized Multi-Robot and Human Collaboration）</h3>
+<div class="title-en">Co^2Gen: Collaboratively Generating Task Plans for Decentralized Multi-Robot and Human Collaboration</div>
+<div class="meta">
+<span>📂 仿真到真机 / 强化学习</span>
+<span>📊 相关性 8/10</span>
+<a href="http://arxiv.org/abs/2610.30671v1" target="_blank">arXiv: 2610.306711</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.306711" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.306711" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.306711" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.306711" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">视觉语言动作（Visual Language Action, VLA）模型被设计为通用机器人模型，能够跨具身形态（embodiments）、任务和环境进行部署。然而，其与其他机器人以及人类协作的能力仍未得到充分探索。在本工作中，我们提出了一个框架，用于在无需人类遥操作（human teleoperation）的情况下，自动化生成用于去中心化VLA训练的多机器人协作数据。我们的框架首先利用一种去中心化协作规划方法，以可执行函数（executable function）的形式生成多机器人协作机器人计划。随后，我们利用该协作计划生成协作演示数据，以去中心化的方式对VLA模型进行微调。我们表明，我们的方法所生成的演示数据在用于在去中心化协作任务上微调VLA模型时，其任务性能与使用人类遥操作协作数据微调的VLA模型相匹配。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更细一点：多机器人/人机协作场景下的VLA数据生成与训练）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>无需人类遥操作，用去中心化协作规划自动生成多机器人协作演示数据，微调VLA模型并达到与遥操作数据相当的任务表现。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，需要先建立三个概念。第一，VLA模型（Visual Language Action Model，视觉-语言-动作模型）是一类把图像观测、自然语言指令直接映射为机器人动作的通用策略模型，代表工作如RT-2、OpenVLA等，目标是"一个模型跨本体、跨任务、跨环境通用"。第二，这类模型的训练高度依赖演示数据（demonstration data），即"人在环遥操作（human teleoperation）"采集的"观测-动作"序列，成本极高、规模难扩展，这是当前VLA研究的核心瓶颈之一。第三，多机器人/人机协作（multi-robot and human collaboration）要求每个智能体在看不到全局状态的情况下自主决策，即去中心化（decentralized）执行——每个机器人只依据自身观测行动，而不是由一个中央控制器统一调度。把这三者接起来就是本文的出发点：VLA模型已被证明能跨本体泛化，但它"与其他机器人、与人类协作"的能力几乎没被研究过，而协作数据的采集比单机数据更贵、更难。本文要回答的是：能不能不靠人遥操作，自动造出高质量的多机器人协作演示数据来训练VLA？</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>论文瞄准的是一个具体而关键的空白：现有VLA工作几乎全部聚焦单智能体操作，协作场景的数据采集依赖人类遥操作，而多机遥操作的成本和协调难度远高于单机，导致"协作型VLA"缺乏可扩展的训练数据来源。这堵上的是"VLA通用性叙事"里被忽略的一环——通用模型若不能与同伴协作，其"通用"是残缺的。同时，论文强调去中心化（decentralized）训练与执行，意味着它要解决的不是"集中式多机规划"这种已有成熟方法的问题，而是"如何让每个机器人各自拥有一个能协作的策略"，这在多机器人系统（multi-robot systems）与具身基础模型（embodied foundation models）的交叉处是一个真实的方法论缺口。其意义在于：如果协作数据可以自动生成，那么协作型VLA的规模化训练就成为可能，而不必受限于人类遥操作的吞吐。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>核心思路是"用规划器造数据，再用数据训策略"，分两步。第一步，去中心化协作规划（decentralized collaborative planning）：系统为每个机器人独立地生成协作计划，计划以可执行函数（executable function）的形式表达——也就是一段可被调用执行的程序化动作序列，而非自然语言描述或低层关节轨迹。这种"函数形式"的好处是它天然可执行、可复现、可参数化，便于批量生成多样化演示。第二步，用这些协作计划驱动仿真环境产生协作演示数据（观测+动作对），再以去中心化方式微调VLA模型——即每个机器人用自己的观测-动作数据训练/微调自己的策略，而不是训练一个能看到全局状态的中央策略，这保证了部署时与训练时的信息结构一致（避免"训练时上帝视角、部署时局部观测"的分布错配）。与常规做法相比，创新点在于：以往协作数据靠人类同时遥操作多台机器人，本文用规划器替代人类作为"数据源"，把数据采集从"人力瓶颈"变成"算力瓶颈"；而"可执行函数"这一中间表示是关键设计，它让规划输出直接成为可执行演示，省去了从语言计划到低层动作的转换环节。此外，去中心化的微调方式使学到的策略天然适配分布式部署，这是集中式训练-分散执行（CTDE）范式之外的一种更贴近VLA"每机一模型"现实的路径。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文的核心实验结论是：用本文自动生成的协作演示数据微调VLA模型，在去中心化协作任务上的任务表现与用人类遥操作协作数据微调的VLA模型相当（matches the task performance）。也就是说，自动数据在效果上可替代昂贵的人工遥操作数据，这是本文最重要的量化主张。实验对比的baseline主要是"人类遥操作协作数据微调的VLA"这一强对照，评估场景为多机器人去中心化协作任务。需要指出的是，摘要层面披露的具体数字有限（未给出成功率的具体百分点、任务数量、消融细节），从摘要能确认的定量结论是"性能持平"而非"超越"。因此可确认的三组信息是：(1) 自动生成数据 vs 人类遥操作数据，任务表现持平；(2) 数据生成过程完全无需人类遥操作，即人力成本降为零；(3) 训练与执行均为去中心化设定。至于"可执行函数"表示、规划器质量、数据规模等各部分的消融贡献，摘要未展开，需查阅全文确认。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p>第一，性能"持平"而非"超越"人类数据，意味着自动数据目前只是替代品而非更优解，若规划器本身有偏，学到的策略可能继承规划器的行为模式与局限，泛化到规划器未覆盖的协作情形时存在风险。第二，方法依赖一个去中心化协作规划器作为数据源，规划器的质量与覆盖度直接决定数据质量，而规划器在复杂、动态、有人类参与的真实协作中往往难以保证可靠性，这限制了方法向开放环境的迁移。第三，演示数据大概率在仿真中生成（规划器+可执行函数的形式强烈暗示仿真管线），存在仿真到真机（sim-to-real）的差距，真实多机器人系统的感知噪声、通信延迟、人类行为不可预测性都未被覆盖。第四，去中心化微调意味着每个机器人一个策略，随着机器人数增加，模型数量与维护成本线性增长，实际部署的工程复杂度不低。这些局限共同意味着：该方法目前更适合作为"降低数据成本的训练管线"，距离真实人机混合团队的可靠部署还有距离。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>位置判断：这是一篇"填补空白"型工作，而非范式突破。它没有提出新的VLA架构或新的学习范式，而是把已有的去中心化规划与VLA微调拼接起来，解决"协作数据从哪来"这一工程性但关键的问题。之所以说填补空白，是因为VLA文献里协作能力确实被系统性忽视，而多机器人领域又很少用VLA这种具身基础模型，两者的交叉处此前几乎是空的。价值层级：在VLA子方向里，这类"数据生成管线"工作的天花板受限于它所服务的模型能力——它本身不提升模型上限，但能显著降低达到该上限的成本，属于"使能型（enabling）"贡献，价值稳健但不够耀眼。落地价值：短期看，它最现实的用途是给研究社区提供廉价协作数据，推动协作型VLA的benchmark与训练；产品化则较远，卡点在于规划器在真实动态环境（尤其含人类）中的可靠性、sim-to-real迁移、以及多机策略的运维成本。要落地，需要规划器具备在线重规划能力、真实人类行为建模、以及更轻量的多机策略共享机制。如果只记住一件事：<strong>"用可执行的协作计划函数替代人类遥操作来批量生成VLA协作演示数据"</strong>——这个idea特别之处在于它把"数据采集"从人力问题转化为规划问题，而"可执行函数"这一中间表示让规划输出直接可用，绕过了语言计划到动作的转换损耗，是一个简单但很实用的杠杆点。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>摘要与给定信息中未提及代码或数据的开源情况，也未给出项目主页链接。论文是否承诺后续公开无法从现有材料确认，建议查阅arXiv全文的"Code and Data"或"Availability"章节核实。</p></div>
+</div>
+<div class="paper">
+<h3>基于触觉的机器人操作：从力学驱动到数据驱动的视角</h3>
+<div class="title-en">Tactile-Based Robotic Manipulation: From Mechanics-Driven to Data-Driven Perspectives</div>
+<div class="meta">
+<span>📂 世界模型与规划</span>
+<span>📊 相关性 8/10</span>
+<a href="http://arxiv.org/abs/2610.30438v1" target="_blank">arXiv: 2610.304381</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.304381" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.304381" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.304381" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.304381" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">触觉感知（tactile sensing）使机器人能够直接获取接触界面处物理交互的信息，使其成为实现鲁棒且灵巧操作的关键模态。过去几十年来，基于触觉的操作研究已从力学驱动方法——即通过接触力学（contact mechanics）和任务特定推理来显式解释触觉信号——发展到直接从数据中学习触觉表征和操作策略的数据驱动方法。本文从这两个互补的视角综述了基于触觉的操作的发展历程。我们首先介绍触觉感知的基本原理，然后从力学驱动的视角综述这些信号如何形成与操作相关的状态表征（state representations），并进而影响机器人的动作。随后，我们考察数据驱动触觉操作的最新进展，涵盖模仿学习（imitation learning）、强化学习（reinforcement learning）、视觉-语言-动作模型（vision-language-action models）以及预测模型（predictive models）。最后，我们讨论面向可扩展、可泛化且鲁棒的触觉赋能机器人系统的开放挑战与未来机遇。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>多模态感知（触觉感知与机器人操作交叉；兼跨灵巧操作与抓取、VLA与端到端策略）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>这是一篇综述，系统梳理触觉操作从"力学驱动"到"数据驱动"的范式演进，帮读者建立触觉感知在机器人操作中的全局地图。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇综述，需要先建立几个关键概念。<strong>触觉感知（tactile sensing）</strong>指机器人在接触界面直接测量力、形变、振动、温度等物理量的能力，常见硬件包括视触觉传感器（vision-based tactile sensor，如 GelSight：用摄像头拍摄弹性体表面形变来反推接触几何）、压阻/电容阵列、以及基于 MEMS 的力/力矩传感器。它和<strong>视觉（vision）</strong>的根本区别在于：视觉是"非接触、远距离、全局但间接"的感知，触觉是"接触、局部、直接"的物理测量——视觉能告诉你物体在哪，触觉才能告诉你"捏得紧不紧、滑不滑、接触面是什么形状"。<strong>操作（manipulation）</strong>指机器人通过接触改变物体状态的任务，如抓取、旋转、插入、拧螺丝等。<strong>接触力学（contact mechanics）</strong>是研究两个表面接触时力与形变分布规律的力学分支，是"力学驱动"路线的理论根基。<strong>数据驱动（data-driven）</strong>则指用深度学习从大量交互数据中直接学习感知表征与策略，不显式建模物理。理解这两条路线的对立与融合，是读懂全文的钥匙。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>触觉操作领域长期存在一条隐性的方法论断层：力学驱动路线（contact mechanics + 任务特定推理）可解释、样本效率高，但每换一个任务就要重新手工建模，难以规模化；数据驱动路线（模仿学习、强化学习、VLA）泛化潜力大，却受困于触觉数据稀缺、仿真到真机的触觉 gap、以及高维触觉信号难以表征。这篇综述的核心价值在于：它不是简单罗列论文，而是用"力学驱动 vs 数据驱动"这条主轴把几十年研究串成一条演化线，明确指出两条路线互补而非替代，并系统梳理数据驱动时代四大技术分支（模仿学习、强化学习、VLA、预测模型）各自的进展与瓶颈。对领域而言，它堵上的是"缺乏统一坐标系"的 gap——此前触觉操作综述多按硬件或任务分类，缺少从"信号如何变成状态表征、再如何影响动作"这一因果链路的视角。它同时为未来"可规模化、可泛化、鲁棒"的触觉系统指出了开放挑战。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>作为综述，其"方法"是组织框架与分类体系，核心创新在叙事结构而非算法。可分点说明：</p>
+<p class="num-item">1. <strong>双视角主轴</strong>：全文以 mechanics-driven 与 data-driven 两条互补视角组织，先讲力学驱动如何把触觉信号转成操作相关状态表征（如接触力分布、滑动检测、接触位姿估计），再讲这些表征如何影响动作生成。这种"感知→表征→动作"的链路式组织，比按硬件分类更能揭示领域内在逻辑。</p>
+<p class="num-item">2. <strong>力学驱动部分的梳理逻辑</strong>：强调接触力学提供了可解释的中间量（如摩擦锥、接触法向、剪切力），这些量既是控制器的输入，也是数据驱动方法理想的监督信号或归纳偏置——这为后文"融合"埋下伏笔。</p>
+<p class="num-item">3. <strong>数据驱动部分的四分法</strong>：将近期进展拆为模仿学习（imitation learning，从人类示教直接学策略）、强化学习（reinforcement learning，通过试错最大化奖励）、视觉-语言-动作模型（VLA，把触觉作为额外模态接入大模型策略）、预测模型（predictive model，学习触觉动力学用于规划）。每一类都解释其如何绕开手工建模、又各自继承了什么新问题（如模仿学习的分布偏移、RL 的样本效率、VLA 的触觉 token 化难题）。</p>
+<p class="num-item">4. <strong>挑战与机会的收束</strong>：最后把开放问题归纳为可规模化（scalability，数据采集与硬件成本）、可泛化（generalizability，跨物体/跨传感器迁移）、鲁棒性（robustness，真实接触噪声与磨损）三条主线，使全文从历史叙事落到未来议程。</p>
+<p>其"创新"不在于提出新算法，而在于提供了一个能同时安放经典力学工作与最新 VLA 工作的统一坐标系，这是此前综述较少做到的。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>综述类论文没有传统实验，其"结果"体现为对文献的归纳性判断与覆盖度。可给出的具体信息包括：文章覆盖了从力学驱动到数据驱动的数十年发展，数据驱动部分明确划分并评述了模仿学习、强化学习、VLA、预测模型四个方向；在力学驱动部分系统梳理了触觉信号如何形成操作相关状态表征并影响动作；最后归纳出可规模化、可泛化、鲁棒三条开放挑战。需要说明的是，摘要与元数据未提供定量对比（如某方法在某 benchmark 上的成功率提升百分比），因此无法给出"提升多少"的数字；若需具体数据，应查阅正文中各被引工作的原始实验。读者应把这篇综述当作"地图"而非"成绩单"——它的价值在于告诉你哪些方向已有成熟结论、哪些仍是空白。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. <strong>缺乏定量横向对比</strong>：综述以定性梳理为主，未在同一 benchmark 上对齐各方法的成功率/样本效率，读者难以判断"数据驱动是否真的在具体任务上超过力学驱动"。这对想选型落地的工程师意味着需要回到原始论文核对数据。</p>
+<p class="num-item">2. <strong>触觉硬件与数据的碎片化未被充分量化</strong>：不同传感器（GelSight、压阻阵列、力/力矩）输出模态差异极大，综述虽提及但未系统讨论跨传感器迁移的定量难度，导致"可泛化"挑战的严重性可能被低估。</p>
+<p class="num-item">3. <strong>VLA 与触觉结合的部分偏前瞻</strong>：VLA 接入触觉仍是新兴方向，可用工作少，综述在此处的结论稳定性弱于模仿学习/RL 部分，读者需警惕"综述即成熟"的错觉。</p>
+<p class="num-item">4. <strong>对仿真到真机（sim-to-real）触觉 gap 的工程细节着墨有限</strong>：触觉仿真本身极难（接触形变、摩擦噪声），这恰是数据驱动路线规模化的最大卡点之一，综述若未深入，会影响读者对落地难度的判断。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>位置判断：这是一篇<strong>填补空白型</strong>综述，而非范式突破。它不提出新方法，但用"力学驱动→数据驱动"的主轴把割裂的文献群整合成可理解的演化叙事，这对一个方法论断层明显的子方向有实实在在的组织价值。判断依据是：此前触觉操作综述多按硬件或任务分类，缺少"信号→表征→动作"的因果链路视角，本文补上了这一层。</p>
+<p>价值层级：在具身智能全景中，触觉操作属于"感知-操作"交叉的基础设施层，天花板受限于硬件成本与数据规模，但一旦突破，对灵巧操作（装配、拧瓶盖、布料处理）的赋能是视觉无法替代的。相比 VLA 这类"通用策略"热点，触觉工作更偏"让通用策略真正摸得着东西"的使能技术，价值扎实但不自带流量。</p>
+<p>落地距离：距离产品化仍有距离，卡点在三处——触觉传感器成本与耐用性（弹性体磨损）、触觉数据采集的规模化（遥操作示教成本高）、跨传感器/跨物体的表征迁移。需要"廉价耐用传感器 + 大规模触觉数据集 + 触觉友好的基础模型接口"三者同时成熟才可能规模化落地。</p>
+<p>如果只记住一件事：<strong>触觉不是视觉的补充模态，而是唯一能直接测量接触物理量的通道；力学驱动提供的可解释中间量（接触力、滑动、摩擦锥）应当成为数据驱动方法的归纳偏置或监督信号，而非被抛弃的旧范式。</strong> 这个"融合而非替代"的视角，是全文最值得带走的 idea——它决定了未来触觉系统既要有数据驱动的泛化力，又要保留力学先验的样本效率与可解释性。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>本文为综述论文，摘要与元数据未提及代码或数据集开源，也未给出项目主页链接。综述通常不附带代码；若读者需要具体方法的实现，应查阅正文所引各原始工作的开源仓库。论文承诺的后续公开情况在给定信息中未说明，建议以 arXiv 页面（http://arxiv.org/abs/2610.30438v1）正文的 "Code/Data Availability" 或作者主页为准。</p></div>
+</div>
+</section>
+<section class="day">
 <h2>📅 2026-10-23 <span class="count">(5 篇)</span></h2>
 
 <div class="paper">
