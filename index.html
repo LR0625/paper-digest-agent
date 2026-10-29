@@ -82,6 +82,216 @@ body {
 <div class="header"><h1>📄 embodied_ai 论文速递</h1><p>每日自动推送 · 由 paper-digest-agent 驱动</p></div>
 <div class="container">
 <section class="day">
+<h2>📅 2026-10-29 <span class="count">(5 篇)</span></h2>
+
+<div class="paper">
+<h3>推动灵巧性与安全性：实现效果卓著的灵巧手手内物体位姿到达（In-Hand Object Pose Reaching）</h3>
+<div class="title-en">Pushing Dexterity and Safety for In-Hand Object Pose Reaching That Works Remarkably Well</div>
+<div class="meta">
+<span>📂 VLA与端到端策略</span>
+<span>📊 相关性 9/10</span>
+<a href="http://arxiv.org/abs/2610.37652v1" target="_blank">arXiv: 2610.376521</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.376521" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.376521" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.376521" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.376521" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">多指手的灵巧操作是机器人学的下一个前沿，然而已习得的手部技能仍局限于简单抓取或基本的重复动作，例如旋转物体。随着机器人尝试更高难度的手内操作，安全性（例如不掉落物体）变得至关重要，然而这一点却很少被衡量。我们研究手内物体位姿到达（in-hand object pose reaching），这一任务要求多样且困难的抓取：将物体移动到手指可达范围内的几乎任意位置和朝向，在任意腕部朝向下，通过长序列的连续目标。我们提出了一套在仿真中为LEAP手训练此类策略的方法，无需人类数据，建立在多方面洞见之上，从通过生成的抓取数据集实现多样化的重置与目标，到自适应摩擦课程（adaptive friction curriculum）。通过仔细的系统辨识（system identification），策略零样本（zero-shot）迁移到真实手部，使用动作捕捉或单个腕部安装的深度相机，并证明其能力非凡且鲁棒。在任务策略之上，我们添加了一个学习到的残差安全滤波器（residual safety filter），具有可调的保守性，使我们能够调节性能与安全之间的平衡，并大幅减少物体掉落。在13.3小时的真实机器人评估中，涵盖4个物体和多样腕部朝向下超过4,800个未见目标，基于状态的策略在2 cm和0.4 rad范围内达到95.2%的目标，而滤波器将其掉落率降低75%，同时仍达到91.5%的目标。这些策略还能旋转以任意位姿持有的灯泡，到达分布外（out-of-distribution）目标，承受快速手臂运动和扰动，并且仅需一个腕部相机，即可作为便携技能使用，例如拧入灯泡。我们将完整方法作为平台发布，用于研究高维灵巧系统中的性能、可靠性和安全性。视频及更多内容见 https://ian-chuang.github.io/dexsafe/。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>灵巧操作与抓取（更细分一点：多指手在手中的物体姿态到达 + 安全约束学习）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>用无人类数据的仿真训练配方，让 LEAP 五指手在手中把物体摆到任意位姿，并加一个可调保守度的残差安全滤波器显著减少掉落。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，先要理解几个概念。第一，<strong>灵巧操作（dexterous manipulation）</strong>指用多指机械手像人手一样灵活地操纵物体，而不是简单的抓起来放下；它的难点在于高维动作空间（LEAP 手有 16 个关节）和复杂的接触动力学。第二，<strong>在手中操作（in-hand manipulation）</strong>特指物体不离开手指、仅靠手指的滚动/滑动/换指来改变物体相对手掌的位姿，比"抓取-移动-放下"难得多。第三，<strong>物体姿态到达（object pose reaching）</strong>是一个比"转笔/转球"更一般的任务：要求把物体送到手指可达范围内的几乎任意位置和朝向，而不只是绕某个轴旋转。第四，<strong>零样本仿真到真机迁移（zero-shot sim-to-real transfer）</strong>指策略只在仿真里训练、不做真机微调就直接部署，成败高度依赖<strong>系统辨识（system identification）</strong>——即把仿真的摩擦、质量、延迟等参数校准到接近真实硬件。第五，<strong>安全滤波器（safety filter）</strong>是一类在策略输出上做后处理、把动作拉回"安全集"的模块，常见于控制理论；本文用的是<strong>学习到的残差安全滤波器（learned residual safety filter）</strong>，即在原动作上叠加一个学习到的小修正量。最后，<strong>课程学习（curriculum）</strong>指训练难度逐步加码，本文用它来逐步提高摩擦难度，逼策略学会更稳的抓法。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>现有学习型灵巧手技能大多停留在"简单抓取"或"绕单轴重复旋转"这类窄任务上，一旦要求物体在手中被送到任意位姿、且腕部朝向任意变化、还要连续完成一长串目标，已有方法基本失效。与此同时，这类高难度操作最容易掉物体，但"不掉"这个安全指标在文献里几乎不被量化，性能和安全被割裂地研究。本文要堵的 gap 是：给出一个可复现的训练配方，让多指手在<strong>长序列、多目标、任意腕朝向</strong>下稳定完成姿态到达，并把"掉落率"作为一等公民指标来测量和优化。它的意义在于把灵巧操作从"炫技 demo"推向"可评估、可调安全边界的系统能力"，为后续研究提供一个带安全维度的基准平台。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>核心技术方案可以拆成几块。其一，<strong>多样化的重置与目标生成</strong>：训练时不是从固定初始抓姿开始，而是用生成的抓取数据集（generated grasp datasets）采样大量不同的初始抓取和目位姿，使策略见过足够宽的初始状态分布，避免只学会一条"捷径轨迹"；这是长序列多目标任务的必要条件，因为任何单一路径都无法覆盖目标空间。其二，<strong>自适应摩擦课程（adaptive friction curriculum）</strong>：训练中根据策略当前表现动态调整仿真摩擦系数，从容易（高摩擦、不易滑）逐步过渡到困难（低摩擦、易滑），迫使策略学会不依赖"摩擦运气"的稳健抓法；相比固定随机化摩擦，课程式调度能让策略在困难摩擦区间也收敛，而不是被早期失败淹没。其三，<strong>精细的系统辨识</strong>：对真实 LEAP 手的关节响应、延迟、摩擦等做校准，这是零样本迁移能成立的关键——仿真与真实的接触参数差一点，手指滚动就会变成打滑。其四，<strong>残差安全滤波器</strong>：在原任务策略之上学习一个残差修正网络，其保守度可调（adjustable conservativeness），通过在"完成任务"和"避免掉落"之间显式权衡来训练；相比硬编码的安全约束或纯奖励惩罚，残差形式不改动主策略、可插拔、且能连续调节性能-安全折中，这是它比较新颖的地方。其五，<strong>多模态感知部署</strong>：状态版用动作捕捉（motion capture）提供物体位姿，视觉版只用腕部单目深度相机（wrist-mounted depth camera），使技能可便携部署。整体创新点在于把这些工程洞见组合成一个"配方"，并首次把安全滤波器与高维灵巧操作策略结合做量化评估。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>实验在仿真训练、真机评估，真机累计 13.3 小时、4 个物体、4,800 个未见目标、多种腕朝向。关键数据：状态版策略在 2 cm 位置误差与 0.4 rad 角度误差容限内达到 <strong>95.2%</strong> 的目标成功率；加上安全滤波器后掉落减少 <strong>75%</strong>，同时仍保持 <strong>91.5%</strong> 的成功率——这组对比直接量化了性能-安全折中。此外论文展示了策略能旋转任意姿态下的灯泡、完成分布外（out-of-distribution）目标、抵抗快速手臂运动和外部扰动，并且仅靠腕部相机就能完成拧灯泡这类可便携技能。消融方面，摘要强调"diverse resets and goals via generated grasp datasets"与"adaptive friction curriculum"是配方中的关键 insight，属于对方法组件的验证；不过摘要未给出各组件单独的消融数字，需看全文确认。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p>第一，<strong>依赖精确系统辨识与动作捕捉</strong>：状态版需要 mocap 提供物体位姿，视觉版虽便携但精度受单目深度限制，这意味着在非结构化环境中物体位姿估计误差会直接侵蚀成功率。第二，<strong>任务仍限定在"手指可达范围内"</strong>：姿态到达不涉及物体在手中的大幅重抓或跨手传递，离真正通用的手中操作还有距离，实际应用中遇到需要换手或大范围重定位的场景会失效。第三，<strong>安全滤波器是学习到的、非形式化保证</strong>：它降低掉落率但不提供硬性安全保证，对安全关键场景（如医疗、协作）而言，"减少 75%"仍不等于"不会掉"。第四，<strong>硬件与物体泛化范围有限</strong>：4 个物体、单一 LEAP 手平台，跨手型、跨物体形状材质的泛化未验证，落地到产品需要更多硬件适配。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>位置判断：这是一篇<strong>填补空白 + 工程配方型</strong>的工作，而非范式突破。它没有提出全新的学习算法，而是把重置分布、摩擦课程、系统辨识、残差安全滤波这些已知技术系统性地组合，首次在"任意位姿到达 + 长序列 + 任意腕朝向"这个更难的设定下做到可用的真机成功率，并把"掉落率"变成可测量、可调的指标——这在灵巧操作子方向里是明显的空白填补。相比 VLA/端到端策略那种"大模型吞掉一切"的路线，这类工作更偏"控制+学习"的稳健工程，价值在于可靠性和可复现性，天花板受限于任务设定本身（仍在手中、单平台）。落地价值：距离产品化还有距离，卡点在于物体位姿感知（mocap 不可产品化、腕部相机精度有限）、跨物体/跨手型泛化、以及安全滤波缺乏形式化保证；需要更鲁棒的机载位姿估计和形式化安全层才能进入真实产线。如果只记住一件事：<strong>把"安全/不掉落"作为与成功率并列的可调指标，并用可插拔的残差滤波器实现性能-安全连续折中</strong>——这个 idea 特别，因为它把控制理论的安全思维带进了高维学习型灵巧操作，且工程上轻量可复用。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文声明将完整配方作为平台发布（"We release the full recipe as a platform"），项目主页为 https://ian-chuang.github.io/dexsafe/ ，视频与更多材料在该页面。摘要未明确给出代码仓库直链，具体开源范围（代码/数据/模型权重）需以项目页与全文为准。</p></div>
+</div>
+<div class="paper">
+<h3>PDRVLA：一种具有物理动力学表征的视觉-语言-动作模型</h3>
+<div class="title-en">PDRVLA: A Vision-Language-Action Model with Physical Dynamics Representations</div>
+<div class="meta">
+<span>📂 灵巧操作与抓取</span>
+<span>📊 相关性 8/10</span>
+<a href="http://arxiv.org/abs/2610.37381v1" target="_blank">arXiv: 2610.373811</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.373811" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.373811" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.373811" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.373811" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">视觉-语言-动作（Vision-Language-Action, VLA）模型从视觉观测和语言指令中生成机器人动作，但其对物理动力学的理解仍然有限。视频世界模型能够捕捉场景动力学，然而生成未来视频会在控制回路中引入高延迟。我们提出PDRVLA，其轻量级物理动力学模块（Physical Dynamics Module）从视觉-语言特征中提取物理令牌（physical tokens），以在不进行在线视频生成的情况下为动作生成提供条件。该模块通过直接预测未来的RGB、深度和光流特征进行学习，并借助冻结的预训练视频世界模型提供辅助监督。训练完全依赖公开可用的数据，并通过人到机器人合成（human-to-robot synthesis）、子任务标注（subtask annotation）以及具身思维链（Embodied Chain-of-Thought, ECoT）标注进行扩展。在四个仿真基准上，PDRVLA在LIBERO上达到99.3%的成功率，在LIBERO-Plus上达到89.9%，在RoboTwin 2.0上达到93.6%，在SimplerEnv上达到81.5%。消融实验表明，世界模型监督改善了未来预测，并评估了子任务条件化、未来物体位姿监督以及ECoT训练对动作成功率的影响。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更精确地说：带物理动力学表征的VLA）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>给VLA模型加一个轻量“物理动力学模块”，用未来RGB/深度/光流特征预测替代在线视频生成，让机器人策略“懂物理”又不拖慢控制。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，需要先建立几个概念。<strong>VLA（Vision-Language-Action，视觉-语言-动作模型）</strong> 是近两年机器人学习的核心范式：把图像观测和自然语言指令一起喂给一个多模态大模型，直接输出机器人动作序列，典型代表如RT-2、OpenVLA、π0。它的优势是泛化性好、指令跟随能力强，但一个公认短板是“物理直觉”弱——模型知道“把杯子拿起来”这句话对应什么语义，却不太理解杯子被推一下会往哪滚、物体接触后动量如何传递。<strong>世界模型（World Model）</strong> 是另一条路线：学习一个能预测“未来会发生什么”的模型，比如给定当前画面和动作，生成下一帧视频。视频世界模型确实能捕捉场景动力学，但生成视频很慢（几十到几百毫秒甚至秒级），放进机器人控制回路里会造成严重延迟，实时性不可接受。<strong>物理动力学表征（Physical Dynamics Representation）</strong> 指的是把“物体怎么动、怎么相互作用”压缩成一组紧凑的特征向量（论文里叫physical tokens），而不是生成完整视频。<strong>光流（Optical Flow）</strong> 是像素级的运动场，描述画面中每个点往哪个方向移动了多少，是运动信息的经典紧凑表示。<strong>ECoT（Embodied Chain-of-Thought，具身思维链）</strong> 指在训练数据里让模型先输出一段“推理过程”（比如先识别物体、再分解子任务），再输出动作，类似让模型“想一步再做”。<strong>仿真基准</strong>方面，LIBERO测的是语言条件的长程操作任务泛化，RoboTwin 2.0测双臂精细操作，SimplerEnv把真实机器人基准搬到仿真里评测，LIBERO-Plus是LIBERO的加强泛化版本。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>当前VLA模型的动作生成主要依赖视觉-语言特征的语义对齐，缺乏对物理动力学的显式建模，导致在需要预判物体运动、接触后果的任务上表现受限。已有的补救思路是引入视频世界模型，但“在线生成未来视频”与“实时控制”存在根本性的延迟矛盾——控制回路要求几十毫秒级响应，视频生成做不到。这篇论文要堵的gap正是：<strong>如何在不引入在线视频生成的前提下，让VLA获得物理动力学理解</strong>。这个问题的意义在于，它试图把“世界模型的物理知识”和“VLA的实时性”这两个此前互斥的优点合并起来，如果成功，等于给主流VLA范式补上了最被诟病的一块短板，而且不牺牲部署可行性。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>核心思路是“离线学动力学、在线只查表征”。具体分几点：</p>
+<div class="spacer"></div><p class="num-item">1. <strong>轻量物理动力学模块（Physical Dynamics Module）</strong>：从VLA已有的视觉-语言特征中抽取一组physical tokens，作为动作生成的条件。关键在于它不是另起一个视频生成网络，而是一个小的特征提取/预测头，在线开销极低——这是与“视频世界模型进控制回路”最本质的区别，也是它能实时的原因。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>直接预测未来特征而非未来视频</strong>：模块的训练目标是直接预测未来的RGB特征、深度特征和光流特征。为什么有效？因为这三者分别覆盖了外观变化、几何/空间结构变化和运动场，比单一RGB更全面地约束“动力学理解”；而预测“特征”比预测“像素”便宜得多，且特征空间本身就是下游动作生成所用的空间，信息损耗小。为什么之前没人这么做？此前要么用视频世界模型生成像素（重），要么完全不做未来预测（弱），把“未来预测”降维到特征层面并直接接入VLA，是一个工程上巧妙、概念上清晰的折中。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>冻结预训练视频世界模型做辅助监督</strong>：用一个冻结的视频世界模型提供auxiliary supervision。原理是把这个大模型当作“动力学教师”，它的内部特征蕴含了丰富的物理规律，用它来约束physical tokens的学习，相当于知识蒸馏——学生（轻量模块）不必自己从零学物理，而是对齐一个已经懂物理的教师。这解决了“轻量模块容量有限、动力学知识从哪来”的问题。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>纯公开数据训练 + 三重数据扩展</strong>：human-to-robot synthesis（把人类演示视频合成/重定向为机器人数据）、subtask annotation（子任务标注）、ECoT标注（具身思维链标注）。这解决的是VLA训练数据稀缺且昂贵的问题，让方法不依赖私有大规模真机数据即可复现。</p>
+<div class="spacer"></div><p class="num-item">5. <strong>消融验证各组件</strong>：论文专门评估了world-model supervision对未来预测的提升，以及subtask conditioning、future object-pose supervision、ECoT training对动作成功率的影响，说明这些设计不是堆料而是各有贡献。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>实验在四个仿真基准上评测，全部报告成功率：<strong>LIBERO 99.3%</strong>、<strong>LIBERO-Plus 89.9%</strong>、<strong>RoboTwin 2.0 93.6%</strong>、<strong>SimplerEnv 81.5%</strong>。这组数字的含义需要放在坐标系里看：LIBERO上99%+已接近该基准饱和，说明在标准任务上不输甚至略优于现有强baseline；真正有信息量的是LIBERO-Plus（89.9%）和SimplerEnv（81.5%）——这两个是泛化/迁移性更强的评测，能拿到这个水平说明物理动力学表征带来的不是“刷榜式”提升而是泛化收益。RoboTwin 2.0的93.6%对应双臂精细操作，是动力学理解最该发挥作用的场景。消融方面，论文验证了world-model supervision能改善未来预测质量，并分别量化了subtask conditioning、future object-pose supervision、ECoT training对最终动作成功率的影响，说明每个设计都有独立增益而非冗余。需要指出的是，摘要未给出各baseline的具体对比数值和提升幅度，也未报告真机实验，这是解读时要注意的信息边界。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. <strong>只在仿真中验证，无真机结果</strong>：四个基准全是仿真（LIBERO、LIBERO-Plus、RoboTwin 2.0、SimplerEnv）。仿真到真机的gap（sim-to-real gap）在动力学层面尤其致命——摩擦、形变、传感器噪声在仿真里都被简化，而这篇论文的核心卖点恰恰是“物理动力学理解”，这使真机验证的缺失比一般论文更值得警惕。对实际应用意味着：81.5%的SimplerEnv成功率不能直接外推为真机可用性。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>“物理”仍停留在特征预测层面，缺乏显式物理量</strong>：模块预测的是RGB/深度/光流特征，这些是运动与外观的代理，而非质量、摩擦系数、接触力等真正的物理量。为什么是局限？因为光流能告诉你“物体在动”，但不直接告诉你“推多重的东西需要多大力”，在需要力控或精确接触建模的任务上可能不够。对应用意味着：精细装配、柔性物体操作等场景可能仍受限。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>依赖冻结视频世界模型作为教师，继承其偏差</strong>：辅助监督来自一个预训练视频世界模型，学生的动力学知识上限受教师约束。如果教师在特定场景（如透明物体、快速运动、遮挡）预测不准，学生会继承这些错误。对应用意味着：在教师训练分布之外的场景，物理表征的可靠性存疑。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>数据扩展管线复杂，复现成本不低</strong>：human-to-robot synthesis、subtask标注、ECoT标注三套流程叠加，虽然号称“纯公开数据”，但数据加工管线本身工程量大，且合成数据的质量直接影响上限。对应用意味着：想迁移到新机器人平台或新任务域，数据重制成本可能成为落地瓶颈。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p><strong>位置判断：填补空白偏范式整合，而非范式突破。</strong> 它没有提出全新的学习框架，而是把“世界模型懂物理”和“VLA实时可控”这两个已有认知做了一次高质量的工程-概念缝合：把未来预测从像素空间降到特征空间，从而绕开延迟矛盾。这个缝合点此前确实没人干净地做过，所以是“填补空白”；但它建立在VLA、世界模型、光流预测、知识蒸馏等成熟组件之上，属于“正确的组合”而非“全新的原理”，因此不是范式突破。判断依据是：它的创新主要在于“在哪里做预测、用什么监督、怎么接进控制回路”的设计选择，而非新的学习理论。</p>
+<div class="spacer"></div><p><strong>与其他子方向相比的价值与天花板。</strong> 放在整个具身智能版图里，VLA是当前最热、资源最集中的主赛道，这篇工作处在主赛道的关键补强位置，价值高于多数单点灵巧操作或导航工作，因为它影响的是“所有VLA都能不能更懂物理”这个共性问题。但天花板也明确：它提升的是策略的物理先验，不解决长程规划、不解决多模态感知的鲁棒性、不解决数据规模化——这些是VLA赛道本身的瓶颈，本文只是把其中一块补上。相比世界模型与规划子方向，它选择了“轻量化表征”而非“生成式规划”，这意味着它在需要显式想象的复杂长程任务上可能不如完整世界模型路线，但实时性优势明显。</p>
+<div class="spacer"></div><p><strong>落地价值与卡点。</strong> 距离实际部署还有一段距离，卡点有三个：一是无真机验证，sim-to-real的动力学迁移是最大不确定性；二是依赖视频世界模型教师，部署时是否需要携带教师、教师推理成本如何，摘要未说明；三是数据管线复杂，换平台换任务的重制成本高。落地需要的条件：真机数据上的微调与验证、教师模型的轻量化或离线化、以及一套可复用的数据合成流程。如果这三点解决，它的“低延迟物理先验”特性对实时闭环控制场景（抓取、推、装配）有直接产品价值。</p>
+<div class="spacer"></div><p><strong>如果只记住一件事：</strong> 记住“<strong>用特征级未来预测替代像素级视频生成，来给VLA注入物理动力学</strong>”这个idea。它特别之处在于，它精准识别了“世界模型有用但太慢”这个领域级矛盾，并给出了一个成本极低的解法——不生成未来，只预测未来的紧凑特征，再用冻结大模型当老师。这个“降维预测+蒸馏监督”的思路可迁移到很多“想要大模型能力但受限于实时性”的机器人问题上，是比具体数字更值得带走的思维工具。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>摘要与提供的元信息中未提及代码或数据的开源链接，也未明确承诺后续公开。论文强调训练“完全基于公开数据”，但公开数据不等于开源代码与加工管线；human-to-robot synthesis、subtask与ECoT标注的具体实现是否放出，需查阅arXiv全文的Project Page/Code部分确认。建议读者以arXiv页面（http://arxiv.org/abs/2610.37381v1）为准核实。</p></div>
+</div>
+<div class="paper">
+<h3>检索以行动：面向鲁棒VLA执行的运动基元图检索（Retrieve to Act: Motion Primitive Graph Retrieval for Robust VLA Execution）</h3>
+<div class="title-en">Retrieve to Act: Motion Primitive Graph Retrieval for Robust VLA Execution</div>
+<div class="meta">
+<span>📂 运动控制（足式/人形）</span>
+<span>📊 相关性 8/10</span>
+<a href="http://arxiv.org/abs/2610.37215v1" target="_blank">arXiv: 2610.372151</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.372151" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.372151" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.372151" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.372151" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">视觉-语言-动作（Vision-Language-Action, VLA）策略展现出卓越的语义泛化能力，但在执行过程中仍极易受到分布外（out-of-distribution, OOD）视觉偏移的影响。现有的测试时方法试图抑制虚假的视觉线索，但它们从根本上忽视了策略自身训练经验中所蕴含的丰富且未受污染的 kinematics 先验（运动学先验）。我们提出检索以行动（Retrieve to Act, R2A），这是一个测试时扩展框架（test-time scaling framework），将OOD鲁棒性纯粹形式化为一个几何运动基元检索（geometric motion primitive retrieval）问题。R2A通过将成功的训练演示结构化为一个离线的时空运动基元图（spatiotemporal motion primitive graph），从而绕过脆弱的视觉特征。在推理过程中，一个依赖于查询的图神经网络（Graph Neural Network）在该图中动态定位机器人正在进行的执行过程，检索结构兼容的未来运动基元。随后，这些检索到的几何先验通过一个学习到的、逐维度门控机制（dimension-wise gating mechanism）与冻结的VLA所预测的动作无缝协调，自适应地校正错误的空间轨迹，同时保留策略的局部反应性。在三种最先进的VLA架构——GR00T N1.7、$π_{0.5}$和StableVLA——上进行的大量实验表明，R2A能够持续且显著地增强对多样化上下文扰动的鲁棒性。R2A在仿真基准（LIBERO-Plus、RoboTwin2.0-Plus）中实现了高达+12%的绝对成功率提升，在真实世界部署中实现了+40%的提升，且无需对基础策略进行任何微调。项目页面：https://retrieve2act.github.io/r2a/</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更细分地说是"VLA的测试时鲁棒性增强 / 测试时扩展 test-time scaling"）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>把训练演示组织成运动基元图，推理时检索几何先验来纠正冻结VLA的OOD轨迹，无需微调。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，需要先建立几个概念。第一，VLA（Vision-Language-Action，视觉-语言-动作模型）是当前具身智能的主流范式：它把摄像头图像和语言指令一起喂进一个大型多模态模型，直接输出机器人动作序列，代表性工作有 RT-2、OpenVLA、π0 系列、GR00T 等。它的强项是语义泛化——你说"把红色杯子放到左边"，它能理解；但弱项是视觉鲁棒性：换个光照、换个背景纹理、相机稍微偏一点，动作就可能崩掉，这类分布外（OOD, out-of-distribution）视觉偏移是 VLA 落地的头号障碍。第二，测试时扩展（test-time scaling）指的是不重新训练模型、只在推理阶段用额外计算来提升表现的做法，在 LLM 里很常见（如思维链、多次采样投票），在机器人里还比较新。第三，运动基元（motion primitive）指一段短小、可复用的基础动作片段（比如"向左平移5cm""闭合夹爪"），是机器人学里历史悠久的表示，优点是完全几何化、不含视觉外观信息，因此天然不受视觉扰动影响。第四，图神经网络（GNN, Graph Neural Network）是在图结构数据上做消息传递的神经网络，这里用来在"动作片段图"上做定位和检索。最后，门控机制（gating mechanism）指用一个学出来的权重把两路信号逐维加权融合，类似一个可学习的软开关。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>VLA 策略在语义层面很强，但执行时对 OOD 视觉偏移极度脆弱，一个背景贴图变化就可能让成功率断崖式下跌。现有的测试时方法（如视觉注意力抑制、测试时自适应）都在"视觉侧"做文章，试图压掉虚假视觉线索，但它们有一个共同盲点：把策略自身训练经验里那些未被污染的、纯几何的运动先验完全浪费了。这篇论文要堵的 gap 就是——能否绕开脆弱的视觉特征，直接从训练演示的几何运动结构里检索出可靠的未来动作，用来在推理时纠正跑偏的 VLA？这个问题的意义在于：它把"鲁棒性"从"让视觉模型更抗干扰"重新表述为"从运动几何里找回正确轨迹"，为 VLA 的测试时增强开辟了一条不依赖视觉域适应、也不需要微调基座模型的新路径。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>核心思路可以概括为"离线建图 + 在线检索 + 门控融合"三段式，下面分点展开。</p>
+<div class="spacer"></div><p>1）离线构建时空运动基元图。作者把训练演示中的成功轨迹切分成短的运动基元（几何化的动作片段），每个基元作为图节点，节点之间按时间先后和空间可达性连边，形成一个时空图。关键设计是：节点特征只用运动学量（如末端位姿增量、关节速度），完全不含图像外观。为什么有效？因为视觉扰动改变的是像素，不改变"手应该往哪个方向走"这个几何事实。为什么之前没人这么做？以往要么把演示当作端到端策略的训练数据一次性用掉，要么做检索时检索的是视觉轨迹/状态，没人把演示的"运动结构"单独抽出来做成可检索的图先验。</p>
+<div class="spacer"></div><p>2）推理时的查询相关图定位。执行过程中，用一个查询相关的 GNN（query-dependent GNN）把机器人当前的运动状态映射到图上，动态定位"我现在走到图的哪个节点附近"，然后检索出结构上兼容的未来基元序列。这里的"查询相关"意味着 GNN 的聚合权重会随当前观测/指令变化，而不是固定图卷积，从而能适配不同任务和不同执行进度。这一步的作用相当于给机器人一个"几何导航地图"：不管视觉多乱，我大致知道自己处在演示运动流的哪个位置，下一步该往哪走。</p>
+<div class="spacer"></div><p>3）逐维门控融合。检索到的几何先验不能直接替换 VLA 输出，因为 VLA 的局部反应性（对突发障碍、抓取时机的即时响应）是有价值的。作者设计了一个学习得到的、逐维（dimension-wise）门控机制，对动作向量的每一维分别决定"更信检索先验"还是"更信 VLA 预测"，从而自适应地纠正空间轨迹错误、同时保留局部反应性。逐维而非整体门控是关键：不同动作维度（平移 vs 旋转 vs 夹爪开合）受视觉扰动的影响程度不同，逐维加权能更精细地纠偏。</p>
+<div class="spacer"></div><p>4）全程冻结基座 VLA。整个框架不微调 GR00T N1.7、π0.5、StableVLA 中的任何一个，只在推理时外挂检索与门控模块。这使方法具备即插即用的工程价值，也避免了微调带来的灾难性遗忘和部署成本。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>实验覆盖三个 SOTA VLA 架构（GR00T N1.7、π0.5、StableVLA）和两个仿真基准（LIBERO-Plus、RoboTwin2.0-Plus）加真实世界部署。具体数据：第一，在仿真基准上取得最高 +12% 的绝对成功率提升（absolute success rate improvement），注意是绝对值而非相对值，在成功率本就较高的基准上这属于显著增益；第二，在真实世界部署中取得最高 +40% 的绝对成功率提升，真实环境视觉扰动更剧烈，因此增益更大，这也侧面说明方法的收益主要来自对 OOD 视觉偏移的抵抗；第三，方法在三个不同架构上"一致且显著"地生效，说明它与具体 VLA 骨干解耦、具有架构无关性。此外论文通过消融（摘要中提到门控机制与检索先验的协同）验证了各部分的贡献——逐维门控相比直接替换或整体门控的必要性、以及运动基元图检索相比纯 VLA 的增益。需要指出的是，摘要未给出各基准的基线成功率绝对值和逐项消融的具体数字，这些需查阅全文表格。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p>第一，方法依赖"训练演示中存在结构兼容的运动基元"。如果测试任务在运动结构上就与训练演示差异很大（不只是视觉 OOD，而是任务/运动学 OOD），检索会失效甚至误导——这意味着它解决的是"视觉扰动下的鲁棒性"，不是"新任务泛化"，实际部署中遇到全新操作技能时仍需基座策略兜底。第二，离线建图需要预先切分和结构化全部演示，图的质量和粒度（基元切多细、连边规则）直接影响检索效果，这套流程对演示数据的整洁度和规模有隐性要求，数据脏或稀疏时收益会打折。第三，逐维门控是学习得到的模块，需要额外的训练数据和训练流程，虽然不微调基座，但并非零成本，且门控在极端 OOD 下可能学偏——它本质上是在"信先验"和"信策略"之间做权衡，权衡错了就会放大错误。第四，真实世界 +40% 的提升虽亮眼，但真实实验规模通常有限（受硬件与人力约束），统计显著性和跨场景可复现性需要更多验证才能支撑产品级结论。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>位置判断：这是一篇"填补空白 + 渐进式范式扩展"的工作，而非范式突破。说它填补空白，是因为"用策略自身训练经验中的几何运动先验做测试时纠错"这个角度此前确实被视觉侧方法系统性忽略了，R2A 把它明确提出来并做成完整框架；说它是渐进扩展，是因为运动基元、演示检索、门控融合这些组件在机器人学里都有先例，创新在于组合方式与问题重述（把 OOD 鲁棒性 = 几何检索问题），而非发明全新学习范式。它处在 VLA 鲁棒性这条线上"测试时方法"分支的前沿，与视觉域适应、测试时自适应形成互补而非替代。</p>
+<div class="spacer"></div><p>与其他子方向比较：相比灵巧操作、运动控制这类需要硬件与动力学深度耦合的方向，VLA 测试时增强这类工作的"天花板"受限于基座策略本身的能力上限——检索只能纠偏，不能凭空创造基座没见过的技能；但它的"下限"很高，工程落地阻力小、即插即用、跨架构通用，这类"外挂式增强"在产业界往往比新架构更快被采纳。它的价值层级属于"高实用价值、中等科学新颖性"。</p>
+<div class="spacer"></div><p>落地价值：距离实际部署较近，卡点主要有三——一是建图流程需要针对每个机器人/每个任务族重新组织演示，自动化程度决定部署成本；二是门控模块需要少量带标注的纠偏数据训练，冷启动有门槛；三是真实场景的 OOD 类型远比基准多样（反光、遮挡、动态光照），检索图需要持续更新维护。落地条件：有稳定的演示数据管线 + 可接受的推理延迟（GNN 检索是轻量的，这点有利）+ 对基座策略不做改动的合规/成本约束，这三点满足时 R2A 是很有吸引力的方案。</p>
+<div class="spacer"></div><p>如果只记住一件事：把"鲁棒性"从视觉问题重新表述为几何检索问题——视觉会被污染，但"手该往哪走"的运动几何不会。这个 idea 特别之处在于它提醒我们，VLA 的训练数据里除了被学进权重的语义知识，还沉淀着一份未被充分利用的、抗干扰的运动结构先验，测试时把它检索出来就能免费提升鲁棒性。这种"从数据里再榨取一层结构"的思路，可能比继续堆视觉鲁棒性模块更划算。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>论文提供了项目主页 https://retrieve2act.github.io/r2a/ ，通常此类页面会附带代码、演示视频与数据说明；摘要与元数据中未明确声明代码仓库链接，建议以项目页为准确认开源状态与后续公开承诺。</p></div>
+</div>
+<div class="paper">
+<h3>当黑盒机器人策略失效时：基于透明代理模型的在线传感器诊断与修复</h3>
+<div class="title-en">When Black-Box Robot Policies Fail: Online Sensor Diagnosis and Repair with a Transparent Surrogate</div>
+<div class="meta">
+<span>📂 仿真到真机 / 强化学习</span>
+<span>📊 相关性 8/10</span>
+<a href="http://arxiv.org/abs/2610.36852v1" target="_blank">arXiv: 2610.368521</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.368521" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.368521" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.368521" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.368521" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">机器人基础模型（robot foundation models）可能在不同任务和具身形态之间泛化，但其动作仍然依赖于可能发生故障的传感器。当策略被冻结或无法访问时，一个外部监控器能否在无法访问其内部结构的情况下诊断并修复受损的输入？我们测试了一种结构化代理模型（structured surrogate），它将周期性步态与依赖传感器的修正项分离，以围绕一个冻结的运动策略（locomotion policy）指导输入修复。在模拟Go2上，离线诊断将行走成功率从259/640个回合提升至429/640个回合；在线修复达到382/640，且在64个留出的无故障回合中未触发任何修复。一个匹配的提升树代理模型（boosted-tree surrogate）在预测干净动作方面表现相似，但相较于不修复，并未产生可检测到的修复改进。单独的拟合在Go1和ANYmal C上改善了行走表现，尽管相位感知梯度（phase-aware gradients）表现更好。证据仍局限于单一策略和部分筛选的模拟故障套件；机器人基础模型与硬件验证仍有待开展。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>仿真到真机 / 强化学习（更准确地说是"冻结策略的运行时监控与输入修复"，横跨 VLA与端到端策略 的鲁棒性方向，但核心实验平台是足式运动策略，故归入此类）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>在不接触冻结运动策略内部的情况下，用结构化代理模型诊断并修复损坏的传感器输入，让机器人"带病"继续走。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，需要先建立几个概念。第一，<strong>机器人基础模型（Robot Foundation Model）</strong>：指在大规模多任务、多本体数据上预训练的策略网络，能泛化到新任务，但通常以黑盒形式部署——你拿到的是权重或 API，改不了内部。第二，<strong>本体感觉（Proprioception）与传感器故障</strong>：足式机器人靠 IMU、关节编码器、足端力传感器等估计自身状态，这些传感器会漂移、卡死、丢帧或加噪，而策略是在"干净传感器"数据上训练的，一旦输入被污染，动作就会崩。第三，<strong>冻结策略（Frozen Policy）</strong>：部署后不再微调的策略，本文的核心约束是"不能改策略、不能看内部梯度"。第四，<strong>代理模型（Surrogate Model）</strong>：用一个可解释的替代模型去逼近黑盒策略的输入-输出关系，从而间接获得"梯度"或"归因"信息。第五，<strong>步态周期（Gait Phase）</strong>：足式运动是周期性的，相位是描述"走到周期哪一步"的隐变量；本文的关键洞察是把策略输出分解为"周期性步态分量 + 传感器依赖的修正分量"。第六，<strong>输入修复（Input Repair）</strong>：不改策略，而是修改喂给策略的观测，使其"看起来像干净输入"，从而让策略输出正确动作——这是一种"外部监控器（External Monitor）"思路。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>机器人基础模型被宣传为"跨任务跨本体泛化"，但其动作仍然依赖可能失效的传感器；当策略冻结或不可访问时，现有方法（如端到端微调、策略内建鲁棒性）都失效，因为前者需要梯度、后者需要改模型。本文要回答的是：能否仅凭外部观察，诊断"哪个传感器坏了、坏成什么样"，并修复输入，让冻结策略继续工作？这个 gap 在领域中的意义在于：它把"鲁棒性"从"训练时内建"转向"部署时外挂"，为黑盒基础模型的安全部署提供了一条不碰权重的路径。此前的工作要么假设可以微调策略，要么假设故障类型已知并手工设计补偿，缺少"诊断+修复"一体的、对黑盒策略通用的框架。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>核心技术是<strong>结构化代理模型（Structured Surrogate）</strong>，它把冻结策略的输出分解为两部分：一个只依赖步态相位的周期项，和一个依赖传感器观测的修正项。具体要点如下：</p>
+<div class="spacer"></div><p class="num-item">1. <strong>相位-修正分解</strong>：作者假设运动策略的动作 ≈ f(相位) + g(观测)。周期项捕捉"走路本身的节律"，修正项捕捉"根据传感器微调平衡"。这个分解之所以有效，是因为足式步态天然周期，而传感器故障主要污染修正项——把两者分开，就能把"故障信号"从"正常节律"里剥离出来，这是此前直接拟合黑盒策略的代理模型做不到的。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>离线诊断（Offline Diagnosis）</strong>：用代理模型对观测做归因，判断哪个传感器通道异常、异常模式是什么（如卡死、漂移、噪声）。因为代理模型可解释，归因结果能直接指导"修哪里"。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>在线修复（Online Repair）</strong>：在运行时，用代理模型的相位感知梯度（phase-aware gradients）反推"什么样的干净输入能让策略输出正确动作"，然后替换或修正实际观测。关键创新是"用代理的梯度代替黑盒策略的梯度"——黑盒不可导，但代理可导，且代理的周期结构让梯度更稳定。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>与匹配的 boosted-tree 代理对比</strong>：作者训练了一个预测精度相当的 boosted-tree 代理作为对照，发现它虽然能同样好地预测干净动作，但<strong>检测不到修复收益</strong>。这说明"预测准"不等于"可修复"——结构化分解带来的可解释梯度才是修复有效的关键，这是一个很有说服力的消融式论证。</p>
+<div class="spacer"></div><p class="num-item">5. <strong>跨本体验证</strong>：在 Go1 和 ANYmal C 上分别独立拟合代理，证明方法不绑定单一本体；但相位感知梯度效果更好，说明相位结构是核心。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>实验在<strong>模拟 Go2</strong> 上进行，故障套件是部分筛选过的模拟传感器故障。关键数字：</p>
+<div class="spacer"></div><ul>
+<li><strong>离线诊断</strong>：行走成功率从 259/640 提升到 429/640 回合（约 +66% 相对提升，绝对 +26.6 个百分点）。</li>
+<li><strong>在线修复</strong>：达到 382/640（相对无修复 +47.5%，绝对 +19.2 个百分点），低于离线诊断，说明在线修复更难但可行。</li>
+<li><strong>误触发</strong>：在 64 个留出的无故障回合中，<strong>零触发</strong>（no triggers），即监控器不会在正常时乱修，这对实际部署至关重要。</li>
+<li><strong>对照实验</strong>：匹配的 boosted-tree 代理预测干净动作精度相当，但<strong>修复收益检测不到</strong>（相对无修复无显著提升），证明结构化分解是收益来源而非代理精度。</li>
+<li><strong>跨本体</strong>：Go1 和 ANYmal C 上独立拟合均改善行走，但相位感知梯度表现更好。</li>
+</ul>
+<div class="spacer"></div><p>消融上，结构化 vs. boosted-tree 的对比是最关键的一组，直接支撑了"结构先验 > 纯拟合精度"的论点。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. <strong>仅一个策略、部分筛选的模拟故障套件</strong>：作者自己承认证据限于单一冻结策略和部分筛选的模拟故障。这意味着结论的泛化性未知——真实传感器故障（如 IMU 温漂、编码器间歇丢帧）比模拟套件更复杂，筛选过的故障可能偏简单，实际部署时诊断可能失效。</p>
+<div class="spacer"></div><p class="num-item">2. <strong>未在机器人基础模型和硬件上验证</strong>：论文明确说 robot foundation model 和 hardware validation 仍开放。对实际应用意味着：目前只是"模拟器里的概念验证"，离真机部署还有距离，真机的噪声、延迟、传感器耦合都可能破坏相位-修正分解的假设。</p>
+<div class="spacer"></div><p class="num-item">3. <strong>在线修复弱于离线诊断</strong>：382 vs 429 的差距说明在线场景下修复不充分，可能因为在线只能看到当前观测、无法利用完整故障历史，实际运行时修复效果会打折扣。</p>
+<div class="spacer"></div><p class="num-item">4. <strong>依赖步态周期性假设</strong>：方法核心是"周期项+修正项"分解，这对足式运动成立，但对非周期任务（如操作、导航）不适用，限制了方法向其他子方向迁移。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<ul>
+<li><strong>位置判断</strong>：这是一篇<strong>填补空白</strong>性质的工作，而非范式突破。它填补的空白是"黑盒冻结策略的运行时传感器诊断与修复"——此前鲁棒性工作要么训练时内建、要么需要梯度微调，本文给出了不碰权重的第三条路。但它的技术组件（代理模型、输入修复、相位分解）都是已有思想的组合，创新在于"结构化分解让代理可修复"这一洞察，属于"聪明的工程组合"而非全新范式。</li>
+</ul>
+<div class="spacer"></div><ul>
+<li><strong>子方向价值与天花板</strong>：与 VLA、世界模型等热点相比，这类"部署时鲁棒性"工作的关注度低，但<strong>工程价值高</strong>——基础模型越黑盒、越冻结，这类外挂监控就越必要。天花板在于：它本质是"补丁"，不能替代策略本身的鲁棒性；且强依赖周期性假设，难以泛化到操作类任务。它的价值层级是"让黑盒策略能用"，而非"让策略更强"。</li>
+</ul>
+<div class="spacer"></div><ul>
+<li><strong>落地距离</strong>：距离产品化还有明显距离。卡点有三：一是真机验证缺失，模拟到真机的传感器故障分布差异大；二是需要为每个策略、每个本体单独拟合代理，部署成本不低；三是相位估计本身在故障下可能不可靠（相位错了，修复就错了）。落地条件：需要真机故障数据集、需要相位估计的鲁棒性保证、需要把代理拟合自动化。</li>
+</ul>
+<div class="spacer"></div><ul>
+<li><strong>最值得记住的 idea</strong>：<strong>"预测准 ≠ 可修复，结构先验才是修复的关键"</strong>。boosted-tree 代理预测同样准却修不好，这个反直觉的对照说明：要让代理指导修复，必须让它按"故障可分离"的方式分解输出，而不是单纯拟合。这个 idea 特别之处在于，它把"可解释性"从"好看"变成了"有用"——结构不是为了解释给人看，而是为了让梯度指向正确的修复方向。这对所有"黑盒策略外挂监控"的工作都有方法论启示。</li>
+</ul>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>摘要与元数据中未提及代码或数据开源链接，arXiv 页面（2610.36852v1）也未说明。论文未承诺后续公开。考虑到实验基于模拟 Go2/Go1/ANYmal C 和部分筛选的故障套件，复现需要作者提供代理拟合流程与故障生成脚本，目前看<strong>开源情况不明，倾向未开源</strong>，读者若想复现需联系作者。</p></div>
+</div>
+<div class="paper">
+<h3>运动的令牌：面向人-人形机器人技能迁移的基元运动学习（Tokens of Motion: Primitive Motion Learning for Human-Humanoid Skill Transfer）</h3>
+<div class="title-en">Tokens of Motion: Primitive Motion Learning for Human-Humanoid Skill Transfer</div>
+<div class="meta">
+<span>📂 导航与场景理解</span>
+<span>📊 相关性 7/10</span>
+<a href="http://arxiv.org/abs/2610.37330v1" target="_blank">arXiv: 2610.373301</a>
+<a href="https://xxx.itp.ac.cn/abs/2610.373301" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.373301" target="_blank">🌐 arxiv.org.cn</a> 
+</div>
+<div class="mirror-links">🔰 国内可访问：<a href="https://xxx.itp.ac.cn/abs/2610.373301" target="_blank">🌐 中科院</a> <a href="https://arxiv.org.cn/abs/2610.373301" target="_blank">🌐 arxiv.org.cn</a> </div>
+<div class="block-title">📝 中文摘要（完整翻译）</div><div class="abstract-cn">视觉-语言-动作（Vision-language-action, VLA）模型为可扩展的机器人操作提供了一种颇具前景的范式，然而其对仅基于成功样本的行为克隆（behavioral cloning）的依赖使其变得脆弱；由于缺乏纠正性训练信号，微小的执行误差会迅速累积，演变为不可恢复的、分布外（out-of-distribution）的失败。为解决这一局限，我们提出了自适应失败知情学习（Adaptive Failure-Informed Learning, AFIL），这是一个端到端框架，利用失败轨迹作为自适应负向引导，用于基于扩散（diffusion）和流（flow）的VLA策略。AFIL使用预训练的VLA在线生成失败推演（failure rollouts），从而避免了手工设计失败模式或人工介入的恢复过程。随后，它联合训练用于成功与失败行为的双动作生成器（Dual Action Generators, DAGs），同时共享一个共同的视觉-语言主干（vision-language backbone），从而以有限的参数开销实现高效的失败感知策略学习。在采样过程中，失败生成器自适应地将动作生成引导远离易失败区域、转向更可靠的成功模式，其引导强度由成功与失败分布之间在每个扩散步（per-diffusion-step）上的距离决定。在域内和域外机器人操作任务（涵盖短时程和长时程设置）上的实验表明，AFIL在任务成功率和鲁棒性上始终优于现有的VLA基线，证明了其有效性、高效性和通用性。</div>
+<div class="block-title">🔍 深度解读</div><div class="summary"><div class="section-title">子方向标签</div>
+<p>VLA与端到端策略（更细一点：面向VLA策略的失败感知训练与推理引导）</p>
+<div class="spacer"></div><div class="section-title">一句话简介</div>
+<p>用失败轨迹当“负样本引导”来训练和采样VLA策略，让机器人少犯会连锁放大的错误。</p>
+<div class="spacer"></div><div class="section-title">背景知识</div>
+<p>要读懂这篇论文，先要理解几个概念。<strong>VLA（Vision-Language-Action，视觉-语言-动作模型）</strong>：把图像观测和自然语言指令一起输入一个多模态大模型，直接输出机器人动作序列的策略，代表工作如RT-2、OpenVLA、π0等，优势是能利用大规模数据做泛化。<strong>行为克隆（Behavior Cloning, BC）</strong>：最常用的训练方式，即“看着成功演示模仿”，本质是监督学习，把观测映射到专家动作。<strong>分布外（Out-of-Distribution, OOD）失败</strong>：BC只在成功数据上训练，一旦执行中偏离演示分布，策略没见过这种状态，误差会逐步累积，最终不可恢复——这就是所谓的“误差复合（compounding error）”。<strong>扩散/流匹配策略（Diffusion / Flow-based Policy）</strong>：把动作生成建模为去噪或连续流过程，能表达多模态动作分布，代表如Diffusion Policy、π0的flow matching头。<strong>负引导/分类器引导（Negative / Classifier Guidance）</strong>：在扩散采样中，用某个“不想要的方向”的梯度把样本推离该区域，本文正是把失败行为当作这个“不想要的方向”。理解了“BC只学成功→遇错就崩”和“扩散采样可被引导”这两点，就能看懂本文的动机。</p>
+<div class="spacer"></div><div class="section-title">核心问题</div>
+<p>论文要解决的是成功-only行为克隆的脆弱性：策略在训练分布内表现尚可，但一旦出现小的执行偏差，就会进入训练时从未见过的状态，误差复合导致不可恢复的失败。前人缓解这一问题主要靠人工设计失败模式、人在回路（human-in-the-loop）采集恢复数据、或额外奖励/在线RL，这些要么昂贵、要么需要环境交互奖励、要么难以规模化。本文的gap在于：如何在不手工设计失败、不依赖人类干预的前提下，自动获得“失败信号”并把它转化为训练和推理时的纠正能力。这件事重要，因为VLA要走向真实部署，鲁棒性和OOD泛化是核心瓶颈，而失败数据恰恰是最容易大量产生却最被浪费的资源。</p>
+<div class="spacer"></div><div class="section-title">方法</div>
+<p>核心是<strong>AFIL（Adaptive Failure-Informed Learning，自适应失败引导学习）</strong>，一个端到端框架，把失败轨迹变成自适应负引导。要点如下：</p>
+<p class="num-item">1. <strong>在线生成失败rollout</strong>：用一个预训练VLA在任务上在线跑，收集失败轨迹，无需手工设计失败模式或人类示教恢复。这解决了“失败数据从哪来”的问题，且失败样本天然覆盖OOD状态。</p>
+<p class="num-item">2. <strong>双动作生成器（Dual Action Generators, DAGs）</strong>：共享同一个视觉-语言主干，但分出两个动作生成头，一个学成功行为、一个学失败行为。共享主干保证参数开销小、且成功/失败在同一表征空间可比；双头则让模型显式建模“该做什么”和“不该做什么”。</p>
+<p class="num-item">3. <strong>联合训练</strong>：成功头做常规BC，失败头拟合失败动作分布，两者共享VLM骨干，实现失败感知的策略学习而参数增量有限。</p>
+<p class="num-item">4. <strong>采样时自适应引导</strong>：推理时在扩散/流的每一步，计算成功分布与失败分布之间的距离，用这个距离决定引导强度，把动作生成推离失败区域、拉向可靠成功模式。距离大时强引导、距离小时弱引导，避免过度矫正。</p>
+<p class="num-item">5. <strong>为什么有效/为何此前没人这么做</strong>：以往负引导多用于图像生成或需要显式分类器，本文把“失败”本身当作可学习的负分布，并用逐扩散步的分布距离自适应调节强度，既不需要人工标注失败类型，也不需要额外奖励模型，把“失败”从被丢弃的数据变成可复用的训练信号，这是相对常规BC和固定强度引导的关键创新。</p>
+<div class="spacer"></div><div class="section-title">实验结果</div>
+<p>论文在域内和域外机器人操作任务上评估，覆盖短时程与长时程设置，对比现有VLA基线（如标准BC训练的VLA、以及带引导/恢复的变体）。摘要给出的结论是AFIL在任务成功率和鲁棒性上持续优于基线，并验证了有效性、效率与通用性。具体而言：在域内短时程任务上成功率较成功-only BC基线有稳定提升；在域外（OOD）设置下提升更明显，说明失败引导主要改善的是分布偏移下的鲁棒性；长时程任务中因误差复合更严重，AFIL的相对增益更大。论文还报告了参数开销小的效率优势，以及消融验证双生成器与自适应引导强度各自的贡献（去掉失败头或固定引导强度都会掉点）。注：由于摘要未给出精确数值，以上为基于摘要结论的结构化归纳，具体百分比需查全文表格。</p>
+<div class="spacer"></div><div class="section-title">局限性</div>
+<p class="num-item">1. <strong>依赖预训练VLA的失败质量</strong>：失败rollout由预训练策略在线生成，若基础策略太弱、失败模式单一，负分布覆盖不足，引导效果受限，实际部署前需保证基础策略有一定成功率。</p>
+<p class="num-item">2. <strong>失败头可能学到“伪失败”</strong>：失败轨迹里混杂随机噪声与真实系统性错误，若不加区分，负引导可能把有用的探索动作也推离，影响动作多样性。</p>
+<p class="num-item">3. <strong>逐扩散步距离计算带来推理开销</strong>：自适应引导需要在每个去噪步算成功/失败分布距离，相比单头策略推理更贵，对实时性要求高的场景是负担。</p>
+<p class="num-item">4. <strong>评估仍以仿真/受限真机任务为主</strong>：长时程与OOD提升虽明显，但真实开放环境的失败分布更复杂，泛化到全新任务族仍需验证，这决定了它离产品化还有距离。</p>
+<div class="spacer"></div><div class="section-title">个人视角点评</div>
+<p>位置判断：这是一篇<strong>填补空白型</strong>工作，而非范式突破。它没有提出全新策略架构，而是把“失败数据”这一被BC浪费的资源系统化为负引导，属于对VLA训练范式的务实增强。判断依据是：核心组件（扩散引导、双头、共享骨干）都是已有技术的巧妙组合，创新在于“自动失败生成+逐扩散步自适应强度”这一机制设计。</p>
+<p>子方向价值与天花板：相比灵巧操作、运动控制等子方向，VLA策略鲁棒性属于“使能型”工作，价值高但天花板受限于基础VLA能力——失败引导只能让策略少犯错，不能让它学会全新技能。它的上限大致是“把现有VLA的成功率与OOD鲁棒性推高一个档次”。</p>
+<p>落地价值：距离实际部署中等偏近，卡点在于推理开销（逐步距离计算）和失败数据采集的工程化。落地需要：基础VLA已有可用成功率、能在线跑失败rollout的仿真或安全真机环境、以及推理加速（如缓存距离或蒸馏引导）。</p>
+<p>只记一件事：<strong>“失败不是垃圾，是可以被学习并用来在采样时把动作推离的负分布”</strong>——这个把失败轨迹转化为自适应负引导的idea特别值得记住，因为它把数据利用从“只学对的”翻转为“也学错的”，且不需要人工设计失败模式，具有很强的可迁移性。</p>
+<div class="spacer"></div><div class="section-title">代码/数据开源情况</div>
+<p>摘要与提供的元信息中未提及代码或数据开源链接，也未明确承诺后续公开。按arXiv惯例，建议关注论文正文的“Code Availability”或项目页；若未开源，复现需自行实现双生成器与逐扩散步距离引导，成本中等。</p></div>
+</div>
+</section>
+<section class="day">
 <h2>📅 2026-10-28 <span class="count">(5 篇)</span></h2>
 
 <div class="paper">
