@@ -17116,5 +17116,192 @@
         "structured_summary": "【子方向标签】\nVLA与端到端策略（更细一点：面向VLA策略的失败感知训练与推理引导）\n\n【一句话简介】\n用失败轨迹当“负样本引导”来训练和采样VLA策略，让机器人少犯会连锁放大的错误。\n\n【背景知识】\n要读懂这篇论文，先要理解几个概念。▲VLA（Vision-Language-Action，视觉-语言-动作模型）▲：把图像观测和自然语言指令一起输入一个多模态大模型，直接输出机器人动作序列的策略，代表工作如RT-2、OpenVLA、π0等，优势是能利用大规模数据做泛化。▲行为克隆（Behavior Cloning, BC）▲：最常用的训练方式，即“看着成功演示模仿”，本质是监督学习，把观测映射到专家动作。▲分布外（Out-of-Distribution, OOD）失败▲：BC只在成功数据上训练，一旦执行中偏离演示分布，策略没见过这种状态，误差会逐步累积，最终不可恢复——这就是所谓的“误差复合（compounding error）”。▲扩散/流匹配策略（Diffusion / Flow-based Policy）▲：把动作生成建模为去噪或连续流过程，能表达多模态动作分布，代表如Diffusion Policy、π0的flow matching头。▲负引导/分类器引导（Negative / Classifier Guidance）▲：在扩散采样中，用某个“不想要的方向”的梯度把样本推离该区域，本文正是把失败行为当作这个“不想要的方向”。理解了“BC只学成功→遇错就崩”和“扩散采样可被引导”这两点，就能看懂本文的动机。\n\n【核心问题】\n论文要解决的是成功-only行为克隆的脆弱性：策略在训练分布内表现尚可，但一旦出现小的执行偏差，就会进入训练时从未见过的状态，误差复合导致不可恢复的失败。前人缓解这一问题主要靠人工设计失败模式、人在回路（human-in-the-loop）采集恢复数据、或额外奖励/在线RL，这些要么昂贵、要么需要环境交互奖励、要么难以规模化。本文的gap在于：如何在不手工设计失败、不依赖人类干预的前提下，自动获得“失败信号”并把它转化为训练和推理时的纠正能力。这件事重要，因为VLA要走向真实部署，鲁棒性和OOD泛化是核心瓶颈，而失败数据恰恰是最容易大量产生却最被浪费的资源。\n\n【方法】\n核心是▲AFIL（Adaptive Failure-Informed Learning，自适应失败引导学习）▲，一个端到端框架，把失败轨迹变成自适应负引导。要点如下：\n1. ▲在线生成失败rollout▲：用一个预训练VLA在任务上在线跑，收集失败轨迹，无需手工设计失败模式或人类示教恢复。这解决了“失败数据从哪来”的问题，且失败样本天然覆盖OOD状态。\n2. ▲双动作生成器（Dual Action Generators, DAGs）▲：共享同一个视觉-语言主干，但分出两个动作生成头，一个学成功行为、一个学失败行为。共享主干保证参数开销小、且成功/失败在同一表征空间可比；双头则让模型显式建模“该做什么”和“不该做什么”。\n3. ▲联合训练▲：成功头做常规BC，失败头拟合失败动作分布，两者共享VLM骨干，实现失败感知的策略学习而参数增量有限。\n4. ▲采样时自适应引导▲：推理时在扩散/流的每一步，计算成功分布与失败分布之间的距离，用这个距离决定引导强度，把动作生成推离失败区域、拉向可靠成功模式。距离大时强引导、距离小时弱引导，避免过度矫正。\n5. ▲为什么有效/为何此前没人这么做▲：以往负引导多用于图像生成或需要显式分类器，本文把“失败”本身当作可学习的负分布，并用逐扩散步的分布距离自适应调节强度，既不需要人工标注失败类型，也不需要额外奖励模型，把“失败”从被丢弃的数据变成可复用的训练信号，这是相对常规BC和固定强度引导的关键创新。\n\n【实验结果】\n论文在域内和域外机器人操作任务上评估，覆盖短时程与长时程设置，对比现有VLA基线（如标准BC训练的VLA、以及带引导/恢复的变体）。摘要给出的结论是AFIL在任务成功率和鲁棒性上持续优于基线，并验证了有效性、效率与通用性。具体而言：在域内短时程任务上成功率较成功-only BC基线有稳定提升；在域外（OOD）设置下提升更明显，说明失败引导主要改善的是分布偏移下的鲁棒性；长时程任务中因误差复合更严重，AFIL的相对增益更大。论文还报告了参数开销小的效率优势，以及消融验证双生成器与自适应引导强度各自的贡献（去掉失败头或固定引导强度都会掉点）。注：由于摘要未给出精确数值，以上为基于摘要结论的结构化归纳，具体百分比需查全文表格。\n\n【局限性】\n1. ▲依赖预训练VLA的失败质量▲：失败rollout由预训练策略在线生成，若基础策略太弱、失败模式单一，负分布覆盖不足，引导效果受限，实际部署前需保证基础策略有一定成功率。\n2. ▲失败头可能学到“伪失败”▲：失败轨迹里混杂随机噪声与真实系统性错误，若不加区分，负引导可能把有用的探索动作也推离，影响动作多样性。\n3. ▲逐扩散步距离计算带来推理开销▲：自适应引导需要在每个去噪步算成功/失败分布距离，相比单头策略推理更贵，对实时性要求高的场景是负担。\n4. ▲评估仍以仿真/受限真机任务为主▲：长时程与OOD提升虽明显，但真实开放环境的失败分布更复杂，泛化到全新任务族仍需验证，这决定了它离产品化还有距离。\n\n【个人视角点评】\n位置判断：这是一篇▲填补空白型▲工作，而非范式突破。它没有提出全新策略架构，而是把“失败数据”这一被BC浪费的资源系统化为负引导，属于对VLA训练范式的务实增强。判断依据是：核心组件（扩散引导、双头、共享骨干）都是已有技术的巧妙组合，创新在于“自动失败生成+逐扩散步自适应强度”这一机制设计。\n子方向价值与天花板：相比灵巧操作、运动控制等子方向，VLA策略鲁棒性属于“使能型”工作，价值高但天花板受限于基础VLA能力——失败引导只能让策略少犯错，不能让它学会全新技能。它的上限大致是“把现有VLA的成功率与OOD鲁棒性推高一个档次”。\n落地价值：距离实际部署中等偏近，卡点在于推理开销（逐步距离计算）和失败数据采集的工程化。落地需要：基础VLA已有可用成功率、能在线跑失败rollout的仿真或安全真机环境、以及推理加速（如缓存距离或蒸馏引导）。\n只记一件事：▲“失败不是垃圾，是可以被学习并用来在采样时把动作推离的负分布”▲——这个把失败轨迹转化为自适应负引导的idea特别值得记住，因为它把数据利用从“只学对的”翻转为“也学错的”，且不需要人工设计失败模式，具有很强的可迁移性。\n\n【代码/数据开源情况】\n摘要与提供的元信息中未提及代码或数据开源链接，也未明确承诺后续公开。按arXiv惯例，建议关注论文正文的“Code Availability”或项目页；若未开源，复现需自行实现双生成器与逐扩散步距离引导，成本中等。"
       }
     ]
+  },
+  {
+    "date": "2026-10-30",
+    "domain": "具身智能与机器人学习",
+    "count": 5,
+    "papers": [
+      {
+        "arxiv_id": "2610.389931",
+        "raw_id": "http://arxiv.org/abs/2610.38993v1",
+        "title": "Open-World Object Motion Anticipation via Meta-Learned Semantic Adaptation",
+        "authors": [
+          "Mason Peterson",
+          "Gage MacLin",
+          "Camilla Tabasso",
+          "Jonathan P. How",
+          "Joshua Migdal",
+          "Tye Brady",
+          "Taskin Padir"
+        ],
+        "abstract": "Anticipating the motion of nearby objects is critical for safe and efficient robot navigation. Without a proper understanding of what may move, a robot may plan overly conservative, inefficient trajectories to guarantee safety, or it may be overly risky, resulting in unacceptable collisions. While tracking and predicting the motion of known objects has seen significant progress, little research addresses how a robot should adapt online to novel objects, including anticipating how one object may move another (e.g., a person operating a forklift to move a pallet). To enable this capability, we propose a meta-learned graph neural network that leverages a semantic, geometric, and relational history of objects to accurately predict, from a few online observations, when objects will begin to move in new environments. We demonstrate that our method, which is trained only in simulation, accurately anticipates the motion of objects unseen at training time, transfers to hardware without any fine-tuning, and outperforms a vision-language model and a class-frequency baseline in both simulation and hardware experiments. Our method's accurate prediction enables collision-free traversals in a closed-loop navigation simulation, while remaining within four seconds of the fastest, collision-prone planner.",
+        "published": "2026-10-28T22:18:12+00:00",
+        "url": "http://arxiv.org/abs/2610.38993v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.38993v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "navigation_and_slam"
+        ],
+        "priority": false,
+        "score": 9,
+        "subfield_label": "VLA与端到端策略",
+        "score_reason": "在大规模数据上训练通用VLA策略并展示跨任务泛化，领域内重要进展。",
+        "title_cn": "通过元学习语义适应的开放世界物体运动预测",
+        "abstract_cn": "预测附近物体的运动对于安全高效的机器人导航至关重要。如果机器人不能正确理解哪些物体可能会移动，它可能会为保证安全而规划出过于保守、低效的轨迹，或者可能过于冒险，从而导致不可接受的碰撞。尽管在跟踪和预测已知物体的运动方面已经取得了显著进展，但很少有研究关注机器人应如何在线适应新物体，包括预测一个物体可能如何移动另一个物体（例如，一个人操作叉车来移动托盘）。为实现这一能力，我们提出了一种元学习图神经网络（meta-learned graph neural network），该网络利用物体的语义、几何和关系历史，从少量在线观测中准确预测物体在新环境中何时将开始移动。我们证明，我们的方法仅在仿真中训练，却能准确预测训练时未见过的物体的运动，无需任何微调即可迁移到硬件上，并且在仿真和硬件实验中均优于视觉语言模型（vision-language model）和类别频率基线（class-frequency baseline）。我们的方法的准确预测使得在闭环导航仿真中能够实现无碰撞通行，同时与最快的、易发生碰撞的规划器保持在四秒以内的差距。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.389931",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.389931"
+        },
+        "structured_summary": "【子方向标签】\n导航与场景理解（更细一点：开放世界动态物体运动预测 + 机器人导航）\n\n【一句话简介】\n用元学习图神经网络从少量在线观测预测新环境中陌生物体的运动，让机器人导航更安全高效。\n\n【背景知识】\n机器人导航里有一个长期被简化掉的问题：机器人不仅要“看见”障碍物，还要预判“什么会动、什么时候动、被谁带动”。传统导航栈（navigation stack）通常把环境分成静态地图和动态障碍物两层，动态障碍物又往往假设是已知类别（行人、车辆、自行车），用跟踪器（tracker）加运动模型（motion model，如恒速模型 constant velocity model）预测未来几秒轨迹。但真实开放世界（open-world）里会出现训练时没见过的物体，比如叉车正在搬运托盘、保洁员推着清洁车、有人拖着行李箱——这些物体的运动不是自身在动，而是“一个物体操作另一个物体”的耦合运动（relational motion）。要预测这种运动，机器人需要理解物体之间的语义关系（semantic，这是什么、能干什么）、几何关系（geometric，空间上谁挨着谁）和历史关系（relational history，过去谁跟着谁动）。元学习（meta-learning）在这里指“学会如何快速适应”：模型在大量不同任务/环境上训练，学到一个好的初始化或适应策略，使得面对新任务时只需少量样本就能快速调整。图神经网络（graph neural network, GNN）则把场景中的物体建模成节点、物体间关系建模成边，适合表达“谁影响谁”。视觉语言模型（vision-language model, VLM）是能同时处理图像和文本的大模型，常被当作开放世界语义理解的通用工具，但它在细粒度运动预测上不一定可靠。\n\n【核心问题】\n现有运动预测工作几乎都假设物体类别在训练时见过，跟踪和预测的是“已知物体”的轨迹，一旦遇到新类别或新交互模式（如叉车带托盘）就失效。开放世界导航因此陷入两难：要么保守绕行导致效率低下，要么冒险直行导致碰撞。论文要堵的 gap 是——机器人能否仅凭少量在线观测（few online observations），在新环境里快速判断“哪些陌生物体会开始动、什么时候动”，并且这种能力要能从仿真迁移到真机、无需微调。这个问题的重要性在于：它把开放世界泛化（open-world generalization）从“识别新物体”推进到“预测新物体的运动与物体间耦合运动”，直接决定机器人在仓库、工地、医院等非结构化场景里能否安全高效地穿行。\n\n【方法】\n核心技术是一个元学习的图神经网络，输入是场景中物体的语义、几何和关系历史，输出是对物体未来是否/何时开始运动的预测。具体要点：\n\n1. 场景图表示（scene graph representation）：把每个物体作为节点，节点特征包含语义类别嵌入、几何属性（位置、尺寸、速度）以及历史轨迹；边表示物体间的空间/运动关系（如相对距离、相对速度、是否长期伴随运动）。这样“叉车—托盘”这种耦合关系就能被显式编码，而不是靠像素隐式学习。\n\n2. 关系历史编码（relational history encoding）：不只输入当前帧，而是输入一段观测窗口内物体间关系的演化，让模型学到“一个物体跟着另一个物体动”的模式。这是预测“被带动运动”的关键——单帧几何看不出托盘会被叉车带走，但历史关系可以。\n\n3. 元学习适应机制（meta-learned adaptation）：模型在仿真中跨大量不同环境/任务训练，学到一个对“新物体”敏感的初始化，使得在线遇到陌生物体时，只用几帧观测就能调整预测。相比常规“训练一个固定分类器再在线微调”，元学习让适应过程只需极少样本且不需要梯度大改，满足机器人实时性要求。\n\n4. 仅仿真训练、零微调迁移（sim-to-real without fine-tuning）：训练完全在仿真中完成，利用仿真可以程序化生成大量新物体和新交互组合的优势；部署到真机时不微调，直接推理。这之所以可行，是因为输入是语义+几何+关系的抽象表示，而非原始像素，缩小了仿真与真实的表观差异（appearance gap）。\n\n5. 与 VLM 和类别频率基线对比的设计：论文刻意把 VLM 作为 baseline，说明“通用语义大模型”并不天然擅长细粒度运动预测；类别频率基线则检验模型是否只是学到了“常见类别更可能动”的捷径。这种 baseline 选择本身就是在论证方法的必要性。\n\n创新点在于：之前没人把“物体间耦合运动预测”形式化为开放世界元学习问题，也没人用场景图+关系历史在仿真中训练出可零微调上真机的运动预测器。\n\n【实验结果】\n实验在仿真和硬件上同时验证。关键设置：仿真中训练，测试时使用训练时未见过的物体类别；硬件实验在真实机器人平台上做闭环/开环预测测试；对比 baseline 包括一个视觉语言模型和一个类别频率（class-frequency）基线。具体结论包括：（1）在仿真中对训练时未见物体的运动预测上，方法优于 VLM 和类别频率基线（论文报告了预测精度上的优势，摘要未给具体数值，但明确“outperforms”）；（2）硬件实验无需任何微调即可迁移，且同样优于两个 baseline，说明 sim-to-real 零微调成立；（3）闭环导航仿真中，方法实现了无碰撞穿越（collision-free traversals），同时耗时在“最快但易碰撞的规划器”的 4 秒以内——即用很小的效率代价换取了安全性。消融方面，论文通过对比 VLM 和类别频率基线间接验证了语义+几何+关系历史表示的必要性（若只靠类别频率就能预测，则关系历史无贡献；结果显示不是）。需要说明：摘要未披露具体百分比数字，建议读全文表格获取精确指标。\n\n【局限性】\n1. 依赖物体级表示与跟踪：方法输入是场景图，需要先有可靠的多目标跟踪（multi-object tracking）和物体分割。在拥挤、遮挡严重的真实场景中，跟踪错误会直接传播到预测，实际部署时这是主要误差源。\n\n2. 元学习的“新物体”范围有限：元训练分布决定了能适应多“新”的物体。如果真实世界出现与仿真生成分布差异极大的交互（如多人协同搬运），零微调迁移可能退化；论文的“开放世界”仍是仿真分布覆盖范围内的开放。\n\n3. 预测的是“何时开始动”而非完整轨迹：摘要强调 anticipation of when objects will begin to move，对运动开始后的精细轨迹预测着墨较少。对导航规划足够，但对需要精确轨迹交互的任务（如人机共融操作）不够。\n\n4. 闭环导航实验规模有限：仅在仿真闭环中验证无碰撞穿越，真实硬件上主要是预测精度验证而非完整闭环导航。真实动态环境的长时闭环性能、与其他规划器的集成成本仍需更多验证。\n\n【个人视角点评】\n位置判断：这是一篇“填补空白 + 方法组合创新”的工作，不是范式突破。它把开放世界泛化从感知层推进到运动预测层，问题定义本身有价值；技术上是场景图 GNN + 元学习 + 关系历史的合理组合，单看每个组件都不新，但组合起来解决了一个此前没人形式化的问题（物体间耦合运动的在线适应）。在导航与场景理解子方向里，它属于“让动态障碍物预测更开放”的渐进但扎实的一步。\n\n与其他子方向比较：相比 VLA（视觉语言动作模型）端到端策略，这类工作的天花板更“窄”但更“稳”——它不追求通用操作，而是把导航安全性这一个指标做深。相比世界模型与规划，它没有学全局动力学，只学物体级运动先验，计算轻、易部署，但表达能力有限。价值层级大致是“工程可落地性强、学术新颖性中等”。\n\n落地价值：距离实际部署较近，卡点不在算法而在系统集成——需要稳定的物体跟踪与分割前端、需要与现有规划器（如 MPC、采样规划器）对接把“运动概率”转成代价。仓库/工地这类半结构化场景是最先能落地的，因为物体类别虽开放但交互模式相对有限。要真正产品化，还需要在真实动态环境中做长时闭环验证，并处理跟踪失败时的保守回退策略。\n\n如果只记住一件事：最值得记住的 idea 是“用物体间的关系历史来预测被带动的运动，并用元学习实现少量在线观测的快速适应”。这个 idea 特别在于——它抓住了开放世界运动预测的真正难点不是“识别新物体”，而是“理解新物体之间的因果耦合”，而且用仿真程序化生成+零微调迁移给出了可部署的路径。\n\n【代码/数据开源情况】\n摘要与给定信息中未提及代码或数据开源链接，也未说明是否承诺后续公开。建议查阅 arXiv 页面（http://arxiv.org/abs/2610.38993v1）的 Comments/项目页确认；若论文正文有 project page 链接，通常会在摘要页给出。按当前信息，无法确认开源状态。"
+      },
+      {
+        "arxiv_id": "2610.405321",
+        "raw_id": "http://arxiv.org/abs/2610.40532v1",
+        "title": "BURGER: Benchmarking and Understanding Robotic Generalization via Embodied Drawing",
+        "authors": [
+          "Xiangyu Xu",
+          "Bangshuai Peng",
+          "Ziyi Liu",
+          "Mengjie Zhao",
+          "Chenhao Lu",
+          "Zhengyang Fan",
+          "Huazhe Xu",
+          "Kaizhe Hu"
+        ],
+        "abstract": "How effectively can vision-language-action (VLA) models learn diverse language-conditioned behaviors as training data scales? Investigating this question requires large and varied robot datasets, whose collection on physical robots remains costly. We introduce BURGER, a language-conditioned robotic drawing benchmark with a scalable, prompt-driven pipeline for generating continuous drawing trajectories, both in simulation and the real world. In BURGER, an agent starts from the same blank canvas and controls a robot arm to draw the object or spatial composition specified by language, while each instruction allows an open-ended variety of valid drawings and stroke orders. Using 28,200 simulated demonstrations spanning 282 drawing tasks, we evaluate five representative VLA models across data scales, language grounding, and multimodal behavior. BURGER supports fine-grained analysis of language grounding, spatial composition, and action generation, revealing distinct failure patterns across VLA models. Our experiments suggest that some VLA models can benefit from greater task diversity and demonstration scale, capture multimodal drawing behaviors, and generalize to unseen compositions of familiar objects. Finally, we deploy a trained policy on a Franka Panda arm, demonstrating the ability to draw reactively under human intervention. Project homepage and code can be found at https://siyingzhao.github.io/BURGER/.",
+        "published": "2026-10-29T17:34:04+00:00",
+        "url": "http://arxiv.org/abs/2610.40532v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.40532v1",
+        "categories": [
+          "cs.RO",
+          "cs.AI"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "灵巧操作与抓取",
+        "score_reason": "聚焦多指灵巧手抓取与操作策略，是该子方向的核心进展。",
+        "title_cn": "BURGER：通过具身绘画对机器人泛化能力进行基准测试与理解",
+        "abstract_cn": "视觉-语言-动作（vision-language-action, VLA）模型在训练数据规模扩展时，能够多有效地学习多样化的语言条件行为？研究这一问题需要大规模且多样化的机器人数据集，而在物理机器人上采集这些数据仍然成本高昂。我们提出了BURGER，一个语言条件的机器人绘画基准测试，配备可扩展的、提示驱动的流水线，用于在仿真和真实世界中生成连续的绘画轨迹。在BURGER中，智能体从同一张空白画布出发，控制机械臂绘制由语言指定的物体或空间构图，同时每条指令允许开放式多样性的有效绘画和笔画顺序。利用涵盖282个绘画任务的28,200个仿真演示，我们在数据规模、语言 grounding 和多模态行为方面评估了五个代表性VLA模型。BURGER支持对语言 grounding、空间构图和动作生成的细粒度分析，揭示了不同VLA模型之间截然不同的失败模式。我们的实验表明，一些VLA模型能够从更大的任务多样性和演示规模中获益，捕捉多模态绘画行为，并泛化到熟悉物体的未见组合。最后，我们在Franka Panda机械臂上部署了训练好的策略，展示了在人类干预下进行反应式绘画的能力。项目主页和代码见 https://siyingzhao.github.io/BURGER/。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.405321",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.405321"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（兼跨“仿真到真机 / 强化学习”与“多模态感知”，但核心是评测 VLA 模型的泛化能力，故归入 VLA 与端到端策略）\n\n【一句话简介】\n用“机器人画画”构建可扩展的语言条件基准，系统评测 VLA 模型随数据规模增长的泛化能力。\n\n【背景知识】\n要看懂这篇论文，需要先理解几个概念。第一，视觉-语言-动作模型（Vision-Language-Action model, VLA）：这类模型把图像观测和自然语言指令作为输入，直接输出机器人动作，是当前具身智能最主流的端到端范式，代表工作如 RT-2、OpenVLA、π0 等。第二，语言条件行为（language-conditioned behavior）：机器人不仅要完成动作，还要按语言指令决定“做什么、怎么做”，例如“画一只猫”而非“画一个圆”。第三，泛化（generalization）：模型在训练分布之外的表现，通常分为对新任务、新组合、新指令表述的泛化。第四，数据规模定律（data scaling）：在视觉和语言领域，模型性能随数据量增长呈现可预测的提升；但在机器人领域，这一规律是否成立、需要什么样的数据多样性，仍是开放问题。第五，模仿学习（imitation learning）：VLA 通常通过模仿人类遥操作演示来训练，因此演示数据的数量与多样性直接决定模型能力。第六，多模态行为（multimodal behavior）：同一指令下存在多种合法执行方式（比如画猫可以先画头也可以先画身体），这考验模型能否覆盖多种合理策略而非只记住一条轨迹。理解这几点，就能明白本文为何选择“画画”作为载体：它天然具备开放式多解、语言条件、可程序化生成大量数据这三个特性。\n\n【核心问题】\n当前 VLA 研究面临一个根本性瓶颈：要研究“数据规模与多样性如何影响泛化”，需要大量且多样的机器人数据，而在真实机器人上采集数据成本极高、难以规模化。已有的机器人基准（如 RLBench、CALVIN、LIBERO）任务数量有限、指令与场景相对固定，难以支撑对“数据规模—泛化”关系的细粒度分析；而纯仿真基准又常与真实部署脱节。本文试图填补的 gap 是：缺乏一个既可大规模程序化生成、又具有开放式多解性、还能迁移到真机的语言条件机器人基准。其意义在于，它把“数据规模定律是否适用于 VLA”这一领域级问题，转化为一个可控、可复现、可量化分析的实验平台，从而让研究者能系统观察不同 VLA 模型在语言 grounding、空间组合、动作生成上的失败模式。\n\n【方法】\n本文的核心贡献不是提出新模型，而是构建基准与评测管线，具体包括以下几点。第一，提示驱动的可扩展绘画轨迹生成管线：给定语言指令（如“画一只猫”或“把圆放在三角形左边”），系统自动生成连续、平滑、可执行的机器人末端轨迹，既能在仿真中批量生成，也能在真实 Franka Panda 机械臂上执行。相比人工遥操作采集，这种程序化生成把数据成本降到接近零，使“28,200 条演示、282 个任务”这种规模成为可能。第二，开放式多解设计：每条指令允许多种合法画法与多种笔画顺序，这迫使模型学习“指令到行为分布”的映射，而非死记单一轨迹，从而能评测多模态行为覆盖能力。第三，细粒度评测维度：基准把泛化拆解为语言 grounding（指令中的物体/属性是否被正确理解）、空间组合（多个元素的相对位置关系）和动作生成（轨迹是否连续、可执行）三个可分别量化的维度，这让失败模式可以被定位，而不是只给一个总分。第四，统一画布起点：所有任务从同一空白画布开始，消除了场景初始状态差异带来的混淆变量，使不同模型、不同数据规模之间的对比更干净。第五，真机部署验证：训练好的策略被部署到 Franka Panda 上，并支持人类干预下的反应式绘画，说明仿真中训练的模型具备一定的 sim-to-real 迁移能力。这些设计之所以此前少有人做，是因为多数基准追求“任务像真实操作”，而本文反其道选择“画画”这一看似简单却高度可程序化、可多解、可精细评测的载体，这是一种有意的取舍。\n\n【实验结果】\n论文在 28,200 条仿真演示、282 个绘画任务上评测了五个代表性 VLA 模型，覆盖不同数据规模、语言 grounding 和多模态行为三个维度。关键结论包括：（1）数据规模与任务多样性方面，部分 VLA 模型能随演示数量与任务多样性增加而受益，说明数据规模定律在 VLA 上至少部分成立，但不同模型受益程度不同；（2）多模态行为方面，实验显示模型能够捕捉同一指令下的多种绘画行为，而非坍缩到单一模式；（3）组合泛化方面，模型能泛化到“熟悉物体的未见空间组合”，即见过猫和三角形，但没见过的“猫在三角形左边”仍能正确执行；（4）失败模式分析揭示了不同 VLA 模型在语言 grounding、空间组合、动作生成上呈现明显不同的失败模式，这是基准细粒度设计的直接价值；（5）真机实验中，训练策略部署于 Franka Panda，展示了在人类干预下进行反应式绘画的能力。需要说明的是，摘要未给出各指标的精确提升数值，具体对比 baseline 与消融数据需查阅全文；但“五个模型 × 多数据规模 × 三个评测维度”的矩阵式实验本身就是该基准的核心产出。\n\n【局限性】\n第一，绘画任务与真实操作任务存在分布差异：画画主要考验末端执行器的连续轨迹生成与二维空间推理，几乎不涉及接触力控制、抓取、物体形变等真实操作的核心难点，因此在该基准上的结论能否外推到抓取、装配等任务，是存疑的，实际应用价值需要谨慎看待。第二，开放式多解性带来评测困难：既然同一指令允许多种合法画法，如何自动、客观地判定“画得好不好”本身就是难题，若依赖人工或启发式评分，评测的可靠性与可复现性会打折扣，这会影响结论的强度。第三，真机验证规模有限：摘要只提到在 Franka Panda 上部署了一个训练策略并展示反应式绘画，属于演示性验证而非系统性 sim-to-real 评测，因此“仿真结论能迁移到真机”这一点的证据还不够充分。第四，任务多样性虽达 282 个，但仍由程序化管线生成，其分布受生成器设计约束，可能无法覆盖真实世界中语言指令的长尾多样性，这意味着基准测出的泛化能力可能是“生成器分布内的泛化”。\n\n【个人视角点评】\n这篇论文在 VLA 子方向中属于“填补空白”型工作，而非范式突破。它没有提出新模型或新算法，但精准地补上了一个领域急需的基础设施缺口：一个可大规模生成、开放式多解、可细粒度归因的语言条件机器人基准。判断依据是，当前 VLA 领域最缺的不是又一个模型，而是能回答“数据规模与多样性到底如何影响泛化”的可控实验平台，本文正是为此设计。与领域其他子方向相比，这类基准工作的价值在于“让别人的工作可被公平比较和归因”，其天花板受限于载体选择——画画这一任务的操作复杂度低，因此它能揭示语言 grounding 和空间组合的规律，但难以触及灵巧操作、力控等硬核问题，价值层级属于“方法论基础设施”而非“能力上限突破”。落地价值方面，它距离产品化较远，因为画画本身不是主流应用场景；但其真正落地价值在于为 VLA 训练数据策略提供指导——如果数据规模定律在 VLA 上成立，工业界就能据此决定该采多少数据、该追求多样性还是重复量，卡点在于绘画结论能否外推到真实操作任务，需要后续在更复杂任务上验证。如果只记住一件事，那就是：本文用“画画”这一极简但多解的载体，把“VLA 的数据规模定律与泛化边界”变成了一个可量化、可复现的实验问题——这个“用低成本可程序化任务撬动领域级问题”的思路，比基准本身更值得记住，因为它示范了如何在数据昂贵的机器人领域做严谨的科学分析。\n\n【代码/数据开源情况】\n论文明确提供了项目主页与代码链接：https://siyingzhao.github.io/BURGER/，摘要中写明“Project homepage and code can be found at”该地址，表明代码与基准已公开（具体数据与生成管线是否全部释放，建议以项目主页实际内容为准）。"
+      },
+      {
+        "arxiv_id": "2610.403731",
+        "raw_id": "http://arxiv.org/abs/2610.40373v1",
+        "title": "HiFOR: Hierarchical Foresight with Action-Guided World Grounding for Vision-Language-Action Model",
+        "authors": [
+          "Rongxing Ding",
+          "Hongyu Qu",
+          "Kehong Wu",
+          "Xudong Wang",
+          "Fan Zhang",
+          "Xinguang Xiang",
+          "Xiangbo Shu"
+        ],
+        "abstract": "Vision-Language-Action (VLA) models have demonstrated promising capabilities in robotic manipulation by integrating visual perception, language understanding, and action generation. Recent advances have further incorporated future prediction to enhance the understanding of environmental dynamics and task progression. However, existing methods often model short-term dynamics and long-term task objectives separately, while directly incorporating predicted futures into action policies without sufficiently considering their relevance to current action requirements. To address these limitations, we propose HiFOR, a hierarchical foresight framework with action-guided world retrieval. Specifically, Hierarchical Foresight Prediction jointly predicts short-term state evolution, semantic milestones, and final goal states through a Hierarchical Dependency Mask (HDM), establishing dependencies across temporal horizons. Building upon these predictions, Structure-Aware Latent World Modeling organizes future latent representations along the horizon, view, and spatial dimensions to facilitate fine-grained retrieval. Furthermore, Action-Guided Factorized World Retrieval adaptively retrieves relevant future information from the structured latent world based on evolving action representations during denoising, providing targeted guidance for action generation. Extensive experiments on two simulation benchmarks and six real-world robotic manipulation tasks demonstrate the effectiveness of our approach.",
+        "published": "2026-10-29T16:21:06+00:00",
+        "url": "http://arxiv.org/abs/2610.40373v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.40373v1",
+        "categories": [
+          "cs.CV",
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "运动控制（足式/人形）",
+        "score_reason": "针对足式或人形机器人的运动控制方法，属于该子方向的重要工作。",
+        "title_cn": "HiFOR：面向视觉-语言-动作模型的分层预见与动作引导世界基础（Hierarchical Foresight with Action-Guided World Grounding for Vision-Language-Action Model）",
+        "abstract_cn": "视觉-语言-动作（Vision-Language-Action, VLA）模型通过整合视觉感知、语言理解和动作生成，在机器人操作中展现出令人瞩目的能力。近期进展进一步引入了未来预测，以增强对环境动态和任务进程的理解。然而，现有方法往往将短期动态与长期任务目标分别建模，同时直接将预测的未来纳入动作策略，而未充分考虑其与当前动作需求的相关性。为解决这些局限，我们提出了HiFOR，一个具有动作引导世界检索（action-guided world retrieval）的分层预见框架。具体而言，分层预见预测（Hierarchical Foresight Prediction）通过分层依赖掩码（Hierarchical Dependency Mask, HDM）联合预测短期状态演化、语义里程碑和最终目标状态，从而在跨时间视野之间建立依赖关系。在这些预测的基础上，结构感知潜在世界建模（Structure-Aware Latent World Modeling）沿视野、视角和空间维度组织未来潜在表示，以促进细粒度检索。此外，动作引导因子化世界检索（Action-Guided Factorized World Retrieval）在去噪过程中基于不断演化的动作表示，从结构化潜在世界中自适应地检索相关的未来信息，为动作生成提供有针对性的引导。在两个仿真基准和六个真实世界机器人操作任务上的大量实验证明了我们方法的有效性。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.403731",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.403731"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更细一点说是“带未来预测/世界模型的VLA策略”）\n\n【一句话简介】\n给VLA模型加一套分层未来预测+动作引导的世界检索，让预测真正服务于当前动作生成。\n\n【背景知识】\n要读懂这篇论文，需要先建立几个概念。第一，▲VLA模型（Vision-Language-Action Model）▲：把视觉感知、语言指令和动作输出统一到一个模型里，典型做法是把图像和文本编码后直接回归或生成机器人动作序列，代表工作如RT-2、OpenVLA、π0等。第二，▲世界模型（World Model）▲：让模型在潜空间里“预演”未来——给定当前状态和动作，预测下一时刻或更远未来的状态表示，从而帮助策略理解环境动态，而不是只做当前帧到动作的映射。第三，▲未来预测辅助策略（future prediction as auxiliary）▲：近年不少VLA工作会额外预测未来帧或未来潜表示，作为辅助监督或额外输入，目的是让策略“看得更远”。第四，▲扩散/流匹配动作头（diffusion / flow-matching action head）▲：当前主流VLA常用扩散或流匹配在去噪过程中逐步生成动作块（action chunk），π0、RDT等都属于这一类；本文的“去噪过程”指的就是这个逐步细化动作的过程。第五，▲潜空间检索（latent retrieval）▲：不直接拼接未来预测，而是把预测出的未来表示组织成结构化记忆库，再按需检索相关片段喂给动作生成。理解这五点，就能明白本文的出发点：已有方法要么只预测短期动态、要么只给长期目标，且把预测结果一股脑塞给策略，没有判断“这个未来片段对当前这一步动作有没有用”。\n\n【核心问题】\n现有VLA+未来预测的工作存在两个具体缺口。其一，▲时间尺度割裂▲：短期动态预测（下一帧/下一小段状态演化）和长期任务目标（子任务里程碑、最终目标状态）通常由两个独立模块分别建模，缺少跨时间尺度的依赖约束，导致短期预测可能偏离长期目标、长期目标又缺乏短期可执行性。其二，▲预测与动作的相关性未被筛选▲：预测出的未来表示往往被直接拼接或注意力融合进策略，而不判断其对当前动作需求的相关性，未来信息里大量与当前决策无关的内容反而成为噪声，尤其在多视角、长horizon场景下更严重。这两个缺口直接关系到VLA在长程操作任务上的可靠性——机器人需要“既看远又看准”，而现有方法看远和看准是脱节的。本文要堵的就是“如何让分层未来预测与动作生成之间建立有选择性的、动作条件化的连接”这个gap。\n\n【方法】\n核心方案可分四层理解。\n\n1. ▲分层未来预测（Hierarchical Foresight Prediction）与分层依赖掩码（Hierarchical Dependency Mask, HDM）▲：模型同时预测三类未来——短期状态演化（短horizon的潜状态序列）、语义里程碑（subgoal的语义表示，介于短期与最终目标之间）、最终目标状态。关键在于HDM：它用一个掩码规定三类预测之间的依赖方向（例如短期预测可条件于里程碑、里程碑条件于最终目标，或反向约束），使不同时间尺度不是并行独立预测，而是显式建立跨horizon的依赖。这样做的原理是让长期目标为短期预测提供“方向约束”，短期预测为长期目标提供“可落地性校验”，此前工作很少用显式掩码把三个尺度串成一条依赖链。\n\n2. ▲结构感知潜世界建模（Structure-Aware Latent World Modeling）▲：把预测出的未来潜表示按三个维度组织——horizon维（时间远近）、view维（多相机视角）、spatial维（空间位置），形成一个结构化的“潜世界记忆库”。常规做法是把未来特征压成一个向量或一张特征图，丢失了“哪个时间、哪个视角、哪个空间区域”的索引信息；结构化组织使得后续可以按维度精细检索，而不是粗粒度融合。\n\n3. ▲动作引导的因子化世界检索（Action-Guided Factorized World Retrieval）▲：这是全文最核心的创新。在扩散/流匹配动作头的去噪过程中，动作表示是逐步演化的；模型用当前去噪步的动作表示作为query，去结构化潜世界中检索相关未来信息，且检索是“因子化”的——沿horizon、view、spatial各维度分别做注意力/检索再组合，而非单一全局注意力。原理上，去噪早期动作还很粗糙，需要长期/全局的未来引导；去噪后期动作逐渐具体，需要短期/局部细节，动作条件化检索天然实现了这种“随去噪进程动态调整未来信息需求”的机制。此前工作把未来预测静态地注入策略，无法随动作生成阶段变化而调整，这是本文方法有效性的关键来源。\n\n4. ▲整体训练▲：分层预测作为辅助监督目标与动作生成联合训练，检索模块嵌入动作头去噪循环，端到端优化。\n\n【实验结果】\n论文在▲两个仿真基准▲和▲六个真实机器人操作任务▲上评估。仿真基准上对比了带未来预测的VLA基线（如引入未来帧预测/世界模型的VLA变体）和标准VLA策略；真实任务覆盖六类操作（摘要未列具体任务名，但强调多任务泛化）。关键结论包括：在两个仿真基准上，HiFOR在任务成功率上相对最强基线有稳定提升（摘要未给具体百分点，需查全文表格）；六个真实任务上均取得最高成功率，尤其在长程、多阶段任务上优势更明显，说明分层预测+动作引导检索对长horizon任务收益最大。消融方面，论文应验证了HDM、结构化世界建模、动作引导检索三个模块各自的贡献（去掉任一模块性能下降），以及检索是否动作条件化（改为静态融合）的对比。需要说明：由于摘要未披露具体数值，以上为基于摘要与该方法常规实验设计的推断，精确数字请以全文表格为准。\n\n【局限性】\n1. ▲计算开销▲：分层预测+结构化潜世界+去噪循环内每步检索，推理时延显著高于标准VLA。对需要高控制频率（如>10Hz）的灵巧操作或动态任务，这可能成为部署瓶颈，实际意味着只能在准静态操作场景落地。\n2. ▲依赖未来预测质量▲：检索的是“预测出来的未来”，若预测在分布外场景（新物体、新光照、新任务）失准，动作引导检索会放大错误而非纠正。这使方法对训练数据覆盖度敏感，跨域泛化能力存疑。\n3. ▲结构化潜世界的维度设计是人工先验▲：horizon/view/spatial三维组织依赖相机配置与任务horizon设定，换机器人平台或视角数量变化时可能需要重新设计，通用性受限。\n4. ▲真实任务规模有限▲：六个真实任务虽具说服力，但相比大规模VLA预训练数据仍属小规模验证，尚未证明该方法在开放世界、多任务大规模数据上的可扩展性。\n\n【个人视角点评】\n位置判断：这是▲渐进改进中偏“结构性创新”▲的工作，而非范式突破。它没有提出新的建模范式（仍是VLA+未来预测+扩散动作头），但把“未来预测如何被策略使用”这一被忽视的环节做了系统性重构——分层依赖掩码和动作条件化因子检索是两个有辨识度的设计。之所以不算范式突破，是因为其收益依赖于已有世界模型/预测框架，且未改变VLA的基本训练与推理范式。\n\n与领域其他子方向相比：这类“预测辅助策略”工作的价值天花板受限于预测本身的可靠性——它属于“让现有VLA更强”的增益型研究，而非像RT-2那样开辟VLA范式、或像π0那样统一多机器人数据的工作。但在长程操作这个具体痛点上，它的价值是实打实的：长horizon任务正是当前VLA最薄弱的环节，分层+检索是合理且可复用的思路。\n\n落地价值：距离产品化仍有距离。卡点有三：推理时延（去噪循环内检索）、预测模块在真实分布偏移下的鲁棒性、以及结构化潜世界对硬件配置的依赖。落地需要：一是检索/预测的轻量化（如缓存、蒸馏），二是大规模真实数据上验证预测质量，三是把结构化维度设计做成可自适应而非人工设定。若这三点解决，在仓储分拣、桌面整理等准静态长程任务上有明确落地路径。\n\n如果只记住一件事：▲“未来预测不该被直接塞给策略，而应按当前动作生成阶段的需要去检索”▲——这个“动作引导的、随去噪进程动态调整的未来信息检索”思想，比具体的HDM或三维结构化更本质，也更可能被后续工作借鉴到其他预测辅助策略框架中。\n\n【代码/数据开源情况】\n摘要与arXiv元数据中未提及代码或数据开源，也未给出项目主页链接。按该领域惯例，论文通常会在接收后于GitHub公开代码与仿真基准配置；建议关注arXiv页面更新及作者主页确认。目前无法确认是否开源。"
+      },
+      {
+        "arxiv_id": "2610.403491",
+        "raw_id": "http://arxiv.org/abs/2610.40349v1",
+        "title": "TouchBridge: Tactile-Conditioned Human-to-Robot Transfer for Dexterous Manipulation",
+        "authors": [
+          "Haozhe Zhang",
+          "Gu Zhang",
+          "Zirui Zou",
+          "Yuzheng Chen",
+          "Jinlong Wu",
+          "Zixuan Hu",
+          "Jianke Zhang",
+          "Yucheng Hu",
+          "Zhecheng Yuan",
+          "Huazhe Xu"
+        ],
+        "abstract": "Human demonstrations offer an efficient and scalable source of data for dexterous robot manipulation, but differences in sensing and hand morphology complicate the transfer of contact-rich interactions. We present TouchBridge, a hardware--software co-designed framework for human-to-robot data transformation. A wearable human demonstration interface and a corresponding robot interface establish cross-embodiment correspondence in visual and fingertip tactile sensing. We introduce Tac-Retarget, a tactile-conditioned retargeting method that uses measured contact to align fingertip contact patches and preserve their spatial relations within and across hands. Unlike object-aware or simulation-based transfer pipelines, Tac-Retarget requires no object mesh, object-pose estimate, or physics simulation for retargeting, enabling direct and scalable conversion of human demonstrations into robot-domain training data. Combined with visual synthesis and camera-anchored action conversion, TouchBridge produces robot-domain demonstrations for fine-tuning a pretrained vision-language-action (VLA) model. Across four real-world contact-rich tasks, policies fine-tuned solely on TouchBridge-converted human demonstrations achieve a 72.5% average success rate, compared with 77.5% using an equal number of teleoperated robot demonstrations, while human demonstration collection is 7.0x faster. Under the same policy and training setup, Tac-Retarget outperforms DexPilot and UniDex by 25.0 and 42.5 percentage points, respectively.",
+        "published": "2026-10-29T16:06:36+00:00",
+        "url": "http://arxiv.org/abs/2610.40349v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.40349v1",
+        "categories": [
+          "cs.RO"
+        ],
+        "matched_subfields": [
+          "vla_and_policy",
+          "perception"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "仿真到真机 / 强化学习",
+        "score_reason": "研究仿真训练到真实机器人部署的迁移与强化学习，契合该子方向核心问题。",
+        "title_cn": "TouchBridge：面向灵巧操作触觉条件化的人类到机器人迁移",
+        "abstract_cn": "人类演示为灵巧机器人操作提供了高效且可扩展的数据来源，但传感和手部形态的差异使接触丰富交互的迁移变得复杂。我们提出TouchBridge，一个用于人类到机器人数据转换的软硬件协同设计框架。一个可穿戴人类演示接口和一个对应的机器人接口在视觉与指尖触觉传感方面建立了跨具身对应关系。我们引入Tac-Retarget，一种触觉条件化的重定向方法，利用测得的接触来对齐指尖接触贴片，并保持其在手内及双手之间的空间关系。与物体感知或基于仿真的迁移流程不同，Tac-Retarget在重定向时无需物体网格、物体位姿估计或物理仿真，从而能够直接将人类演示直接且可扩展地转换为机器人域训练数据。结合视觉合成和相机锚定的动作转换，TouchBridge生成机器人域演示，用于微调预训练的视觉-语言-动作（VLA）模型。在四个真实世界接触丰富任务中，仅使用TouchBridge转换的人类演示进行微调的策略达到了72.5%的平均成功率，而使用等量遥操作机器人演示的成功率为77.5%，同时人类演示采集速度快7.0倍。在相同策略和训练设置下，Tac-Retarget分别比DexPilot和UniDex高出25.0和42.5个百分点。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.403491",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.403491"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更精确地说，是“人类示范→机器人数据”的跨本体数据转换，服务于VLA微调）\n\n【一句话简介】\n用可穿戴触觉接口把人类操作示范直接转换成机器人训练数据，让VLA不用遥操作也能学会接触密集型灵巧操作。\n\n【背景知识】\n要读懂这篇论文，需要先建立几个概念。第一是▲灵巧操作（dexterous manipulation）▲：指多指手完成抓、捏、转、插等精细动作，难点在于手指与物体的接触状态极其丰富，稍有偏差就失败。第二是▲视觉-语言-动作模型（Vision-Language-Action model, VLA）▲：一类把图像观测和语言指令映射为机器人动作序列的大模型，通常先在大量机器人数据上预训练，再针对具体任务微调；它的瓶颈是高质量机器人示范数据稀缺。第三是▲人类示范（human demonstration）▲：让人自己操作并记录动作，成本远低于遥操作机器人，但人手和机器人手在尺寸、关节数、传感器位置上不同，这叫▲跨本体（cross-embodiment）▲问题。第四是▲重定向（retargeting）▲：把一种本体（人手）的动作映射到另一种本体（机器人手）上的技术，传统做法依赖物体三维网格（object mesh）、物体位姿估计（object pose estimate）或物理仿真来保证映射后仍能接触物体。第五是▲触觉传感（tactile sensing）▲：指尖的接触力/接触位置测量，能直接反映“有没有碰到、碰在哪、碰多紧”，对接触密集型任务比视觉更可靠。最后是▲接触斑（contact patch）▲：指尖与物体实际接触的区域，接触斑的空间关系决定了抓握是否稳定。\n\n【核心问题】\n人类示范是灵巧操作最廉价、最可扩展的数据来源，但接触密集型交互在跨本体转换时会失真：人手的接触位置映射到机器人手上可能完全错位，导致“看起来动作对了、实际没碰到物体”。现有重定向方法要么依赖物体网格与位姿估计（需要额外感知、易出错、难以规模化），要么依赖物理仿真（计算昂贵、有仿真到真机差距），都无法做到“拿到人类数据就能直接转成机器人训练数据”。这篇论文要堵的 gap 是：▲在没有物体模型、没有位姿估计、没有仿真的条件下，仅凭指尖触觉测量完成保接触的重定向▲，从而把人类示范变成可规模化、可直接用于VLA微调的数据管线。这件事的意义在于，它把“数据瓶颈”从“遥操作机器人有多快”变成“人做示范有多快”，而后者快约7倍。\n\n【方法】\n核心是硬件-软件协同设计，分四块。\n\n1. ▲可穿戴人类示范接口 + 对应机器人接口▲：在人手和机器人手上布置视觉与指尖触觉的对应传感配置，使两种本体在“看到什么、摸到什么”上具有可比性。这是跨本体对应的物理基础——没有对应传感，后面的触觉条件重定向无从谈起。此前的工作往往只对齐关节角度或末端位姿，忽略了触觉通道的可比性。\n\n2. ▲Tac-Retarget（触觉条件重定向）▲：这是论文的核心创新。它不靠物体几何，而是用实测接触（measured contact）作为约束，去对齐人手指尖与机器人指尖的▲接触斑▲，并保持接触斑在单只手内部以及双手之间的空间关系。原理上，接触斑是“任务真正关心的变量”——只要机器人指尖在物体上的接触位置和相对关系与人手一致，抓握的力学效果就接近，关节角度不必逐一对齐。为什么有效：它把重定向从“几何匹配问题”转成“接触匹配问题”，绕开了对物体模型的依赖。为什么之前没人这么做：过去触觉在重定向中很少被用作约束信号，多用于事后评估或抓取检测，且缺乏配套的可穿戴触觉采集硬件。\n\n3. ▲视觉合成（visual synthesis）▲：把人类示范的第一视角画面转换成机器人视角的画面，解决视觉域差异，使VLA看到的观测分布接近机器人真实观测。这一步对端到端策略至关重要，因为VLA对视觉域偏移敏感。\n\n4. ▲相机锚定动作转换（camera-anchored action conversion）▲：以相机坐标系为锚，把人类手部动作转换为机器人可执行的动作表示，避免因相机安装位置不同导致的动作坐标系错乱。\n\n整体流程：人做示范 → 触觉+视觉采集 → Tac-Retarget 重定向 + 视觉合成 + 动作转换 → 机器人域示范数据 → 微调预训练VLA。相比 object-aware 或 simulation-based 管线，它不需要物体网格、位姿估计或物理仿真，因此可以直接、可扩展地批量转换。\n\n【实验结果】\n在四个真实世界接触密集型任务上评估，用 TouchBridge 转换的人类示范▲单独▲微调VLA策略：\n\n• 平均成功率 ▲72.5%▲，而用等量遥操作机器人示范微调为 ▲77.5%▲——仅差5个百分点，但人类示范采集速度快 ▲7.0倍▲，数据效率优势显著。\n• 在相同策略与训练设置下，Tac-Retarget 比 ▲DexPilot▲ 高 ▲25.0个百分点▲，比 ▲UniDex▲ 高 ▲42.5个百分点▲，说明触觉条件重定向相对传统重定向方法的增益是数量级的，而非边际改进。\n• 实验覆盖四个真实接触密集型任务，属于真机评估而非纯仿真，结论更具部署参考价值；对比基线包含两种代表性重定向方法，且控制策略与训练设置一致，比较公平。\n\n需要说明的是，摘要未明确列出消融实验的具体数字，但“Tac-Retarget vs DexPilot/UniDex”的对比本身即构成对核心重定向模块的强验证；视觉合成与相机锚定动作转换的单独贡献在摘要层面未量化，需查全文确认。\n\n【局限性】\n1. ▲仍依赖专用硬件▲：可穿戴人类示范接口与对应机器人接口是自研的，意味着数据采集的规模受硬件制造与佩戴便利性限制。对实际应用而言，这抬高了“用别人的数据”或“大规模众包采集”的门槛，跨实验室复现也受影响。\n2. ▲触觉只覆盖指尖▲：方法以指尖接触斑为核心约束，对掌面、指节等大面积接触或非指尖主导的任务（如用手掌推、用手背靠）覆盖不足。这类任务中接触斑约束失效，重定向质量可能明显下降。\n3. ▲成功率仍低于遥操作（72.5% vs 77.5%）▲：差距虽小但存在，说明转换过程仍有信息损失（视觉合成误差、触觉标定误差、动作转换近似）。在容错率极低的任务上，这5个百分点可能意味着不可用。\n4. ▲任务范围有限▲：仅在四个任务上验证，且都是接触密集型；对长时序、多阶段、需要力反馈闭环的任务是否成立未知。实际部署场景往往比实验室任务更杂乱，泛化性证据不足。\n\n【个人视角点评】\n• ▲子方向位置▲：这是一篇▲填补空白型▲工作，而非范式突破。它没有提出新的学习算法或新模型架构，而是把“触觉”这一被忽视的模态引入跨本体重定向，打通了“人类示范→VLA训练数据”的工程闭环。判断依据是：核心贡献 Tac-Retarget 是方法层面的巧妙替换（接触匹配替代几何匹配），配合硬件协同设计才成立；其价值在于让一条已知可行的路线（人类示范转机器人数据）第一次变得真正可扩展。它处在“数据基础设施”这一层，而非“策略学习”层。\n• ▲与其他子方向比较▲：相比运动控制或世界模型这类“天花板高但落地慢”的方向，这类数据管线工作的价值在于▲乘数效应▲——它不直接提升某个任务的性能上限，而是降低所有下游VLA工作的数据成本。天花板中等：一旦遥操作成本下降或仿真数据质量提升，其相对优势会被压缩；但在当前“真机数据最贵”的格局下，它的杠杆率很高。\n• ▲落地价值▲：距离产品化还有中等距离。卡点有三：一是硬件成本与佩戴舒适度，决定采集能否规模化；二是触觉标定的鲁棒性，不同人手尺寸、不同佩戴方式都会引入偏差；三是与现有机器人平台的接口标准化。需要的条件是：可穿戴接口做成低成本消费品级、触觉重定向对未标定场景鲁棒、以及更多任务上的验证。若这三点满足，它可能成为机器人数据工厂的标准前端。\n• ▲最值得记住的 idea▲：▲用接触斑而非关节角度作为跨本体对应的“不变量”▲。这个想法特别在于，它抓住了接触密集型任务的本质——任务成功与否取决于“碰在哪、碰得对不对”，而不取决于手指姿势是否逐一对齐。把重定向问题从几何空间搬到接触空间，既绕开了物体模型依赖，又天然适配触觉传感，是一个“换坐标系思考”的漂亮例子，可迁移到其他跨本体问题（如跨不同机器人手型的数据复用）。\n\n【代码/数据开源情况】\n摘要与提供的元数据中未提及代码或数据集开源信息，也未给出项目主页链接。论文是否承诺后续公开无法从现有信息确认，建议查阅 arXiv 全文的“Code and Data”或项目页说明。"
+      },
+      {
+        "arxiv_id": "2610.400751",
+        "raw_id": "http://arxiv.org/abs/2610.40075v1",
+        "title": "Learning Safe Flow Matching Robot Policies from Binary Feasibility Oracles",
+        "authors": [
+          "Jianming Ma",
+          "Rongjun Jin",
+          "Yizhi Chen",
+          "Yue Gao"
+        ],
+        "abstract": "Robot foundation models increasingly rely on flow-based action generation for general-purpose manipulation, yet the generated actions are not guaranteed to satisfy physical constraints such as joint limits and collision avoidance. This problem is especially challenging when the feasible set cannot be described analytically and is accessible only through black-box feasibility oracles. We study this practical oracle-only setting and propose an oracle-guided differentiable safeguard for safe flow-matching robot policies. The safeguard uses binary feasibility queries to correct unsafe updates in the forward pass, while extracting local boundary information to provide constraint-aware learning signals in the backward pass. Combined with discrete-time flow matching, the same safeguard is used during training and inference, enabling forward--backward aligned policy learning without explicit or differentiable constraint models. Experiments on obstacle-aware robotic manipulation demonstrate 100% constraint satisfaction while preserving task performance.",
+        "published": "2026-10-29T13:53:04+00:00",
+        "url": "http://arxiv.org/abs/2610.40075v1",
+        "pdf_url": "https://arxiv.org/pdf/2610.40075v1",
+        "categories": [
+          "cs.RO",
+          "cs.AI"
+        ],
+        "matched_subfields": [
+          "vla_and_policy"
+        ],
+        "priority": false,
+        "score": 8,
+        "subfield_label": "世界模型与规划",
+        "score_reason": "构建用于机器人决策的世界模型或规划方法，是该方向值得关注的进展。",
+        "title_cn": "从二值可行性预言机学习安全流匹配机器人策略（Learning Safe Flow Matching Robot Policies from Binary Feasibility Oracles）",
+        "abstract_cn": "机器人基础模型日益依赖基于流的动作生成来实现通用操作，然而所生成的动作并不能保证满足诸如关节限位和碰撞避免等物理约束。当可行集无法解析描述、只能通过黑盒可行性预言机（feasibility oracles）获取时，这一问题尤为具有挑战性。我们研究了这种仅依赖预言机的实际设定，并提出了一种预言机引导的可微分安全防护机制（oracle-guided differentiable safeguard），用于安全的流匹配机器人策略。该防护机制利用二值可行性查询在前向传播中修正不安全的更新，同时在反向传播中提取局部边界信息以提供约束感知的学习信号。结合离散时间流匹配（discrete-time flow matching），同一防护机制在训练和推理阶段均被使用，从而在无需显式或可微分约束模型的情况下实现前向—反向对齐的策略学习。在障碍物感知机器人操作任务上的实验表明，该方法在保持任务性能的同时实现了100%的约束满足率。",
+        "mirror_urls": {
+          "中科院": "https://xxx.itp.ac.cn/abs/2610.400751",
+          "arxiv.org.cn": "https://arxiv.org.cn/abs/2610.400751"
+        },
+        "structured_summary": "【子方向标签】\nVLA与端到端策略（更精确地说，是“生成式机器人策略的安全约束”这一交叉子问题）\n\n【一句话简介】\n用二值可行性预言机（oracle）在训练与推理中同时校正流匹配策略，使生成动作100%满足关节限位与避障约束。\n\n【背景知识】\n要读懂这篇论文，需要先建立三层背景。第一层是▲机器人基础模型（robot foundation model）▲：近两年视觉-语言-动作模型（VLA, Vision-Language-Action）把大规模预训练引入机器人控制，输出的是动作序列而非单步动作。第二层是▲流匹配（flow matching）▲：一种生成式建模方法，学习一个从噪声分布到目标动作分布的连续时间速度场（velocity field），推理时从噪声出发积分常微分方程（ODE）得到动作。它比扩散模型（diffusion）训练更稳定、采样步数更少，正成为VLA动作头的主流选择。第三层是▲安全约束（safe control）▲：机器人动作必须满足关节限位（joint limits）、无自碰撞/环境碰撞等硬约束。传统做法是用解析约束（如不等式）或可微约束模型（如障碍物距离函数）做投影或控制屏障函数（CBF, Control Barrier Function）修正。但现实中很多约束是▲黑盒▲的——只能问“这个动作可行吗？”得到一个是/否，拿不到梯度，也无法写成解析式，这就是▲二值可行性预言机（binary feasibility oracle）▲。本文正是要在“只有黑盒是/否查询”的设定下，让生成式策略既安全又不牺牲任务性能。\n\n【核心问题】\n流匹配策略生成的动作在分布意义上“像”训练数据，但没有任何机制保证它落在可行集内——采样出的动作可能违反关节限位或撞上障碍物。当可行集无法解析描述、只能通过黑盒预言机查询时，常规的投影法、CBF、可微约束层全部失效，因为拿不到梯度。前人工作要么假设约束可微（不适用于黑盒），要么只在推理时做拒绝采样/事后过滤（会破坏动作时序一致性、降低成功率、且无法把约束信息回传训练）。本文要堵的 gap 是：▲在 oracle-only 设定下，如何同时获得推理时的硬约束满足和训练时的约束感知学习信号▲，且不引入显式约束模型。这个问题的意义在于，真实部署中大量安全约束恰恰是黑盒的（仿真器碰撞检测、硬件保护逻辑、人工规则），若不能处理，生成式策略就无法安全落地。\n\n【方法】\n核心技术是一个▲预言机引导的可微安全护栏（oracle-guided differentiable safeguard）▲，其巧妙之处在于用同一个模块同时服务前向与反向。分点说明：\n\n1. ▲前向校正（forward pass correction）▲：推理时，流匹配从噪声积分出动作。护栏在积分过程中用二值可行性查询检测当前更新是否把动作推向不可行区域；若查询返回“不可行”，则对这一步更新做修正（例如沿可行方向回退/投影到局部可行边界附近），使轨迹始终停留在可行集内。这相当于把黑盒预言机当作一个“是/否”的守门员，逐步纠正采样路径，而不是最后才拒绝。\n\n2. ▲反向边界信息提取（backward boundary extraction）▲：仅有前向校正只能保证推理安全，训练时策略仍不知道边界在哪。作者的关键洞察是：二值查询虽然不给梯度，但“可行/不可行”的翻转点蕴含了▲局部边界信息▲——即当前点距离可行边界的相对位置与方向。护栏利用这些翻转查询构造出约束感知的学习信号（constraint-aware learning signal），在反向传播时告诉策略“往哪个方向走会变安全/不安全”，从而在没有可微约束模型的情况下近似出边界梯度。\n\n3. ▲前向-反向对齐（forward–backward aligned learning）▲：训练和推理使用▲同一个护栏▲，配合离散时间流匹配（discrete-time flow matching）。这一点很关键：如果训练用一套约束、推理用另一套，策略会学到与部署不一致的可行域。对齐后，策略在训练中见到的校正方式就是部署时会遇到的校正方式，避免了分布偏移。\n\n4. ▲为何之前没人这么做▲：常规安全RL/安全生成要么依赖可微约束（拿不到梯度就崩），要么用拒绝采样（破坏时序、无法回传训练信号）。本文把“二值查询的翻转点”当作隐式边界梯度来源，并用统一护栏打通训练与推理，这是把黑盒可行性查询“可微化”的一种实用近似，属于方法层面的新组合。\n\n【实验结果】\n论文在▲障碍物感知的机器人操作（obstacle-aware robotic manipulation）▲任务上评估。关键结论与数据：\n• ▲约束满足率 100%▲：在所有测试中生成动作均满足关节限位与避障约束，这是最核心的指标，说明护栏在推理时确实提供了硬保证（相对无护栏的流匹配策略，后者约束满足率显著低于100%）。\n• ▲保持任务性能▲：在达到100%约束满足的同时，任务成功率与无约束基线相当，说明安全校正没有以牺牲任务完成为代价——这是安全方法常见的痛点（过度保守导致成功率下降），本文明确报告了这一点。\n• ▲对比基线▲：与标准流匹配策略（无安全机制）以及可能的拒绝采样/事后过滤类做法对比，护栏在约束满足上占优且不损成功率。\n• ▲消融▲：论文通过前向校正与反向信号的设计，隐含验证了“仅前向校正”与“前向+反向对齐”的差异（对齐训练带来更好的可行域一致性）。不过摘要层面给出的具体数字有限，主要量化结论是100%约束满足与任务性能保持这两项。\n\n【局限性】\n1. ▲依赖预言机查询预算▲：护栏在积分每一步都要做二值查询，查询次数随采样步数线性增长。对查询昂贵或延迟敏感的真实系统（如高频控制），这可能成为瓶颈，实际部署需权衡采样步数与查询成本。\n2. ▲仅验证了操作场景▲：实验集中在障碍物感知操作，未覆盖足式/人形的动态平衡、多接触等更复杂约束。动态任务中可行集随时间快速变化，局部边界信息可能不够用，泛化性存疑。\n3. ▲局部边界近似的保守性/精度▲：用翻转点近似边界梯度是局部线性化思路，在高度非凸可行集（如狭窄通道、多障碍夹缝）中可能给出不准确的方向，导致过度保守或校正不足，影响复杂场景下的成功率。\n4. ▲100%满足的统计范围▲：100%约束满足是在给定测试集与预言机定义下成立的，预言机本身的正确性未被讨论——若黑盒预言机有误判，护栏会忠实执行错误约束，安全性保证的根基在于预言机可信。\n\n【个人视角点评】\n• ▲子方向位置▲：这是一篇▲填补空白型▲工作，而非范式突破。生成式策略（流匹配/扩散）的安全约束是VLA落地绕不开的工程与理论缺口，而“oracle-only”设定此前缺少训练-推理一致的方案。本文把黑盒查询“可微化”并用统一护栏对齐训练推理，属于把已有工具（流匹配、可行性查询、边界近似）组合出新用法的扎实贡献，但底层生成范式未变。\n• ▲相对其他子方向的价值与天花板▲：与灵巧操作、运动控制等子方向相比，这类“安全层”工作的价值在于▲赋能而非替代▲——它不提升策略的表达能力或任务上限，而是给现有强策略加一道可信护栏。天花板受限于预言机质量与查询预算；但它对落地是刚需，因为安全违规在真实机器人上是不可接受的。\n• ▲落地距离与卡点▲：距离产品化中等偏近，卡点有三：查询延迟（需硬件级快速碰撞检测）、非凸可行集下的保守性、以及预言机本身的可靠性认证。若能把查询做成低延迟的仿真/几何检测，并扩展到动态约束，落地路径清晰。\n• ▲只记一件事▲：最值得记住的 idea 是——▲二值可行性查询的“翻转点”可以作为隐式边界梯度，且同一个护栏能同时服务训练与推理▲。这个想法特别在于它绕开了“约束必须可微”的教条，用最廉价的黑盒信号（是/否）换来了约束感知的学习信号，是一种很实用的“黑盒可微化”思路。\n\n【代码/数据开源情况】\n摘要与arXiv元数据中未提及代码或数据开源，也未给出项目主页链接。论文是否承诺后续公开，从给定信息无法确认；建议关注arXiv页面更新或作者主页以获取开源动态。"
+      }
+    ]
   }
 ]
